@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { auth, orders, notifications, vendorStores, playNotificationSound, type User, type Order, type Notification } from "@/lib/db";
@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderSuccess = searchParams.get("orderSuccess") === "true";
@@ -390,5 +390,13 @@ export default function DashboardPage() {
 
       <MobileNav />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Yüklənir...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

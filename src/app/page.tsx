@@ -604,11 +604,10 @@ function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Şirkət</h4>
             <ul className="space-y-2 text-gray-400 text-sm">
-               <li><a href="#" className="hover:text-white transition-colors">Ana Səhvə</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Haqqımızda</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Komanda</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Karyera</a></li>
-              <li><a href="#" className="hover:text-white transition-colors">Əlaqə</a></li>
+               <li><a href="/" className="hover:text-white transition-colors">Ana Səhvə</a></li>
+              <li><a href="/track" className="hover:text-white transition-colors">Sifariş İzlə</a></li>
+              <li><a href="#services" className="hover:text-white transition-colors">Xidmətlər</a></li>
+              <li><a href="#contact" className="hover:text-white transition-colors">Əlaqə</a></li>
             </ul>
           </div>
           <div>

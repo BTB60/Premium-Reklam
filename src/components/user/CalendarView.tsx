@@ -76,10 +76,10 @@ export function CalendarView({ events, orders, userId }: CalendarViewProps) {
 
   const getOrdersForDate = (date: Date) => {
     return orders.filter((o) => {
-      const deliveryDate = o.estimatedDelivery
-        ? new Date(o.estimatedDelivery)
+      const orderDate = o.createdAt
+        ? new Date(o.createdAt)
         : null;
-      return deliveryDate && isSameDay(deliveryDate, date);
+      return orderDate && isSameDay(orderDate, date);
     });
   };
 

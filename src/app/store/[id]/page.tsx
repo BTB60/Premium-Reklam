@@ -11,10 +11,13 @@ import {
   vendorProducts,
   vendorOrders,
   auth,
+  reviews,
+  promoCodes,
   calculateCommission,
   type VendorStore,
   type VendorProduct,
   type User,
+  type Review,
 } from "@/lib/db";
 import { motion } from "framer-motion";
 import {
@@ -42,10 +45,16 @@ export default function StorePage() {
   const [store, setStore] = useState<VendorStore | null>(null);
   const [products, setProducts] = useState<VendorProduct[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [storeReviews, setStoreReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<{ product: VendorProduct; quantity: number }[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoError, setPromoError] = useState("");
 
   useEffect(() => {
     const currentUser = auth.getCurrentUser();
@@ -55,9 +64,42 @@ export default function StorePage() {
     if (storeData) {
       setStore(storeData);
       setProducts(vendorProducts.getByStoreId(storeId));
+      setStoreReviews(reviews.getByStoreId(storeId));
     }
     setLoading(false);
   }, [storeId]);
+
+  const handleSubmitReview = () => {
+    if (!user || !store) return;
+    if (!newReview.comment.trim()) return;
+
+    reviews.create({
+      storeId: store.id,
+      userId: user.id,
+      userName: user.fullName,
+      rating: newReview.rating,
+      comment: newReview.comment,
+    });
+
+    setStoreReviews(reviews.getByStoreId(storeId));
+    setShowReviewForm(false);
+    setNewReview({ rating: 5, comment: "" });
+  };
+
+  const handleApplyPromo = () => {
+    if (!user || !promoCode.trim()) return;
+    
+    const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const result = promoCodes.validate(promoCode, user.id, cartTotal);
+    
+    if (result.valid) {
+      setPromoDiscount(result.discount || 0);
+      setPromoError("");
+    } else {
+      setPromoError(result.message);
+      setPromoDiscount(0);
+    }
+  };
 
   const addToCart = (product: VendorProduct, quantity: number) => {
     setCart((prev) => {
@@ -298,18 +340,47 @@ export default function StorePage() {
                     </Card>
                   ))}
 
+                  {/* Promo Code */}
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        placeholder="Promo kod"
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[#D90429]"
+                      />
+                      <button
+                        onClick={handleApplyPromo}
+                        className="px-4 py-2 bg-[#D90429] text-white rounded-lg text-sm hover:bg-[#b80323]"
+                      >
+                        Tətbiq et
+                      </button>
+                    </div>
+                    {promoError && <p className="text-red-500 text-xs">{promoError}</p>}
+                    {promoDiscount > 0 && (
+                      <p className="text-emerald-600 text-xs">Endirim tətbiq edildi: -{promoDiscount.toFixed(2)} AZN</p>
+                    )}
+                  </div>
+
                   <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Məbləğ:</span>
                       <span>{cartTotal.toFixed(2)} AZN</span>
                     </div>
+                    {promoDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-emerald-600">
+                        <span>Endirim:</span>
+                        <span>-{promoDiscount.toFixed(2)} AZN</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm text-gray-500">
                       <span>Komissiya (5%):</span>
                       <span>{commission.toFixed(2)} AZN</span>
                     </div>
                     <div className="flex justify-between font-bold text-lg pt-2 border-t">
                       <span>Ümumi:</span>
-                      <span className="text-[#D90429]">{cartTotal.toFixed(2)} AZN</span>
+                      <span className="text-[#D90429]">{(cartTotal - promoDiscount).toFixed(2)} AZN</span>
                     </div>
                   </div>
 
@@ -347,6 +418,93 @@ export default function StorePage() {
           </motion.div>
         </div>
       )}
+
+      {/* Reviews Section */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold text-[#1F2937]">
+              Müştəri Rəyləri ({storeReviews.length})
+            </h2>
+            {user && (
+              <Button 
+                onClick={() => setShowReviewForm(true)}
+                variant="secondary"
+              >
+                Rəy yaz
+              </Button>
+            )}
+          </div>
+
+          {/* Review Form */}
+          {showReviewForm && (
+            <Card className="p-6 mb-6">
+              <h3 className="font-semibold mb-4">Rəyinizi yazın</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Reytinq</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setNewReview({ ...newReview, rating: star })}
+                        className={`text-2xl ${star <= newReview.rating ? "text-amber-400" : "text-gray-300"}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Rəyiniz</label>
+                  <textarea
+                    value={newReview.comment}
+                    onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                    className="w-full p-3 border rounded-xl focus:outline-none focus:border-[#D90429]"
+                    rows={3}
+                    placeholder="Təcrübənizi paylaşın..."
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <Button onClick={handleSubmitReview}>Göndər</Button>
+                  <Button variant="ghost" onClick={() => setShowReviewForm(false)}>Ləğv et</Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Reviews List */}
+          <div className="grid md:grid-cols-2 gap-4">
+            {storeReviews.length === 0 ? (
+              <p className="text-gray-500 col-span-2 text-center py-8">Hələ rəy yoxdur</p>
+            ) : (
+              storeReviews.map((review) => (
+                <Card key={review.id} className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-[#D90429]/10 rounded-full flex items-center justify-center">
+                      <span className="text-[#D90429] font-bold">
+                        {review.userName.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{review.userName}</p>
+                      <div className="flex text-amber-400">
+                        {[...Array(5)].map((_, i) => (
+                          <span key={i}>{i < review.rating ? "★" : "☆"}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <span className="ml-auto text-sm text-gray-400">
+                      {new Date(review.createdAt).toLocaleDateString("az-AZ")}
+                    </span>
+                  </div>
+                  <p className="text-gray-600">{review.comment}</p>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

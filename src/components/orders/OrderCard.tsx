@@ -29,7 +29,7 @@ export function OrderCard({ order }: OrderCardProps) {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-[#1F2937]">{order.orderNumber}</p>
+                  <p className="font-semibold text-[#1F2937]">#{order.id.slice(-6)}</p>
                   <StatusBadge status={order.status} size="sm" />
                 </div>
                 <p className="text-sm text-[#6B7280]">

@@ -180,6 +180,21 @@ export interface ReferralRecord {
   completedAt?: string;
 }
 
+// Promo Code Interface
+export interface PromoCode {
+  id: string;
+  code: string;
+  description: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  minOrderAmount: number;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 // Vendor Store Interface
 export interface VendorStore {
   id: string;
@@ -216,6 +231,18 @@ export interface VendorProduct {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Review Interface
+export interface Review {
+  id: string;
+  storeId: string;
+  productId?: string;
+  userId: string;
+  userName: string;
+  rating: number; // 1-5
+  comment: string;
+  createdAt: string;
 }
 
 // Vendor Order Interface
@@ -1447,6 +1474,166 @@ export const vendorProducts = {
     if (index === -1) return false;
     all[index].isActive = false;
     saveVendorProducts(all);
+    return true;
+  },
+};
+
+// Reviews API
+const REVIEWS_KEY = "decor_reviews";
+
+function getReviews(): Review[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(REVIEWS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveReviews(reviews: Review[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(REVIEWS_KEY, JSON.stringify(reviews));
+}
+
+export const reviews = {
+  getAll(): Review[] {
+    return getReviews();
+  },
+  getByStoreId(storeId: string): Review[] {
+    return getReviews().filter(r => r.storeId === storeId);
+  },
+  getByProductId(productId: string): Review[] {
+    return getReviews().filter(r => r.productId === productId);
+  },
+  create(review: Omit<Review, "id" | "createdAt">): Review {
+    const newReview: Review = {
+      ...review,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+    };
+    const all = getReviews();
+    all.push(newReview);
+    saveReviews(all);
+    
+    // Update store rating
+    const storeReviews = this.getByStoreId(review.storeId);
+    const avgRating = storeReviews.reduce((sum, r) => sum + r.rating, 0) / storeReviews.length;
+    const store = vendorStores.getById(review.storeId);
+    if (store) {
+      vendorStores.update(store.id, { 
+        rating: Math.round(avgRating * 10) / 10,
+        reviewCount: storeReviews.length 
+      });
+    }
+    
+    return newReview;
+  },
+  delete(id: string): boolean {
+    const all = getReviews();
+    const index = all.findIndex(r => r.id === id);
+    if (index === -1) return false;
+    all.splice(index, 1);
+    saveReviews(all);
+    return true;
+  },
+};
+
+// Promo Codes API
+const PROMO_CODES_KEY = "decor_promo_codes";
+const USED_PROMOS_KEY = "decor_used_promos";
+
+function getPromoCodes(): PromoCode[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(PROMO_CODES_KEY);
+  const defaultCodes: PromoCode[] = [
+    {
+      id: "1",
+      code: "PREMIUM20",
+      description: "İlk sifarişə 20% endirim",
+      discountType: "percentage",
+      discountValue: 20,
+      minOrderAmount: 50,
+      maxUses: 100,
+      usedCount: 0,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "2",
+      code: "WELCOME10",
+      description: "Xoş gəldin 10 AZN endirim",
+      discountType: "fixed",
+      discountValue: 10,
+      minOrderAmount: 30,
+      maxUses: 200,
+      usedCount: 0,
+      expiresAt: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    },
+  ];
+  return raw ? JSON.parse(raw) : defaultCodes;
+}
+
+function savePromoCodes(codes: PromoCode[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PROMO_CODES_KEY, JSON.stringify(codes));
+}
+
+function getUsedPromos(): { userId: string; promoId: string; usedAt: string }[] {
+  if (typeof window === "undefined") return [];
+  const raw = localStorage.getItem(USED_PROMOS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveUsedPromos(used: { userId: string; promoId: string; usedAt: string }[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(USED_PROMOS_KEY, JSON.stringify(used));
+}
+
+export const promoCodes = {
+  getAll(): PromoCode[] {
+    return getPromoCodes().filter(c => c.isActive && new Date(c.expiresAt) > new Date());
+  },
+  getByCode(code: string): PromoCode | undefined {
+    return this.getAll().find(c => c.code.toUpperCase() === code.toUpperCase());
+  },
+  validate(code: string, userId: string, orderAmount: number): { valid: boolean; message: string; discount?: number } {
+    const promo = this.getByCode(code);
+    if (!promo) return { valid: false, message: "Promo kod tapılmadı" };
+    
+    if (orderAmount < promo.minOrderAmount) {
+      return { valid: false, message: `Minimum sifariş məbləği ${promo.minOrderAmount} AZN olmalıdır` };
+    }
+    
+    if (promo.usedCount >= promo.maxUses) {
+      return { valid: false, message: "Bu kodun istifadə limiti bitib" };
+    }
+    
+    const usedByUser = getUsedPromos().find(u => u.userId === userId && u.promoId === promo.id);
+    if (usedByUser) {
+      return { valid: false, message: "Siz bu kodu artıq istifadə etmisiniz" };
+    }
+    
+    const discount = promo.discountType === "percentage" 
+      ? orderAmount * (promo.discountValue / 100)
+      : promo.discountValue;
+    
+    return { valid: true, message: "Kod aktivləşdirildi", discount };
+  },
+  apply(code: string, userId: string): boolean {
+    const promo = this.getByCode(code);
+    if (!promo) return false;
+    
+    const all = getPromoCodes();
+    const index = all.findIndex(c => c.id === promo.id);
+    if (index === -1) return false;
+    
+    all[index].usedCount++;
+    savePromoCodes(all);
+    
+    const used = getUsedPromos();
+    used.push({ userId, promoId: promo.id, usedAt: new Date().toISOString() });
+    saveUsedPromos(used);
+    
     return true;
   },
 };

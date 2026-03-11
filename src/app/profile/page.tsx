@@ -31,7 +31,6 @@ export default function ProfilePage() {
     fullName: "",
     phone: "",
     email: "",
-    companyName: "",
   });
 
   useEffect(() => {
@@ -43,9 +42,8 @@ export default function ProfilePage() {
     setUser(currentUser);
     setFormData({
       fullName: currentUser.fullName,
-      phone: currentUser.phone,
+      phone: currentUser.phone || "",
       email: currentUser.email || "",
-      companyName: currentUser.companyName || "",
     });
     setLoading(false);
   }, [router]);
@@ -131,13 +129,6 @@ export default function ProfilePage() {
                     value={formData.email}
                     onChange={(value) => setFormData({ ...formData, email: value })}
                     icon={<Mail className="w-5 h-5" />}
-                  />
-
-                  <Input
-                    label="Şirkət adı"
-                    value={formData.companyName}
-                    onChange={(value) => setFormData({ ...formData, companyName: value })}
-                    icon={<Building2 className="w-5 h-5" />}
                   />
 
                   <Button 
