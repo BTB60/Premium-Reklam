@@ -29,14 +29,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://premiumreklambaku.vercel.app"),
+  metadataBase: new URL("https://premiumreklambaku.shop"),
   alternates: {
-    canonical: "/",
+    canonical: "https://premiumreklambaku.shop",
   },
   openGraph: {
     title: "Premium Reklam - Reklam və Dekor Xidmətləri",
     description: "Professional reklam və dekor xidmətləri. Vinil, orakal, banner çapı, dekorasiya və dizayn.",
-    url: "https://premiumreklambaku.vercel.app",
+    url: "https://premiumreklambaku.shop",
     siteName: "Premium Reklam",
     locale: "az_AZ",
     type: "website",
