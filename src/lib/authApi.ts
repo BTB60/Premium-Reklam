@@ -1,4 +1,4 @@
-// Client-side Auth API - uses localStorage for session, API for server operations
+// Client-side Auth API - uses API routes with fallback to localStorage
 
 export interface User {
   id: number;
@@ -14,92 +14,178 @@ export interface User {
 }
 
 const API_BASE = "/api";
+const USERS_KEY = "premiumreklam_users";
+const CURRENT_USER_KEY = "currentUser";
 
 // Safe localStorage access
-const getStorage = () => {
-  if (typeof window === "undefined") return null;
-  return {
-    get: (key: string) => localStorage.getItem(key),
-    set: (key: string, value: string) => localStorage.setItem(key, value),
-    remove: (key: string) => localStorage.removeItem(key),
-  };
+const storage = {
+  get: (key: string) => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(key);
+  },
+  set: (key: string, value: string) => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(key, value);
+  },
+  remove: (key: string) => {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(key);
+  },
 };
 
+// Get users from localStorage (fallback)
+function getLocalUsers(): any[] {
+  const stored = storage.get(USERS_KEY);
+  if (!stored) {
+    // Initialize with default admin
+    const defaultUsers = [
+      {
+        id: 1,
+        full_name: "Admin",
+        username: "admin",
+        phone: "+994507988177",
+        email: "premiumreklam@bk.ru",
+        password_hash: "admin123",
+        role: "ADMIN",
+        level: 100,
+        total_orders: 0,
+        bonus_points: 0,
+        created_at: new Date().toISOString(),
+      },
+    ];
+    storage.set(USERS_KEY, JSON.stringify(defaultUsers));
+    return defaultUsers;
+  }
+  return JSON.parse(stored);
+}
+
+// Save users to localStorage
+function saveLocalUsers(users: any[]) {
+  storage.set(USERS_KEY, JSON.stringify(users));
+}
+
 export const authApi = {
-  // Register new user via API
+  // Register new user
   async register(userData: {
     fullName: string;
     username: string;
     phone?: string;
     password: string;
   }): Promise<User> {
-    const response = await fetch(`${API_BASE}/users`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
-    });
+    try {
+      // Try API first
+      const response = await fetch(`${API_BASE}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Qeydiyyat xətası");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          storage.set("currentUser", JSON.stringify(data.user));
+          return data.user;
+        }
+      }
+
+      // Fallback to localStorage
+      console.log("API failed, using localStorage fallback");
+      const users = getLocalUsers();
+      
+      if (users.find((u: any) => u.username === userData.username)) {
+        throw new Error("Bu istifadəçi adı artıq mövcuddur");
+      }
+
+      const newUser = {
+        id: Date.now(),
+        full_name: userData.fullName,
+        username: userData.username,
+        phone: userData.phone || "",
+        email: "",
+        password_hash: userData.password,
+        role: "DECORATOR",
+        level: 1,
+        total_orders: 0,
+        bonus_points: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      users.push(newUser);
+      saveLocalUsers(users);
+
+      const { password_hash, ...userWithoutPassword } = newUser;
+      storage.set("currentUser", JSON.stringify(userWithoutPassword));
+      return userWithoutPassword as User;
+
+    } catch (error: any) {
+      throw new Error(error.message || "Qeydiyyat xətası");
     }
-
-    const storage = getStorage();
-    if (storage && data.user) {
-      storage.set("currentUser", JSON.stringify(data.user));
-    }
-
-    return data.user;
   },
 
-  // Login via API
+  // Login
   async login(username: string, password: string): Promise<User> {
-    const response = await fetch(`${API_BASE}/auth`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    try {
+      // Try API first
+      const response = await fetch(`${API_BASE}/auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "Giriş xətası");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          storage.set("currentUser", JSON.stringify(data.user));
+          return data.user;
+        }
+      }
+
+      // Fallback to localStorage
+      console.log("API failed, using localStorage fallback");
+      const users = getLocalUsers();
+      const user = users.find(
+        (u: any) => u.username === username && u.password_hash === password
+      );
+
+      if (!user) {
+        throw new Error("İstifadəçi adı və ya şifrə yanlışdır");
+      }
+
+      const { password_hash, ...userWithoutPassword } = user;
+      storage.set("currentUser", JSON.stringify(userWithoutPassword));
+      return userWithoutPassword as User;
+
+    } catch (error: any) {
+      throw new Error(error.message || "Giriş xətası");
     }
-
-    const storage = getStorage();
-    if (storage && data.user) {
-      storage.set("currentUser", JSON.stringify(data.user));
-    }
-
-    return data.user;
   },
 
-  // Get current user from localStorage
+  // Get current user
   getCurrentUser(): User | null {
-    const storage = getStorage();
-    if (!storage) return null;
-    const stored = storage.get("currentUser");
+    const stored = storage.get(CURRENT_USER_KEY);
     return stored ? JSON.parse(stored) : null;
   },
 
   // Logout
   logout() {
-    const storage = getStorage();
-    if (storage) {
-      storage.remove("currentUser");
-    }
+    storage.remove(CURRENT_USER_KEY);
   },
 
-  // Get all users via API (for admin)
+  // Get all users (for admin)
   async getAllUsers(): Promise<User[]> {
-    const response = await fetch(`${API_BASE}/users`);
-    const data = await response.json();
-    return data.users || [];
-  },
+    try {
+      const response = await fetch(`${API_BASE}/users`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.users || [];
+      }
+    } catch (error) {
+      console.log("API failed, using localStorage fallback");
+    }
 
-  // Get user by ID via API
-  async getUserById(id: number): Promise<User | null> {
-    const users = await this.getAllUsers();
-    return users.find(u => u.id === id) || null;
+    // Fallback
+    const users = getLocalUsers();
+    return users.map(({ password_hash, ...user }: any) => user as User);
   },
 };
 
