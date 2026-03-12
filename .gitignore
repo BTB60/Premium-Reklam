@@ -46,3 +46,6 @@ backend/build/
 
 # VS Code
 .vscode/
+
+.vercel
+.env*.local
