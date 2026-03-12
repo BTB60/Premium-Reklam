@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { User, Lock, ArrowRight, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { auth } from "@/lib/db";
+import { api } from "@/lib/api";
 
 function LoginForm() {
   const router = useRouter();
@@ -26,13 +26,13 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const result = await auth.login(username, password);
+      // Login via API
+      const user = await api.login(username, password);
 
-      if (!result.success) {
-        throw new Error(result.error || "İstifadəçi adı və ya şifrə yanlışdır");
-      }
+      // Save user to localStorage for session
+      localStorage.setItem("currentUser", JSON.stringify(user));
 
-      const role = result.user?.role?.toUpperCase();
+      const role = user?.role?.toUpperCase();
 
       if (role === "ADMIN") {
         router.push("/admin/dashboard");
@@ -63,8 +63,8 @@ function LoginForm() {
 
           {justRegistered && (
             <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Qeydiyyat uğurlu oldu! İndi daxil ola bilərsiniz.
+              <CheckCircle className="w-5 h-5" />
+              Qeydiyyat uğurla tamamlandı! İndi daxil ola bilərsiniz.
             </div>
           )}
 
@@ -74,9 +74,9 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <Input
-              label="İstifadəçi adı və ya telefon"
+              label="İstifadəçi adı"
               placeholder="istifadeci123"
               value={username}
               onChange={setUsername}
@@ -100,7 +100,7 @@ function LoginForm() {
                 <span className="text-[#6B7280]">Məni xatırla</span>
               </label>
               <Link href="/forgot-password" className="text-[#D90429] hover:underline">
-                Şifrəni unutdum
+                Şifrəni unutdun?
               </Link>
             </div>
 
@@ -118,9 +118,14 @@ function LoginForm() {
             <p className="text-[#6B7280]">
               Hesabınız yoxdur?{" "}
               <Link href="/register" className="text-[#D90429] font-medium hover:underline">
-                Qeydiyyatdan keçin
+                Qeydiyyatdan keç
               </Link>
             </p>
+          </div>
+
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-[#6B7280] text-center">
+            <p className="font-medium mb-1">Test üçün:</p>
+            <p>Admin: <code className="bg-gray-100 px-1 rounded">admin</code> / <code className="bg-gray-100 px-1 rounded">admin123</code></p>
           </div>
         </Card>
       </motion.div>
@@ -130,7 +135,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Yüklənir...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D90429]" /></div>}>
       <LoginForm />
     </Suspense>
   );

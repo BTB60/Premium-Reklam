@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Phone, Lock, User, ArrowRight, Building2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/db";
+import { api } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -29,17 +29,24 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const result = await auth.register({
+      // Validate
+      if (formData.password !== formData.confirmPassword) {
+        throw new Error("Şifrələr uyğun gəlmir");
+      }
+
+      if (formData.password.length < 6) {
+        throw new Error("Şifrə ən azı 6 simvol olmalıdır");
+      }
+
+      // Register via API
+      const user = await api.register({
         fullName: formData.fullName,
         username: formData.username,
         phone: formData.phone,
         password: formData.password,
       });
 
-      if (!result.success) {
-        throw new Error(result.error || "Qeydiyyat alınmadı");
-      }
-
+      console.log("User registered:", user);
       router.push("/login?registered=true");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Xəta baş verdi");
