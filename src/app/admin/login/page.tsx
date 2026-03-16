@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Shield, Lock, ArrowRight, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/db";
+import { authApi } from "@/lib/authApi";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -23,20 +23,16 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const result = await auth.login(username, password);
+      const user = await authApi.login(username, password);
 
-      if (!result.success) {
-        throw new Error(result.error || "Giriş məlumatları yanlışdır");
-      }
-
-      const role = result.user?.role?.toUpperCase();
+      const role = user?.role?.toUpperCase();
 
       if (role !== "ADMIN") {
         throw new Error("Bu səhifəyə yalnız adminlər daxil ola bilər");
       }
 
       router.push("/admin/dashboard");
-    } catch (err) {
+    } catch (err: any) {
       setError(err instanceof Error ? err.message : "Xəta baş verdi");
     } finally {
       setLoading(false);
@@ -98,23 +94,19 @@ export default function AdminLoginPage() {
               loading={loading}
               icon={<ArrowRight className="w-5 h-5" />}
             >
-              Admin kimi daxil ol
+              Daxil ol
             </Button>
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/login" className="text-[#6B7280] hover:text-[#D90429] text-sm">
-              Decorator kimi daxil ol
+            <Link
+              href="/login"
+              className="text-sm text-[#6B7280] hover:text-[#D90429] transition-colors"
+            >
+              ← İstifadəçi girişinə qayıt
             </Link>
           </div>
         </Card>
-
-        {/* Security Notice */}
-        <p className="text-center text-gray-500 text-sm mt-6">
-          Bu səhifə yalnız səlahiyyətli adminlər üçün nəzərdə tutulub.
-          <br />
-          İcazəsiz giriş cəhdləri qeydə alınır.
-        </p>
       </motion.div>
     </div>
   );

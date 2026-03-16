@@ -1,16 +1,31 @@
-// Client-side Auth API - uses API routes with Neon PostgreSQL
+// Client-side Auth API - uses API routes with MySQL
 
 export interface User {
-  id: number;
-  full_name: string;
+  id: number | string;
+  full_name?: string;
+  fullName?: string;
   username: string;
-  phone: string;
-  email: string;
+  phone?: string;
+  email?: string;
   role: "ADMIN" | "DECORATOR" | "VENDOR";
-  level: number;
-  total_orders: number;
-  bonus_points: number;
-  created_at: string;
+  level?: number;
+  total_orders?: number;
+  totalOrders?: number;
+  bonus_points?: number;
+  bonusPoints?: number;
+  created_at?: string;
+  createdAt?: string;
+  // For db.ts compatibility
+  password?: string;
+  password_hash?: string;
+  totalSales?: number;
+  monthlyStats?: any[];
+  bonusTier?: string;
+  referralCode?: string;
+  referralCount?: number;
+  isVendor?: boolean;
+  vendorBalance?: number;
+  totalVendorSales?: number;
 }
 
 const API_BASE = "/api";
@@ -53,8 +68,17 @@ export const authApi = {
     }
 
     if (data.user) {
-      storage.set(CURRENT_USER_KEY, JSON.stringify(data.user));
-      return data.user;
+      // Convert MySQL response to User format
+      const user: User = {
+        ...data.user,
+        id: data.user.id.toString(),
+        fullName: data.user.full_name,
+        totalOrders: data.user.total_orders || 0,
+        bonusPoints: data.user.bonus_points || 0,
+        createdAt: data.user.created_at,
+      };
+      storage.set(CURRENT_USER_KEY, JSON.stringify(user));
+      return user;
     }
 
     throw new Error("Qeydiyyat xətası");
@@ -75,8 +99,26 @@ export const authApi = {
     }
 
     if (data.user) {
-      storage.set(CURRENT_USER_KEY, JSON.stringify(data.user));
-      return data.user;
+      // Convert MySQL response to User format
+      const user: User = {
+        ...data.user,
+        id: data.user.id.toString(),
+        fullName: data.user.full_name,
+        totalOrders: data.user.total_orders || 0,
+        bonusPoints: data.user.bonus_points || 0,
+        createdAt: data.user.created_at,
+        // Default values for db.ts compatibility
+        totalSales: 0,
+        monthlyStats: [],
+        bonusTier: "bronze",
+        referralCode: `REF${Date.now().toString().slice(-6)}`,
+        referralCount: 0,
+        isVendor: false,
+        vendorBalance: 0,
+        totalVendorSales: 0,
+      };
+      storage.set(CURRENT_USER_KEY, JSON.stringify(user));
+      return user;
     }
 
     throw new Error("Giriş xətası");
@@ -97,7 +139,25 @@ export const authApi = {
   async getAllUsers(): Promise<User[]> {
     const response = await fetch(`${API_BASE}/users`);
     const data = await response.json();
-    return data.users || [];
+    
+    // Convert MySQL response to User format
+    return (data.users || []).map((u: any) => ({
+      ...u,
+      id: u.id.toString(),
+      fullName: u.full_name,
+      totalOrders: u.total_orders || 0,
+      bonusPoints: u.bonus_points || 0,
+      createdAt: u.created_at,
+      // Default values for db.ts compatibility
+      totalSales: 0,
+      monthlyStats: [],
+      bonusTier: "bronze",
+      referralCode: `REF${u.id}`,
+      referralCount: 0,
+      isVendor: false,
+      vendorBalance: 0,
+      totalVendorSales: 0,
+    }));
   },
 };
 

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { auth, orders, notifications, settings, tasks, products, finance, inventory, workerTasks, messages, playNotificationSound, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask } from "@/lib/db";
+import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, messages, playNotificationSound, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask } from "@/lib/db";
+import { authApi } from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -53,7 +54,7 @@ interface EditingUser {
   id: string;
   fullName: string;
   username: string;
-  phone: string;
+  phone?: string;
   email?: string;
   password: string;
   level: number;
@@ -81,12 +82,12 @@ export default function AdminDashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const currentUser = auth.getCurrentUser();
+    const currentUser = authApi.getCurrentUser();
     if (!currentUser || currentUser.role !== "ADMIN") {
       router.push("/admin/login");
       return;
     }
-    setUser(currentUser);
+    setUser(currentUser as any);
     loadData();
     setLoading(false);
   }, [router]);
@@ -110,8 +111,9 @@ export default function AdminDashboardPage() {
     return () => clearInterval(interval);
   }, [user, lastNotificationCount]);
 
-  const loadData = () => {
-    setAllUsers(auth.getAllUsers());
+  const loadData = async () => {
+    const users = await authApi.getAllUsers();
+    setAllUsers(users as any);
     setAllOrders(orders.getAll());
     const notifs = notifications.getAll();
     setAllNotifications(notifs);
@@ -124,14 +126,15 @@ export default function AdminDashboardPage() {
   };
 
   const handleLogout = () => {
-    auth.logout();
+    authApi.logout();
     router.push("/admin/login");
   };
 
-  const deleteUser = (userId: string) => {
+  const deleteUser = async (userId: string) => {
     if (confirm("İstifadəçini silmək istədiyinizə əminsiniz?")) {
-      const users = auth.getAllUsers().filter(u => u.id !== userId);
-      localStorage.setItem("decor_users", JSON.stringify(users));
+      // TODO: Implement delete user API
+      const users = (await authApi.getAllUsers()).filter((u: any) => u.id !== userId);
+      // localStorage.setItem("decor_users", JSON.stringify(users));
       // Also delete user's orders
       const userOrders = orders.getAll().filter(o => o.userId !== userId);
       localStorage.setItem("decor_orders", JSON.stringify(userOrders));
@@ -149,31 +152,31 @@ export default function AdminDashboardPage() {
       email: user.email,
       password: user.password,
       level: user.level,
-      totalOrders: user.totalOrders,
+      totalOrders: user.totalOrders || 0,
       totalSales: user.totalSales,
     });
     setActiveTab("userDetail");
   };
 
-  const updateUser = () => {
+  const updateUser = async () => {
     if (!editingUser) return;
     
-    const allUsers = auth.getAllUsers();
-    const userIndex = allUsers.findIndex(u => u.id === editingUser.id);
+    // TODO: Implement update user API
+    const allUsers = await authApi.getAllUsers();
+    const userIndex = allUsers.findIndex((u: any) => u.id === editingUser.id);
     
     if (userIndex !== -1) {
       allUsers[userIndex] = {
         ...allUsers[userIndex],
-        fullName: editingUser.fullName,
+        full_name: editingUser.fullName,
         username: editingUser.username,
-        phone: editingUser.phone,
-        email: editingUser.email,
-        password: editingUser.password,
+        phone: editingUser.phone || "",
+        email: editingUser.email || "",
+        password_hash: editingUser.password,
         level: editingUser.level,
-        totalOrders: editingUser.totalOrders,
-        totalSales: editingUser.totalSales,
+        total_orders: editingUser.totalOrders,
       };
-      localStorage.setItem("decor_users", JSON.stringify(allUsers));
+      // localStorage.setItem("decor_users", JSON.stringify(allUsers));
       loadData();
       setEditingUser(null);
       alert("İstifadəçi məlumatları yeniləndi!");
@@ -469,9 +472,9 @@ export default function AdminDashboardPage() {
                   <tbody>
                     {allUsers
                       .filter(u => 
-                        u.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        u.phone?.includes(searchQuery)
+                        (u.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (u.username || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (u.phone || '').includes(searchQuery)
                       )
                       .map((u) => (
                       <tr key={u.id} className="border-t border-gray-100 hover:bg-gray-50">
@@ -491,7 +494,7 @@ export default function AdminDashboardPage() {
                             {u.level}
                           </span>
                         </td>
-                        <td className="py-3 px-4">{u.totalOrders}</td>
+                        <td className="py-3 px-4">{u.totalOrders || 0}</td>
                         <td className="py-3 px-4">{u.totalSales} AZN</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
