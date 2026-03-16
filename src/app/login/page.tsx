@@ -122,7 +122,7 @@ function LoginForm() {
 
           <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-[#6B7280] text-center">
             <p className="font-medium mb-1">Test üçün:</p>
-            <p>Admin: <code className="bg-gray-100 px-1 rounded">admin</code> / <code className="bg-gray-100 px-1 rounded">admin123</code></p>
+            <p>Admin üçün xüsusi girişdən istifadə edin</p>
           </div>
         </Card>
       </motion.div>

@@ -59,7 +59,7 @@ export async function initMySQL() {
       await connection.execute(
         `INSERT INTO users (full_name, username, phone, email, password_hash, role, level)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        ['Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'admin123', 'ADMIN', 100]
+        ['Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'Nasir147286', 'ADMIN', 100]
       );
     }
 

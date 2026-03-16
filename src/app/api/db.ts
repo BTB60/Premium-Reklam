@@ -59,7 +59,7 @@ if (!global.__db_users) {
       username: "admin",
       phone: "+994507988177",
       email: "premiumreklam@bk.ru",
-      password: "admin123", // In production, hash this!
+      password: "Nasir147286", // In production, hash this!
       role: "ADMIN",
       level: 100,
       totalOrders: 0,
