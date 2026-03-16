@@ -35,9 +35,15 @@ async function initDB(sql: any) {
     // Check if admin exists
     const adminCheck = await sql`SELECT * FROM users WHERE username = 'admin'`;
     if (!adminCheck || adminCheck.length === 0) {
+      // Create admin with new password
       await sql`
         INSERT INTO users (full_name, username, phone, email, password_hash, role, level)
-        VALUES ('Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'admin123', 'ADMIN', 100)
+        VALUES ('Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'Nasir147286', 'ADMIN', 100)
+      `;
+    } else {
+      // Update existing admin password
+      await sql`
+        UPDATE users SET password_hash = 'Nasir147286' WHERE username = 'admin'
       `;
     }
   } catch (error) {
