@@ -1,11 +1,10 @@
 {
   "version": 2,
-  "name": "premium-reklam",
   "framework": "nextjs",
   "regions": ["fra1"],
   "env": {
-    "NEXT_PUBLIC_API_URL": "https://premiumreklambaku.vercel.app/api",
-    "NEXT_PUBLIC_URL": "https://premiumreklambaku.shop"
+    "NEXT_PUBLIC_API_URL": "https://premium-reklam.vercel.app/api",
+    "NEXT_PUBLIC_URL": "https://premium-reklam.vercel.app"
   },
   "headers": [
     {
@@ -24,19 +23,6 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "www.premiumreklambaku.shop"
-        }
-      ],
-      "destination": "https://premiumreklambaku.shop/:path*",
-      "permanent": true
     }
   ]
 }
