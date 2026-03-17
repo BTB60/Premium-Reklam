@@ -1,0 +1,81 @@
+package az.premiumreklam.entity;
+
+import az.premiumreklam.enums.UserRole;
+import az.premiumreklam.enums.UserStatus;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "full_name", nullable = false, length = 150)
+    private String fullName;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Column(unique = true, length = 120)
+    private String email;
+
+    @Column(length = 30)
+    private String phone;
+
+    @Column(name = "password_hash", nullable = false, columnDefinition = "TEXT")
+    private String passwordHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role = UserRole.DECORCU;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "monthly_target", precision = 12, scale = 2, nullable = false)
+    private BigDecimal monthlyTarget = BigDecimal.valueOf(500);
+
+    @Column(name = "monthly_sales_total", precision = 12, scale = 2, nullable = false)
+    private BigDecimal monthlySalesTotal = BigDecimal.ZERO;
+
+    @Column(name = "discount_percent", precision = 5, scale = 2, nullable = false)
+    private BigDecimal discountPercent = BigDecimal.ZERO;
+
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    @PrePersist
+    public void prePersist() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        if (monthlyTarget == null) monthlyTarget = BigDecimal.valueOf(500);
+        if (monthlySalesTotal == null) monthlySalesTotal = BigDecimal.ZERO;
+        if (discountPercent == null) discountPercent = BigDecimal.ZERO;
+        if (role == null) role = UserRole.DECORCU;
+        if (status == null) status = UserStatus.ACTIVE;
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+}
