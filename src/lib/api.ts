@@ -1,7 +1,9 @@
-// API Client for Vercel serverless functions
-// This replaces localStorage for shared data across users
+// API Client for Spring Boot Backend
+// Backend runs on localhost:8081
 
-const API_BASE = "/api";
+const API_BASE = process.env.NODE_ENV === "production"
+  ? "/api"  // Production: same domain
+  : "http://localhost:8081/api";  // Development: Spring Boot
 
 export const api = {
   // Auth

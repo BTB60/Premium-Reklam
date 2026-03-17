@@ -1,4 +1,5 @@
-// Client-side Auth API - uses API routes with MySQL
+// Client-side Auth API - uses Spring Boot Backend
+// Backend runs on localhost:8081
 
 export interface User {
   id: number | string;
@@ -28,7 +29,9 @@ export interface User {
   totalVendorSales?: number;
 }
 
-const API_BASE = "/api";
+const API_BASE = process.env.NODE_ENV === "production"
+  ? "/api"  // Production: same domain
+  : "http://localhost:8081/api";  // Development: Spring Boot
 const CURRENT_USER_KEY = "currentUser";
 
 // Safe localStorage access

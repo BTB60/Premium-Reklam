@@ -26,11 +26,10 @@ public class AuthService {
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Bu username artıq mövcuddur");
+            throw new RuntimeException("Bu istifadəçi adı artıq mövcuddur");
         }
 
-        if (request.getEmail() != null && !request.getEmail().isBlank()
-                && userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Bu email artıq mövcuddur");
         }
 
