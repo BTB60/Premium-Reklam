@@ -1,139 +1,253 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Card } from "@/components/ui/Card";
-import { User, Lock, ArrowRight, CheckCircle } from "lucide-react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { authApi } from "@/lib/authApi";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import authApi from "@/lib/authApi";
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const justRegistered = searchParams.get("registered") === "true";
-  
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
-      // Login via localStorage-based auth
-      const user = await authApi.login(username, password);
+      const result = await authApi.login(username, password);
+      authApi.saveCurrentUser(result);
 
-      const role = user?.role?.toUpperCase();
-
-      if (role === "ADMIN") {
-        router.push("/admin/dashboard");
+      if (result.role === "ADMIN") {
+        router.push("/admin");
       } else {
         router.push("/dashboard");
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Xəta baş verdi");
+    } catch (err: any) {
+      setError(err.message || "Giriş alınmadı");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center py-12 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <Card className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#1F2937] mb-2">Daxil ol</h1>
-            <p className="text-[#6B7280]">
-              Hesabınıza daxil olun
-            </p>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "linear-gradient(135deg, #1F2937 0%, #111827 100%)",
+      padding: 20
+    }}>
+      <div style={{
+        width: "100%",
+        maxWidth: 420,
+        background: "white",
+        borderRadius: 16,
+        padding: 40,
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+      }}>
+        {/* Logo/Title */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            background: "linear-gradient(135deg, #D90429 0%, #EF476F 100%)",
+            borderRadius: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 16px"
+          }}>
+            <span style={{ color: "white", fontSize: 28, fontWeight: "bold" }}>P</span>
           </div>
+          <h1 style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#1F2937",
+            marginBottom: 8,
+            fontFamily: "Manrope, sans-serif"
+          }}>
+            Premium Reklam
+          </h1>
+          <p style={{ color: "#6B7280", fontSize: 14 }}>
+            Hesabınıza daxil olun
+          </p>
+        </div>
 
-          {justRegistered && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Qeydiyyat uğurla tamamlandı! İndi daxil ola bilərsiniz.
-            </div>
-          )}
+        {/* Error Message */}
+        {error && (
+          <div style={{
+            background: "#FEE2E2",
+            border: "1px solid #FECACA",
+            borderRadius: 8,
+            padding: "12px 16px",
+            marginBottom: 20,
+            color: "#DC2626",
+            fontSize: 14
+          }}>
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input
-              label="İstifadəçi adı"
-              placeholder="istifadeci123"
+        {/* Login Form */}
+        <form onSubmit={handleLogin}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{
+              display: "block",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#374151",
+              marginBottom: 8
+            }}>
+              İstifadəçi adı
+            </label>
+            <input
+              type="text"
+              placeholder="admin və ya istifadəçi adı"
               value={username}
-              onChange={setUsername}
-              icon={<User className="w-5 h-5" />}
+              onChange={(e) => setUsername(e.target.value)}
               required
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                border: "1px solid #E5E7EB",
+                borderRadius: 10,
+                fontSize: 15,
+                outline: "none",
+                transition: "border-color 0.2s",
+                boxSizing: "border-box"
+              }}
+              onFocus={(e) => e.target.style.borderColor = "#D90429"}
+              onBlur={(e) => e.target.style.borderColor = "#E5E7EB"}
             />
+          </div>
 
-            <Input
-              label="Şifrə"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={setPassword}
-              icon={<Lock className="w-5 h-5" />}
-              required
-            />
-
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" className="rounded border-[#E5E7EB]" />
-                <span className="text-[#6B7280]">Məni xatırla</span>
-              </label>
-              <Link href="/forgot-password" className="text-[#D90429] hover:underline">
-                Şifrəni unutdun?
-              </Link>
+          <div style={{ marginBottom: 24 }}>
+            <label style={{
+              display: "block",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#374151",
+              marginBottom: 8
+            }}>
+              Şifrə
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Şifrənizi daxil edin"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{
+                  width: "100%",
+                  padding: "14px 50px 14px 16px",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: 10,
+                  fontSize: 15,
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                  boxSizing: "border-box"
+                }}
+                onFocus={(e) => e.target.style.borderColor = "#D90429"}
+                onBlur={(e) => e.target.style.borderColor = "#E5E7EB"}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#6B7280",
+                  fontSize: 12
+                }}
+              >
+                {showPassword ? "GIZLƏT" : "GOSTƏR"}
+              </button>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full"
-              loading={loading}
-              icon={<ArrowRight className="w-5 h-5" />}
-            >
-              Daxil ol
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-[#6B7280]">
-              Hesabınız yoxdur?{" "}
-              <Link href="/register" className="text-[#D90429] font-medium hover:underline">
-                Qeydiyyatdan keç
-              </Link>
-            </p>
           </div>
 
-          <div className="mt-4 p-3 bg-gray-50 rounded-lg text-xs text-[#6B7280] text-center">
-            <p className="font-medium mb-1">Test üçün:</p>
-            <p>Admin üçün xüsusi girişdən istifadə edin</p>
-          </div>
-        </Card>
-      </motion.div>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px",
+              background: loading ? "#9CA3AF" : "linear-gradient(135deg, #D90429 0%, #EF476F 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "transform 0.2s, box-shadow 0.2s"
+            }}
+            onMouseOver={(e) => {
+              if (!loading) {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(217, 4, 41, 0.3)";
+              }
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          >
+            {loading ? (
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <span style={{
+                  width: 16,
+                  height: 16,
+                  border: "2px solid white",
+                  borderTopColor: "transparent",
+                  borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite"
+                }} />
+                Yoxlanılır...
+              </span>
+            ) : "Daxil ol"}
+          </button>
+        </form>
+
+        {/* Register Link */}
+        <p style={{
+          textAlign: "center",
+          marginTop: 24,
+          color: "#6B7280",
+          fontSize: 14
+        }}>
+          Hesabınız yoxdur?{" "}
+          <a
+            href="/register"
+            style={{
+              color: "#D90429",
+              textDecoration: "none",
+              fontWeight: 600
+            }}
+          >
+            Qeydiyyatdan keçin
+          </a>
+        </p>
+
+
+      </div>
+
+      {/* CSS Animation */}
+      <style jsx global>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D90429]" /></div>}>
-      <LoginForm />
-    </Suspense>
   );
 }

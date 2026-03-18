@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { ReactNode } from "react";
 
 interface ButtonProps {
-  children: ReactNode;
+  children?: ReactNode;
   variant?: "primary" | "secondary" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
   className?: string;

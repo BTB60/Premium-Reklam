@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -49,14 +50,14 @@ public class OrderService {
                 Product product = null;
                 if (itemRequest.getProductId() != null) {
                     product = productRepository.findById(itemRequest.getProductId())
-                            .orElseThrow(() -> new RuntimeException("Məhsul tapılmadı"));
+                            .orElse(null);
                 }
 
                 BigDecimal quantity = defaultBigDecimal(itemRequest.getQuantity(), BigDecimal.ONE);
                 BigDecimal unitPrice = defaultBigDecimal(itemRequest.getUnitPrice());
                 BigDecimal width = itemRequest.getWidth();
                 BigDecimal height = itemRequest.getHeight();
-                ProductUnit unit = itemRequest.getUnit() == null ? ProductUnit.PIECE : itemRequest.getUnit();
+                ProductUnit unit = itemRequest.getUnit() == null ? ProductUnit.M2 : itemRequest.getUnit();
 
                 BigDecimal area = BigDecimal.ZERO;
                 BigDecimal lineTotal;
@@ -106,6 +107,34 @@ public class OrderService {
         order.setIsCredit(total.compareTo(BigDecimal.ZERO) > 0);
 
         return orderRepository.save(order);
+    }
+
+    public List<Order> getAllOrders() {
+        return orderRepository.findAll();
+    }
+
+    public List<Order> getOrdersByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+        return orderRepository.findByUserId(user.getId());
+    }
+
+    public Order getOrderById(Long id) {
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
+    }
+
+    @Transactional
+    public Order updateOrderStatus(Long id, OrderStatus status) {
+        Order order = getOrderById(id);
+        order.setStatus(status);
+        return orderRepository.save(order);
+    }
+
+    @Transactional
+    public void deleteOrder(Long id) {
+        Order order = getOrderById(id);
+        orderRepository.delete(order);
     }
 
     private String generateOrderNumber() {

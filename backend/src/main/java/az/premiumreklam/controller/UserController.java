@@ -1,7 +1,7 @@
 package az.premiumreklam.controller;
 
 import az.premiumreklam.entity.User;
-import az.premiumreklam.repository.UserRepository;
+import az.premiumreklam.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -13,18 +13,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserService userService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public List<User> getAll() {
-        return userRepository.findAll();
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @securityService.isCurrentUser(#id)")
-    public User getById(@PathVariable Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+    public List<User> getAllUsers() {
+        return userService.getAllUsers();
     }
 }

@@ -2,6 +2,7 @@ package az.premiumreklam.entity;
 
 import az.premiumreklam.enums.UserRole;
 import az.premiumreklam.enums.UserStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -33,6 +34,7 @@ public class User {
     @Column(length = 30)
     private String phone;
 
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false, columnDefinition = "TEXT")
     private String passwordHash;
 
