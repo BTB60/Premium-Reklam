@@ -218,21 +218,35 @@ export const authApi = {
   },
 
   async login(username: string, password: string): Promise<UserData> {
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || "Giriş uğursuz oldu");
+      const text = await res.text();
+      
+      // Check if response is HTML (error page) instead of JSON
+      if (text.startsWith("<")) {
+        throw new Error("Server bağlantısı yoxdur. Backend xidmətini işə salın.");
+      }
+      
+      const data = JSON.parse(text);
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Giriş uğursuz oldu");
+      }
+      
+      return {
+        ...data,
+        role: mapRole(data.role),
+      };
+    } catch (error: any) {
+      if (error.message.includes("Server bağlantısı")) {
+        throw error;
+      }
+      throw new Error("Server bağlantısı yoxdur. Backend xidmətini işə salın.");
     }
-    
-    return {
-      ...data,
-      role: mapRole(data.role),
-    };
   },
 
   async getAllUsers(): Promise<any[]> {
