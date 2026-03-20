@@ -1,62 +1,15 @@
 services:
   - type: web
-    name: decorapp-api
+    name: premium-reklam-api
     runtime: docker
-    repo: https://github.com/yourusername/decorapp-backend
+    repo: https://github.com/BTB60/backandpremiumreklam
     branch: main
-    plan: standard
+    plan: free
     dockerfilePath: ./Dockerfile
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: production
-      - key: DB_HOST
-        fromDatabase:
-          name: decorapp-db
-          property: host
-      - key: DB_PORT
-        fromDatabase:
-          name: decorapp-db
-          property: port
-      - key: DB_NAME
-        fromDatabase:
-          name: decorapp-db
-          property: database
-      - key: DB_USERNAME
-        fromDatabase:
-          name: decorapp-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: decorapp-db
-          property: password
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: decorapp-redis
-          property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
-      - key: MINIO_ENDPOINT
-        value: https://files.decorapp.az
-      - key: MINIO_ACCESS_KEY
+      - key: DATABASE_URL
         sync: false
-      - key: MINIO_SECRET_KEY
-        sync: false
-      - key: MAIL_USERNAME
-        sync: false
-      - key: MAIL_PASSWORD
-        sync: false
-    healthCheckPath: /actuator/health
+    healthCheckPath: /api/health
     autoDeploy: true
-
-  - type: redis
-    name: decorapp-redis
-    plan: free
-    ipAllowList: []
-
-databases:
-  - name: decorapp-db
-    plan: standard
-    databaseName: decorapp
-    user: decorapp
-    postgresMajorVersion: 16
