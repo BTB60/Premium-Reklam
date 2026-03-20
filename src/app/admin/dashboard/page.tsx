@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, messages, playNotificationSound, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask } from "@/lib/db";
 import { authApi } from "@/lib/authApi";
+import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -197,6 +198,7 @@ export default function AdminDashboardPage() {
     const messages: Record<Order["status"], { title: string; message: string }> = {
       pending: { title: "Sifariş gözləyir", message: "Sifarişiniz admin təsdiqini gözləyir" },
       approved: { title: "Sifariş təsdiqləndi", message: "Sifarişiniz təsdiqləndi və işə başlandı" },
+      confirmed: { title: "Sifariş təsdiqləndi", message: "Sifarişiniz təsdiqləndi" },
       design: { title: "Dizayn mərhələsində", message: "Sifarişiniz hazırda dizayn mərhələsindədir" },
       printing: { title: "Çap edilir", message: "Sifarişiniz çap olunur" },
       production: { title: "İstehsalatda", message: "Sifarişiniz istehsalat mərhələsindədir" },
@@ -251,7 +253,7 @@ export default function AdminDashboardPage() {
     totalUsers: allUsers.length,
     totalOrders: allOrders.length,
     pendingOrders: allOrders.filter(o => o.status === "pending").length,
-    totalRevenue: allOrders.reduce((sum, o) => sum + o.finalTotal, 0),
+    totalRevenue: allOrders.reduce((sum, o) => sum + ((o as any).totalAmount || 0), 0),
     decorators: allUsers.filter(u => u.role === "DECORATOR").length,
     admins: allUsers.filter(u => u.role === "ADMIN").length,
   };
@@ -426,7 +428,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-3">
                     {allOrders.slice(0, 5).map((order) => (
                       <div key={order.id} className="flex items-center justify-between">
-                        <span className="text-sm">{order.id.slice(0, 8)}...</span>
+                        <span className="text-sm">{(order.orderNumber || order.id || '').slice(0, 8)}...</span>
                         <StatusBadge status={order.status} />
                       </div>
                     ))}
@@ -702,8 +704,8 @@ export default function AdminDashboardPage() {
                           .map(order => (
                             <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                               <div>
-                                <p className="font-medium text-sm">{order.id.slice(0, 8)}...</p>
-                                <p className="text-xs text-[#6B7280]">{order.finalTotal.toFixed(2)} AZN</p>
+                                <p className="font-medium text-sm">{(order.orderNumber || order.id || '').slice(0, 8)}...</p>
+                                <p className="text-xs text-[#6B7280]">{order.totalAmount?.toFixed(2)} AZN</p>
                               </div>
                               <StatusBadge status={order.status} />
                             </div>
@@ -783,7 +785,7 @@ export default function AdminDashboardPage() {
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-[#1F2937]">Məhsul İdarəetməsi</h1>
               </div>
-              <ProductsManager initialProducts={allProducts} initialCategories={allCategories} />
+              <ProductsManager initialProducts={allProducts as any} initialCategories={allCategories as any} />
             </motion.div>
           )}
 
@@ -885,7 +887,7 @@ function AdminOrdersHistory({
 
   const getStatusCount = (status: string) => allOrders.filter(o => o.status === status).length;
   
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + o.finalTotal, 0);
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -1005,7 +1007,7 @@ function AdminOrdersHistory({
                 return (
                   <tr key={order.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
-                      <span className="font-medium">#{order.id.slice(-6)}</span>
+                      <span className="font-medium">#{order.orderNumber}</span>
                     </td>
                     <td className="py-3 px-4">
                       <button
@@ -1029,7 +1031,7 @@ function AdminOrdersHistory({
                       {new Date(order.createdAt).toLocaleDateString("az-AZ")}
                     </td>
                     <td className="py-3 px-4 font-bold text-[#1F2937]">
-                      {order.finalTotal.toFixed(2)} AZN
+                      {order.totalAmount?.toFixed(2)} AZN
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={order.status} />

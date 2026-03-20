@@ -12,6 +12,53 @@ function mapRole(role: string): string {
   return roleMap[role] || role;
 }
 
+// Map frontend status to backend status
+function mapStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    // Backend enum values (from backend OrderStatus.getValue())
+    'pending': 'PENDING',
+    'approved': 'APPROVED',
+    'confirmed': 'CONFIRMED',
+    'design': 'DESIGN',
+    'production': 'IN_PROGRESS',
+    'printing': 'PRINTING',
+    'ready': 'READY',
+    'delivering': 'DELIVERING',
+    'completed': 'COMPLETED',
+    'cancelled': 'CANCELLED',
+    // Backend enum names
+    'PENDING': 'PENDING',
+    'APPROVED': 'APPROVED',
+    'CONFIRMED': 'CONFIRMED',
+    'DESIGN': 'DESIGN',
+    'IN_PROGRESS': 'IN_PROGRESS',
+    'PRINTING': 'PRINTING',
+    'READY': 'READY',
+    'DELIVERING': 'DELIVERING',
+    'COMPLETED': 'COMPLETED',
+    'CANCELLED': 'CANCELLED',
+    // Azərbaycanca statuslar
+    'gözləyir': 'PENDING',
+    'tesdiqləndi': 'CONFIRMED',
+    'təsdiqləndi': 'CONFIRMED',
+    'dizayn': 'DESIGN',
+    'çap': 'PRINTING',
+    'cap': 'PRINTING',
+    'istehsalat': 'IN_PROGRESS',
+    'istehsal': 'IN_PROGRESS',
+    'hazirlanir': 'IN_PROGRESS',
+    'hazir': 'READY',
+    'hazır': 'READY',
+    'çatdırılma': 'DELIVERING',
+    'catdirilma': 'DELIVERING',
+    'tamamlandı': 'COMPLETED',
+    'tamamlandi': 'COMPLETED',
+    'ləğv edildi': 'CANCELLED',
+    'legv edildi': 'CANCELLED',
+  };
+  return statusMap[status.toLowerCase()] || status.toUpperCase();
+}
+
 export interface UserData {
   token: string;
   userId: number;
@@ -44,6 +91,9 @@ export interface Order {
   customerPhone?: string;
   customerWhatsapp?: string;
   customerAddress?: string;
+  userId?: number;
+  userFullName?: string;
+  userUsername?: string;
   status: string;
   subtotal: number;
   discountPercent: number;
@@ -57,7 +107,6 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
-  user?: any;
 }
 
 export interface OrderItem {
@@ -112,11 +161,26 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
     });
 
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Xəta baş verdi" }));
-      throw new Error(error.message || "Xəta baş verdi");
+      let errorMessage = "Xəta baş verdi";
+      try {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const error = await res.json();
+          errorMessage = error.message || error.error || error.title || `Xəta (${res.status})`;
+        } else {
+          errorMessage = `Server xətası (${res.status}): ${res.statusText}`;
+        }
+      } catch (e) {
+        errorMessage = `Server xətası (${res.status})`;
+      }
+      throw new Error(errorMessage);
     }
 
-    return res.json();
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return res.json();
+    }
+    return {};
   } catch (error: any) {
     if (error.message === "Failed to fetch" || error.message.includes("fetch")) {
       throw new Error("Server bağlantısı yoxdur. Backend işləyirmi?");
@@ -266,7 +330,7 @@ export const orderApi = {
   },
 
   async updateStatus(id: number, status: string): Promise<Order> {
-    return fetchApi(`/api/orders/${id}/status?status=${status}`, {
+    return fetchApi(`/api/orders/${id}/status?status=${mapStatus(status)}`, {
       method: "PUT",
     });
   },

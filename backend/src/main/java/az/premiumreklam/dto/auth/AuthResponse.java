@@ -1,6 +1,6 @@
 package az.premiumreklam.dto.auth;
 
-import az.premiumreklam.enums.UserRole;
+import az.premiumreklam.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,5 +13,15 @@ public class AuthResponse {
     private Long userId;
     private String username;
     private String fullName;
-    private UserRole role;
+    private String role;
+
+    public static AuthResponse fromUser(User user, String token) {
+        return AuthResponse.builder()
+                .token(token)
+                .userId(user.getId())
+                .username(user.getUsername())
+                .fullName(user.getFullName())
+                .role(user.getRole().getValue())
+                .build();
+    }
 }

@@ -49,13 +49,7 @@ public class AuthService {
                 customUserDetailsService.loadUserByUsername(user.getUsername())
         );
 
-        return AuthResponse.builder()
-                .token(token)
-                .userId(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole())
-                .build();
+        return AuthResponse.fromUser(user, token);
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -76,12 +70,6 @@ public class AuthService {
                 customUserDetailsService.loadUserByUsername(user.getUsername())
         );
 
-        return AuthResponse.builder()
-                .token(token)
-                .userId(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .role(user.getRole())
-                .build();
+        return AuthResponse.fromUser(user, token);
     }
 }

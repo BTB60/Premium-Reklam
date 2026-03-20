@@ -2,6 +2,9 @@
   "version": 2,
   "framework": "nextjs",
   "regions": ["fra1"],
+  "project": "premium-reklam",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "env": {
     "NEXT_PUBLIC_URL": "https://www.premiumreklam.shop",
     "NEXTAUTH_URL": "https://www.premiumreklam.shop",

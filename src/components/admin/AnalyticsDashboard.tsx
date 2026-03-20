@@ -145,7 +145,7 @@ export function AnalyticsDashboard({ orders, users }: AnalyticsDashboardProps) {
             </div>
             <div>
               <p className="text-xs text-gray-500">Ümumi Gəlir</p>
-              <p className="text-lg font-bold">{stats.totalRevenue.toFixed(0)} AZN</p>
+              <p className="text-lg font-bold">{(stats.totalRevenue || 0).toFixed(0)} AZN</p>
             </div>
           </div>
         </Card>
@@ -181,7 +181,7 @@ export function AnalyticsDashboard({ orders, users }: AnalyticsDashboardProps) {
             </div>
             <div>
               <p className="text-xs text-gray-500">Orta Sifariş</p>
-              <p className="text-lg font-bold">{stats.avgOrderValue.toFixed(0)} AZN</p>
+              <p className="text-lg font-bold">{(stats.avgOrderValue || 0).toFixed(0)} AZN</p>
             </div>
           </div>
         </Card>
@@ -287,7 +287,7 @@ export function AnalyticsDashboard({ orders, users }: AnalyticsDashboardProps) {
                     <p className="text-xs text-gray-500">{customer.orders} sifariş</p>
                   </div>
                 </div>
-                <p className="font-bold text-[#D90429]">{customer.spent.toFixed(0)} AZN</p>
+                <p className="font-bold text-[#D90429]">{(customer.spent || 0).toFixed(0)} AZN</p>
               </div>
             ))}
           </div>

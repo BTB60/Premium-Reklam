@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { orders, type Order } from "@/lib/db";
+import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { 
   Search, 
   Package, 
@@ -122,9 +123,9 @@ export default function TrackOrderPage() {
               <Card className="p-6 mb-6">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <p className="text-sm text-[#6B7280]">Sifariş #{order.id.slice(-6)}</p>
+                    <p className="text-sm text-[#6B7280]">Sifariş #{order.orderNumber}</p>
                     <p className="text-2xl font-bold text-[#1F2937]">
-                      {order.finalTotal.toFixed(2)} AZN
+                      {order.totalAmount?.toFixed(2)} AZN
                     </p>
                   </div>
                   <StatusBadge status={order.status} />

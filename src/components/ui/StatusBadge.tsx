@@ -3,14 +3,28 @@
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: "pending" | "approved" | "design" | "printing" | "production" | "ready" | "delivering" | "completed" | "cancelled" | string;
+  status: string;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
+// Backend-dən gələn enum-u frontend statusuna çevir
+function normalizeStatus(status: string): string {
+  const map: Record<string, string> = {
+    'PENDING': 'pending',
+    'CONFIRMED': 'approved',
+    'IN_PROGRESS': 'design',
+    'COMPLETED': 'completed',
+    'CANCELLED': 'cancelled',
+    'CANCELED': 'cancelled',
+  };
+  const lower = status.toUpperCase();
+  return map[lower] || status.toLowerCase();
+}
+
 const statusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   pending: {
-    label: "Gözləmədə",
+    label: "Gözləyir",
     bg: "bg-amber-50",
     text: "text-amber-700",
     dot: "bg-amber-500",
@@ -70,7 +84,7 @@ const statusConfig: Record<string, { label: string; bg: string; text: string; do
     dot: "bg-green-500",
   },
   partial: {
-    label: "Qismən",
+    label: "Qismən ödəniş",
     bg: "bg-orange-50",
     text: "text-orange-700",
     dot: "bg-orange-500",
@@ -84,7 +98,8 @@ const sizeConfig = {
 };
 
 export function StatusBadge({ status, size = "md", className }: StatusBadgeProps) {
-  const config = statusConfig[status.toLowerCase()] || {
+  const normalizedStatus = normalizeStatus(status);
+  const config = statusConfig[normalizedStatus] || {
     label: status,
     bg: "bg-gray-50",
     text: "text-gray-700",

@@ -7,6 +7,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { auth, orders, type User, type Order } from "@/lib/db";
+import { getOrderTotal } from "@/lib/orderHelpers";
 import { motion } from "framer-motion";
 import {
   Trophy,
@@ -44,7 +45,7 @@ function calculateLevelFromXP(xp: number): number {
 
 function calculateXPFromOrders(userOrders: Order[]): number {
   // XP = 1 point per 1 AZN spent
-  return userOrders.reduce((sum, order) => sum + Math.floor(order.finalTotal), 0);
+  return userOrders.reduce((sum, order) => sum + Math.floor(getOrderTotal(order)), 0);
 }
 
 function getNextLevel(currentLevel: number): number | null {

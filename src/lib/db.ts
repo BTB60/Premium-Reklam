@@ -33,6 +33,7 @@ export interface Task {
 // Bonus/Rewards Interface
 export interface BonusTransaction {
   id: string;
+  orderNumber?: string;
   userId: string;
   type: "earned" | "spent" | "bonus";
   points: number;
@@ -388,16 +389,32 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  orderNumber?: string;
   userId: string;
+  user?: {
+    id: number;
+    fullName: string;
+    username: string;
+  };
+  customerName?: string;
+  customerPhone?: string;
+  customerWhatsapp?: string;
+  customerAddress?: string;
   items: OrderItem[];
-  status: "pending" | "approved" | "design" | "printing" | "production" | "ready" | "delivering" | "completed" | "cancelled";
+  status: "pending" | "approved" | "confirmed" | "design" | "printing" | "production" | "ready" | "delivering" | "completed" | "cancelled";
   paymentStatus: "pending" | "partial" | "paid";
   paymentMethod: "cash" | "card" | "transfer" | "debt";
   subtotal: number;
+  discountPercent?: number;
   discountTotal: number;
   finalTotal: number;
+  totalAmount?: number;
+  paidAmount?: number;
+  remainingAmount?: number;
+  isCredit?: boolean;
   note?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 // Notification type

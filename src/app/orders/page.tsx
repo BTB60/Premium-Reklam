@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { auth, orders, type User, type Order } from "@/lib/db";
+import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -199,7 +200,7 @@ export default function OrdersHistoryPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <span className="text-lg font-bold text-[#1F2937]">
-                            #{order.id.slice(-6)}
+                            #{order.orderNumber}
                           </span>
                           <StatusBadge status={order.status} />
                         </div>
@@ -234,7 +235,7 @@ export default function OrdersHistoryPage() {
 
                       <div className="flex items-center justify-between md:flex-col md:items-end gap-2">
                         <p className="text-2xl font-bold text-[#D90429]">
-                          {order.finalTotal.toFixed(2)} AZN
+                          {order.totalAmount?.toFixed(2)} AZN
                         </p>
                         <Link href={`/orders/${order.id}`}>
                           <Button variant="ghost" size="sm" icon={<Eye className="w-4 h-4" />}>

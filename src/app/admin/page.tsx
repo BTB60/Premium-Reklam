@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, playNotificationSound, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask } from "@/lib/db";
 import { authApi, orderApi, productApi, type Order as ApiOrder } from "@/lib/authApi";
+import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -62,6 +63,32 @@ interface EditingUser {
   totalSales: number;
 }
 
+// Helper to find user by order - checks multiple possible field names
+function findOrderUser(order: any, allUsers: any[]) {
+  if (!allUsers || allUsers.length === 0) return null;
+  
+  // Try multiple possible user ID field names from backend
+  const orderUserId = 
+    order.userId ??           // Standard field
+    order.user?.id ??         // Nested user object
+    order.createdBy ??        // Alternative field
+    order.user_id ??          // snake_case
+    order.customerId ??       // Another possibility
+    order.ownerId;            // Another possibility
+  
+  if (!orderUserId) return null;
+  
+  // Try to find user with flexible ID matching
+  const findUser = (u: any) => {
+    if (u.id == orderUserId) return true;
+    if (String(u.id) === String(orderUserId)) return true;
+    if (u.id?.toString() === orderUserId?.toString()) return true;
+    return false;
+  };
+  
+  return allUsers.find(findUser) || null;
+}
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -80,6 +107,18 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+// Helper to find user by order
+function findOrderUser(order: any, allUsers: any[]) {
+  if (!allUsers || allUsers.length === 0) return null;
+  const orderUserId = order.userId ?? order.user?.id ?? order.userId;
+  if (!orderUserId) return null;
+  return allUsers.find(u => {
+    if (u.id == orderUserId) return true;
+    if (String(u.id) === String(orderUserId)) return true;
+    return false;
+  }) || null;
+}
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
@@ -100,7 +139,17 @@ export default function AdminDashboardPage() {
         productApi.getAll(),
       ]);
       setAllUsers(users as any);
-      setAllOrders(apiOrders);
+      // Enrich orders with user info
+      const enrichedOrders = apiOrders.map((order: any) => {
+        const userId = order.userId ?? order.user?.id;
+        const user = userId ? users.find((u: any) => String(u.id) === String(userId) || u.id == userId) : null;
+        return {
+          ...order,
+          userId: userId || order.userId,
+          user: user || null,
+        };
+      });
+      setAllOrders(enrichedOrders);
       const notifs = notifications.getAll();
       setAllNotifications(notifs);
       setLastNotificationCount(notifs.length);
@@ -181,6 +230,7 @@ export default function AdminDashboardPage() {
     const messages: Record<Order["status"], { title: string; message: string }> = {
       pending: { title: "Sifariş gözləyir", message: "Sifarişiniz admin təsdiqini gözləyir" },
       approved: { title: "Sifariş təsdiqləndi", message: "Sifarişiniz təsdiqləndi və işə başlandı" },
+      confirmed: { title: "Sifariş təsdiqləndi", message: "Sifarişiniz təsdiqləndi" },
       design: { title: "Dizayn mərhələsində", message: "Sifarişiniz hazırda dizayn mərhələsindədir" },
       printing: { title: "Çap edilir", message: "Sifarişiniz çap olunur" },
       production: { title: "İstehsalatda", message: "Sifarişiniz istehsalat mərhələsindədir" },
@@ -194,7 +244,31 @@ export default function AdminDashboardPage() {
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     try {
+      const order = allOrders.find(o => o.id === orderId);
       await orderApi.updateStatus(parseInt(orderId), status);
+      
+      // Bildiriş yaradın
+      if (order?.userId) {
+        const statusMessages: Record<string, { title: string; message: string }> = {
+          'pending': { title: '📋 Sifariş gözləyir', message: 'Sifarişiniz gözləmə mərhələsindədir' },
+          'approved': { title: '✅ Sifariş təsdiqləndi', message: 'Sifarişiniz təsdiqləndi və işə başlandı' },
+          'design': { title: '🎨 Dizayn mərhələsi', message: 'Sifarişiniz hazırda dizayn mərhələsindədir' },
+          'printing': { title: '🖨️ Çap edilir', message: 'Sifarişiniz hazırda çap edilir' },
+          'production': { title: '🏭 İstehsalata başlandı', message: 'Sifarişiniz istehsalata göndərildi' },
+          'ready': { title: '📦 Hazırdır', message: 'Sifarişiniz hazırdır, çatdırılma gözləyir' },
+          'delivering': { title: '🚚 Çatdırılır', message: 'Sifarişiniz çatdırılma mərhələsindədir' },
+          'completed': { title: '🎉 Tamamlandı', message: 'Təbriklər! Sifarişiniz uğurla tamamlandı' },
+          'cancelled': { title: '❌ Ləğv edildi', message: 'Sifarişiniz ləğv edilmişdir' },
+        };
+        const msg = statusMessages[status.toLowerCase()] || { title: '📋 Status dəyişdi', message: 'Sifarişinizin statusu dəyişdirildi' };
+        notifications.create({
+          userId: order.userId,
+          title: msg.title,
+          message: msg.message + ' - Sifariş #' + (order.orderNumber || orderId),
+          type: 'order_status'
+        });
+      }
+
       loadData();
     } catch (error) {
       console.error("Update order status error:", error);
@@ -211,6 +285,15 @@ export default function AdminDashboardPage() {
 
   const deleteNotification = (id: string) => {
     notifications.delete(id);
+    loadData();
+  };
+
+  const markAllAsRead = () => {
+    allNotifications.forEach(n => {
+      if (!n.isRead) {
+        notifications.markAsRead(n.id);
+      }
+    });
     loadData();
   };
 
@@ -709,12 +792,18 @@ export default function AdminDashboardPage() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold text-[#1F2937]">Bildirişlər</h1>
-                <p className="text-[#6B7280]">Ümumi: {allNotifications.length}</p>
+                <span className="text-sm text-[#6B7280]">Oxunmamış: {allNotifications.filter(n => !n.isRead).length}</span>
+                  <button
+                    onClick={markAllAsRead}
+                    className="text-sm px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  >
+                    Hamısını oxunmuş et
+                  </button>
               </div>
 
               <div className="space-y-3">
                 {allNotifications.map((notification, index) => (
-                  <Card key={`${notification.id}-${index}`} className={`p-4 ${!notification.isRead ? "bg-blue-50" : ""}`}>
+                  <Card key={`${notification.id}-${index}`} className={`p-4 cursor-pointer transition-all ${!notification.isRead ? "bg-blue-50 border-l-4 border-blue-500" : "bg-white"}`}>
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="font-semibold text-[#1F2937]">{notification.title}</p>
@@ -820,7 +909,7 @@ function AdminOrdersHistory({
 
   const filteredOrders = allOrders.filter(order => {
     if (searchQuery) {
-      const user = allUsers.find(u => u.id === order.userId);
+      const user = findOrderUser(order, allUsers);
       const matchesSearch = 
         order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -847,7 +936,7 @@ function AdminOrdersHistory({
 
   const getStatusCount = (status: string) => allOrders.filter(o => o.status === status).length;
   
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + o.finalTotal, 0);
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -963,11 +1052,15 @@ function AdminOrdersHistory({
               </tr>
             ) : (
               filteredOrders.map((order) => {
-                const orderUser = allUsers.find(u => u.id === order.userId);
+                // DEBUG: Log order structure
+        console.log("ORDER DEBUG:", JSON.stringify(order, null, 2));
+        console.log("Fields:", Object.keys(order));
+        console.log("userId:", order.userId, "user:", order.user, "createdBy:", order.createdBy);
+        const orderUser = findOrderUser(order, allUsers);
                 return (
                   <tr key={order.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4">
-                      <span className="font-medium">#{order.id.slice(-6)}</span>
+                      <span className="font-medium">#{order.orderNumber}</span>
                     </td>
                     <td className="py-3 px-4">
                       <button
@@ -991,7 +1084,7 @@ function AdminOrdersHistory({
                       {new Date(order.createdAt).toLocaleDateString("az-AZ")}
                     </td>
                     <td className="py-3 px-4 font-bold text-[#1F2937]">
-                      {order.finalTotal.toFixed(2)} AZN
+                      {order.totalAmount?.toFixed(2)} AZN
                     </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={order.status} />

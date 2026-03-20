@@ -2,6 +2,7 @@ package az.premiumreklam.entity;
 
 import az.premiumreklam.enums.ProductStatus;
 import az.premiumreklam.enums.ProductUnit;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Product {
 
     @Id

@@ -8,6 +8,7 @@ import az.premiumreklam.enums.ProductUnit;
 import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.ProductRepository;
 import az.premiumreklam.repository.UserRepository;
+import az.premiumreklam.repository.UserPriceRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final UserPriceRepository userPriceRepository;
 
     @Transactional
     public Order createOrder(OrderRequest request, String username) {
@@ -54,10 +56,24 @@ public class OrderService {
                 }
 
                 BigDecimal quantity = defaultBigDecimal(itemRequest.getQuantity(), BigDecimal.ONE);
-                BigDecimal unitPrice = defaultBigDecimal(itemRequest.getUnitPrice());
+                // Check for user-specific price first, then product's salePrice, fallback to request price
+                BigDecimal unitPrice = BigDecimal.ZERO;
+                if (product != null) {
+                    // Check if user has custom price for this product
+                    var userPriceOpt = userPriceRepository.findByUserIdAndProductIdAndIsActiveTrue(user.getId(), product.getId());
+                    if (userPriceOpt.isPresent()) {
+                        unitPrice = userPriceOpt.get().getCustomPrice();
+                    } else {
+                        unitPrice = product.getSalePrice() != null ? product.getSalePrice() : defaultBigDecimal(itemRequest.getUnitPrice());
+                    }
+                } else {
+                    unitPrice = defaultBigDecimal(itemRequest.getUnitPrice());
+                }
                 BigDecimal width = itemRequest.getWidth();
                 BigDecimal height = itemRequest.getHeight();
-                ProductUnit unit = itemRequest.getUnit() == null ? ProductUnit.M2 : itemRequest.getUnit();
+                ProductUnit unit = (product != null && product.getUnit() != null) 
+                        ? product.getUnit() 
+                        : (itemRequest.getUnit() == null ? ProductUnit.M2 : itemRequest.getUnit());
 
                 BigDecimal area = BigDecimal.ZERO;
                 BigDecimal lineTotal;
