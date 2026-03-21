@@ -1,0 +1,34 @@
+# ============================================
+# FRONTEND (Vercel) - Environment Variables
+# ============================================
+# Vercel Dashboard > Settings > Environment Variables
+
+# Backend API URL
+NEXT_PUBLIC_API_URL=https://your-render-backend.onrender.com
+
+# Site URLs
+NEXT_PUBLIC_URL=https://www.premiumreklam.shop
+NEXT_PUBLIC_SITE_URL=https://www.premiumreklam.shop
+NEXTAUTH_URL=https://www.premiumreklam.shop
+
+
+# ============================================
+# BACKEND (Render) - Environment Variables
+# ============================================
+# Render Dashboard > Your Service > Environment
+
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://username:password@host/database?sslmode=require
+
+# JWT Secret (generate a strong random string)
+APP_JWT_SECRET=your-super-secret-jwt-key-min-32-chars
+
+# DDL Auto (use 'validate' in production)
+DDL_AUTO=validate
+
+# Server Port (Render uses 10000 typically, but Docker uses 8080)
+SERVER_PORT=8080
+
+# Logging
+LOG_LEVEL=INFO
+SECURITY_LOG_LEVEL=WARN
