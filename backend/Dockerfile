@@ -2,7 +2,7 @@
 FROM openjdk:17-jdk-slim
 
 # İşçi qovluğu yaradırıq
-WORKDIR /app
+FROM eclipse-temurin:17-jdk-alpine
 
 # Bütün faylları içəri kopyalayırıq
 COPY . .
