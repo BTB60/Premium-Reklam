@@ -1,5 +1,5 @@
 // Production API URL
-const BASE_URL = 'https://backandpremiumreklam-2.onrender.com';
+const BASE_URL = 'https://backandpremiumreklam.onrender.com';
 
 // Development: localhost
 // Uncomment below for local development

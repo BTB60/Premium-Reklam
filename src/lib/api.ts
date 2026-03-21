@@ -1,6 +1,6 @@
 // API Client for Spring Boot Backend
 
-const API_BASE = 'https://backandpremiumreklam-2.onrender.com/api';
+const API_BASE = 'https://backandpremiumreklam.onrender.com/api';
 
 // Helper function to check if response is JSON
 async function parseResponse(response: Response) {
