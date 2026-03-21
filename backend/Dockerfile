@@ -1,22 +1,18 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
+# Java mühitini quraşdırırıq
+FROM openjdk:17-jdk-slim
 
+# İşçi qovluğu yaradırıq
 WORKDIR /app
+
+# Bütün faylları içəri kopyalayırıq
 COPY . .
+
+# Proqramı build edirik (Gradle istifadə edirsinizsə)
 RUN chmod +x gradlew
-RUN ./gradlew bootJar --no-daemon
+RUN ./gradlew build -x test
 
-FROM eclipse-temurin:21-jre-alpine
-
-WORKDIR /app
-
-# Create logs directory
-RUN mkdir -p /app/logs
-
-# Copy jar from builder
-COPY --from=builder /app/build/libs/*.jar app.jar
-
-# Expose port
+# Portu təyin edirik (Render adətən 8080 istifadə edir)
 EXPOSE 8080
 
-# Run application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Proqramı işə salırıq
+CMD ["java", "-jar", "build/libs/backandpremiumreklam-0.0.1-SNAPSHOT.jar"]
