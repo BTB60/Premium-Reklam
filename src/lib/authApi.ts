@@ -1,9 +1,9 @@
 // Production API URL
-const BASE_URL = 'https://backandpremiumreklam.onrender.com';
+const BASE_URL = 'https://backandpremiumreklam.onrender.com/api';
 
 // Development: localhost
 // Uncomment below for local development
-// const BASE_URL = 'http://localhost:8081';
+// const BASE_URL = 'http://localhost:8081/api';
 
 // Map backend role to frontend role
 function mapRole(role: string): string {
