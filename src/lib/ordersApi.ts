@@ -1,4 +1,5 @@
 // Orders API - uses Spring Boot Backend
+// Note: This file is kept for backward compatibility. Use authApi.orderApi for all order calls.
 
 export interface Order {
   id: number;
@@ -14,8 +15,8 @@ export interface Order {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api/orders`
-  : 'http://localhost:8081/api/orders';
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : 'http://localhost:8081/api';
 
 // Helper function to check if response is JSON
 async function parseResponse(response: Response) {
@@ -54,14 +55,14 @@ async function parseResponse(response: Response) {
 export const ordersApi = {
   // Get all orders (for admin)
   async getAll(): Promise<Order[]> {
-    const response = await fetch(`${API_BASE}`);
+    const response = await fetch(`${API_BASE}/orders`);
     const data = await parseResponse(response);
     return data.orders || [];
   },
 
   // Get orders for specific user
   async getByUserId(userId: string | number): Promise<Order[]> {
-    const response = await fetch(`${API_BASE}?userId=${userId}`);
+    const response = await fetch(`${API_BASE}/orders?userId=${userId}`);
     const data = await parseResponse(response);
     return data.orders || [];
   },
@@ -74,7 +75,7 @@ export const ordersApi = {
     status?: string;
     totalPrice?: number;
   }): Promise<Order> {
-    const response = await fetch(`${API_BASE}`, {
+    const response = await fetch(`${API_BASE}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(orderData),
@@ -85,10 +86,9 @@ export const ordersApi = {
 
   // Update order status
   async updateStatus(orderId: number, status: string): Promise<Order> {
-    const response = await fetch(`${API_BASE}`, {
-      method: "PATCH",
+    const response = await fetch(`${API_BASE}/orders/${orderId}/status?status=${status}`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, status }),
     });
     const data = await parseResponse(response);
     return data.order;

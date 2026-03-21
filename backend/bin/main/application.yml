@@ -1,15 +1,18 @@
 server:
-  port: ${SERVER_PORT:8081}
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: premium-reklam-backend
 
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/premium_reklam}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
 
   jpa:
     hibernate:
@@ -23,8 +26,12 @@ spring:
 # JWT Configuration
 app:
   jwt:
-    secret: ${APP_JWT_SECRET:change-this-secret-in-production}
+    secret: ${APP_JWT_SECRET}
     expiration: ${JWT_EXPIRATION:86400000}
+
+# CORS Configuration
+cors:
+  allowed-origins: ${CORS_ORIGINS:*}
 
 # Logging
 logging:

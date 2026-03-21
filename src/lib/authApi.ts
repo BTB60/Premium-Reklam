@@ -14,51 +14,51 @@ function mapRole(role: string): string {
   return roleMap[role] || role;
 }
 
-// Map frontend status to backend status
+// Map frontend status to backend status (lowercase for backend enum)
 function mapStatus(status: string): string {
   const statusMap: Record<string, string> = {
-    // Backend enum values (from backend OrderStatus.getValue())
-    'pending': 'PENDING',
-    'approved': 'APPROVED',
-    'confirmed': 'CONFIRMED',
-    'design': 'DESIGN',
-    'production': 'IN_PROGRESS',
-    'printing': 'PRINTING',
-    'ready': 'READY',
-    'delivering': 'DELIVERING',
-    'completed': 'COMPLETED',
-    'cancelled': 'CANCELLED',
-    // Backend enum names
-    'PENDING': 'PENDING',
-    'APPROVED': 'APPROVED',
-    'CONFIRMED': 'CONFIRMED',
-    'DESIGN': 'DESIGN',
-    'IN_PROGRESS': 'IN_PROGRESS',
-    'PRINTING': 'PRINTING',
-    'READY': 'READY',
-    'DELIVERING': 'DELIVERING',
-    'COMPLETED': 'COMPLETED',
-    'CANCELLED': 'CANCELLED',
+    // Backend enum values (lowercase as sent to backend)
+    'pending': 'pending',
+    'approved': 'approved',
+    'confirmed': 'confirmed',
+    'design': 'design',
+    'production': 'production',
+    'printing': 'printing',
+    'ready': 'ready',
+    'delivering': 'delivering',
+    'completed': 'completed',
+    'cancelled': 'cancelled',
+    // Backend enum names (UPPERCASE) - convert to lowercase
+    'PENDING': 'pending',
+    'APPROVED': 'approved',
+    'CONFIRMED': 'confirmed',
+    'DESIGN': 'design',
+    'IN_PROGRESS': 'production',
+    'PRINTING': 'printing',
+    'READY': 'ready',
+    'DELIVERING': 'delivering',
+    'COMPLETED': 'completed',
+    'CANCELLED': 'cancelled',
     // Azərbaycanca statuslar
-    'gözləyir': 'PENDING',
-    'tesdiqləndi': 'CONFIRMED',
-    'təsdiqləndi': 'CONFIRMED',
-    'dizayn': 'DESIGN',
-    'çap': 'PRINTING',
-    'cap': 'PRINTING',
-    'istehsalat': 'IN_PROGRESS',
-    'istehsal': 'IN_PROGRESS',
-    'hazirlanir': 'IN_PROGRESS',
-    'hazir': 'READY',
-    'hazır': 'READY',
-    'çatdırılma': 'DELIVERING',
-    'catdirilma': 'DELIVERING',
-    'tamamlandı': 'COMPLETED',
-    'tamamlandi': 'COMPLETED',
-    'ləğv edildi': 'CANCELLED',
-    'legv edildi': 'CANCELLED',
+    'gözləyir': 'pending',
+    'tesdiqləndi': 'approved',
+    'təsdiqləndi': 'confirmed',
+    'dizayn': 'design',
+    'çap': 'printing',
+    'cap': 'printing',
+    'istehsalat': 'production',
+    'istehsal': 'production',
+    'hazirlanir': 'production',
+    'hazir': 'ready',
+    'hazır': 'ready',
+    'çatdırılma': 'delivering',
+    'catdirilma': 'delivering',
+    'tamamlandı': 'completed',
+    'tamamlandi': 'completed',
+    'ləğv edildi': 'cancelled',
+    'legv edildi': 'cancelled',
   };
-  return statusMap[status.toLowerCase()] || status.toUpperCase();
+  return statusMap[status] || status.toLowerCase();
 }
 
 export interface UserData {
@@ -253,7 +253,7 @@ export const authApi = {
 
   async getAllUsers(): Promise<any[]> {
     try {
-      const data = await fetchApi("/api/users");
+      const data = await fetchApi("/users");
       return data.map((user: any) => ({
         ...user,
         role: mapRole(user.role),
@@ -282,43 +282,43 @@ export const authApi = {
 
 export const productApi = {
   async getAll(): Promise<Product[]> {
-    return fetchApi("/api/products");
+    return fetchApi("/products");
   },
 
   async getById(id: number): Promise<Product> {
-    return fetchApi(`/api/products/${id}`);
+    return fetchApi(`/products/${id}`);
   },
 
   async getCategories(): Promise<string[]> {
-    return fetchApi("/api/products/categories");
+    return fetchApi("/products/categories");
   },
 
   async create(product: Partial<Product>): Promise<Product> {
-    return fetchApi("/api/products", {
+    return fetchApi("/products", {
       method: "POST",
       body: JSON.stringify(product),
     });
   },
 
   async update(id: number, product: Partial<Product>): Promise<Product> {
-    return fetchApi(`/api/products/${id}`, {
+    return fetchApi(`/products/${id}`, {
       method: "PUT",
       body: JSON.stringify(product),
     });
   },
 
   async delete(id: number): Promise<void> {
-    return fetchApi(`/api/products/${id}`, {
+    return fetchApi(`/products/${id}`, {
       method: "DELETE",
     });
   },
 
   async getUserPrice(userId: number, productId: number): Promise<number> {
-    return fetchApi(`/api/products/user-prices/${userId}/product/${productId}`);
+    return fetchApi(`/products/user-prices/${userId}/product/${productId}`);
   },
 
   async setUserPrice(userId: number, productId: number, customPrice: number, discountPercent?: number): Promise<UserPrice> {
-    return fetchApi("/api/products/user-prices", {
+    return fetchApi("/products/user-prices", {
       method: "POST",
       body: JSON.stringify({
         userId,
@@ -330,11 +330,11 @@ export const productApi = {
   },
 
   async getUserPrices(userId: number): Promise<UserPrice[]> {
-    return fetchApi(`/api/products/user-prices/${userId}`);
+    return fetchApi(`/products/user-prices/${userId}`);
   },
 
   async deleteUserPrice(userId: number, productId: number): Promise<void> {
-    return fetchApi(`/api/products/user-prices/${userId}/product/${productId}`, {
+    return fetchApi(`/products/user-prices/${userId}/product/${productId}`, {
       method: "DELETE",
     });
   },
@@ -342,32 +342,32 @@ export const productApi = {
 
 export const orderApi = {
   async getAll(): Promise<Order[]> {
-    return fetchApi("/api/orders");
+    return fetchApi("/orders");
   },
 
   async getMyOrders(): Promise<Order[]> {
-    return fetchApi("/api/orders/my");
+    return fetchApi("/orders/my");
   },
 
   async getById(id: number): Promise<Order> {
-    return fetchApi(`/api/orders/${id}`);
+    return fetchApi(`/orders/${id}`);
   },
 
   async create(orderData: any): Promise<Order> {
-    return fetchApi("/api/orders", {
+    return fetchApi("/orders", {
       method: "POST",
       body: JSON.stringify(orderData),
     });
   },
 
   async updateStatus(id: number, status: string): Promise<Order> {
-    return fetchApi(`/api/orders/${id}/status?status=${mapStatus(status)}`, {
+    return fetchApi(`/orders/${id}/status?status=${mapStatus(status)}`, {
       method: "PUT",
     });
   },
 
   async delete(id: number): Promise<void> {
-    return fetchApi(`/api/orders/${id}`, {
+    return fetchApi(`/orders/${id}`, {
       method: "DELETE",
     });
   },
