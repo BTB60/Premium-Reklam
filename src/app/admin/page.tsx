@@ -138,19 +138,19 @@ function findOrderUser(order: any, allUsers: any[]) {
 
   const loadData = async () => {
     try {
-      const [users, ordersData, apiProducts] = await Promise.all([
+      const [users, apiOrders, apiProducts] = await Promise.all([
         authApi.getAllUsers(),
-        orderApi.getAll(),
+        orderApi.getOrdersFromNeon(),
         productApi.getAll(),
       ]);
-      setAllUsers(users as any);
+      setAllUsers((users || []) as any);
       // Handle new API response format - cast to any to bypass strict typing
-      const ordersResponse = ordersData as unknown as { orders: any[] };
-      const apiOrders = ordersResponse.orders || [];
+      const ordersResponse = apiOrders as unknown as { orders: any[] };
+      const ordersList = ordersResponse.orders || [];
       // Enrich orders with user info
-      const enrichedOrders = apiOrders.map((order: any) => {
+      const enrichedOrders = ordersList.map((order: any) => {
         const userId = order.userId ?? order.user?.id ?? order.user_id;
-        const user = userId ? users.find((u: any) => String(u.id) === String(userId) || u.id == userId) : null;
+        const user = userId ? (users || []).find((u: any) => String(u.id) === String(userId) || u.id == userId) : null;
         return {
           ...order,
           userId: userId || order.userId || order.user_id,
@@ -310,9 +310,9 @@ function findOrderUser(order: any, allUsers: any[]) {
   const stats = {
     totalUsers: allUsers.length,
     totalOrders: allOrders.length,
-    pendingOrders: allOrders.filter(o => (o as any).status === "PENDING").length,
-    totalRevenue: allOrders.reduce((sum, o) => sum + ((o as any).totalAmount || 0), 0),
-    decorators: allUsers.filter(u => (u as any).role === "DECORATOR").length,
+    pendingOrders: allOrders.filter(o => (o as any).status === "PENDING" || (o as any).status === "pending").length,
+    totalRevenue: allOrders.reduce((sum, o) => sum + (Number((o as any).total_amount) || Number((o as any).totalAmount) || 0), 0),
+    decorators: allUsers.filter(u => (u as any).role === "DECORATOR" || (u as any).role === "DECORCU").length,
     admins: allUsers.filter(u => (u as any).role === "ADMIN").length,
   };
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, messages, playNotificationSound, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask } from "@/lib/db";
-import { authApi } from "@/lib/authApi";
+import { authApi, orderApi } from "@/lib/authApi";
 import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -113,9 +113,17 @@ export default function AdminDashboardPage() {
   }, [user, lastNotificationCount]);
 
   const loadData = async () => {
-    const users = await authApi.getAllUsers();
-    setAllUsers(users as any);
-    setAllOrders(orders.getAll());
+    try {
+      const [users, apiOrders] = await Promise.all([
+        authApi.getAllUsers(),
+        orderApi.getOrdersFromNeon(),
+      ]);
+      setAllUsers((users || []) as any);
+      const ordersResponse = apiOrders as unknown as { orders: any[] };
+      setAllOrders(ordersResponse.orders || []);
+    } catch (error) {
+      console.error("Load data error:", error);
+    }
     const notifs = notifications.getAll();
     setAllNotifications(notifs);
     setLastNotificationCount(notifs.length);
@@ -252,10 +260,10 @@ export default function AdminDashboardPage() {
   const stats = {
     totalUsers: allUsers.length,
     totalOrders: allOrders.length,
-    pendingOrders: allOrders.filter(o => o.status === "pending").length,
-    totalRevenue: allOrders.reduce((sum, o) => sum + ((o as any).totalAmount || 0), 0),
-    decorators: allUsers.filter(u => u.role === "DECORATOR").length,
-    admins: allUsers.filter(u => u.role === "ADMIN").length,
+    pendingOrders: allOrders.filter((o: any) => o.status === "pending" || o.status === "PENDING").length,
+    totalRevenue: allOrders.reduce((sum: number, o: any) => sum + (Number(o.total_amount) || Number(o.totalAmount) || 0), 0),
+    decorators: allUsers.filter((u: any) => u.role === "DECORATOR" || u.role === "DECORCU").length,
+    admins: allUsers.filter((u: any) => u.role === "ADMIN").length,
   };
 
   if (loading) {
