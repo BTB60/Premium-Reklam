@@ -1,26 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
-
-// Get database URL from environment
-function getDatabaseUrl(): string {
-  return (
-    process.env.DATABASE_URL ||
-    process.env.premiumreklambaku_DATABASE_URL ||
-    process.env.premiumreklambaku_POSTGRES_URL ||
-    ""
-  );
-}
+import { createSqlClient, initUsersTable, initOrdersTables, migrateOrdersTable, ensureAdminUser } from "../_lib/db";
 
 // Debug endpoint
 export async function HEAD(req: NextRequest) {
   try {
-    const dbUrl = getDatabaseUrl();
-    if (!dbUrl) {
-      return new Response("No database URL", { status: 500 });
-    }
-    
-    const sql = neon(dbUrl);
-    await initEnhancedOrdersTable(sql);
+    const sql = createSqlClient();
+    await initUsersTable(sql);
+    await ensureAdminUser(sql);
+    await initOrdersTables(sql);
     
     const orders = await sql`SELECT COUNT(*) as count FROM orders`;
     const users = await sql`SELECT COUNT(*) as count FROM users`;
@@ -35,92 +22,6 @@ export async function HEAD(req: NextRequest) {
       dbConnected: false,
       error: error.message
     }), { status: 500 });
-  }
-}
-
-// Initialize enhanced orders table with payment fields
-async function initEnhancedOrdersTable(sql: any) {
-  try {
-    // Create enhanced orders table
-    await sql`
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        order_number VARCHAR(50) UNIQUE,
-        customer_name VARCHAR(255) NOT NULL,
-        customer_phone VARCHAR(50),
-        customer_whatsapp VARCHAR(50),
-        customer_address TEXT,
-        status VARCHAR(50) DEFAULT 'PENDING',
-        subtotal DECIMAL(12,2) DEFAULT 0,
-        discount_percent DECIMAL(5,2) DEFAULT 0,
-        discount_amount DECIMAL(12,2) DEFAULT 0,
-        total_amount DECIMAL(12,2) DEFAULT 0,
-        paid_amount DECIMAL(12,2) DEFAULT 0,
-        remaining_amount DECIMAL(12,2) DEFAULT 0,
-        payment_status VARCHAR(50) DEFAULT 'PENDING',
-        payment_method VARCHAR(50) DEFAULT 'CASH',
-        is_credit BOOLEAN DEFAULT false,
-        note TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Add missing columns if they don't exist
-    try {
-      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'PENDING'`;
-      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'CASH'`;
-      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_credit BOOLEAN DEFAULT false`;
-      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remaining_amount DECIMAL(12,2) DEFAULT 0`;
-    } catch (e) {
-      // Columns may already exist, ignore
-    }
-
-    // Create order items table
-    await sql`
-      CREATE TABLE IF NOT EXISTS order_items (
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-        product_id INTEGER,
-        product_name VARCHAR(255) NOT NULL,
-        unit VARCHAR(50) DEFAULT 'm²',
-        quantity INTEGER DEFAULT 1,
-        width DECIMAL(10,2) DEFAULT 0,
-        height DECIMAL(10,2) DEFAULT 0,
-        area DECIMAL(12,2) DEFAULT 0,
-        unit_price DECIMAL(12,2) DEFAULT 0,
-        line_total DECIMAL(12,2) DEFAULT 0,
-        note TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Create payments table for tracking all payments
-    await sql`
-      CREATE TABLE IF NOT EXISTS payments (
-        id SERIAL PRIMARY KEY,
-        order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-        amount DECIMAL(12,2) NOT NULL,
-        payment_method VARCHAR(50) DEFAULT 'CASH',
-        note TEXT,
-        created_by INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Create index for faster queries
-    await sql`CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(order_id)`;
-
-    console.log("Enhanced orders tables initialized successfully");
-  } catch (error) {
-    console.error("Orders table init error:", error);
   }
 }
 
@@ -144,13 +45,10 @@ function calculateTotals(items: any[], discountPercent: number = 0) {
 // GET - Fetch orders with filters
 export async function GET(request: NextRequest) {
   try {
-    const dbUrl = getDatabaseUrl();
-    if (!dbUrl) {
-      return NextResponse.json({ orders: [], summary: null }, { status: 500 });
-    }
-
-    const sql = neon(dbUrl);
-    await initEnhancedOrdersTable(sql);
+    const sql = createSqlClient();
+    await initUsersTable(sql);
+    await initOrdersTables(sql);
+    await migrateOrdersTable(sql);
 
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId");
@@ -272,13 +170,9 @@ export async function GET(request: NextRequest) {
 // POST - Create new order
 export async function POST(request: NextRequest) {
   try {
-    const dbUrl = getDatabaseUrl();
-    if (!dbUrl) {
-      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
-    }
-
-    const sql = neon(dbUrl);
-    await initEnhancedOrdersTable(sql);
+    const sql = createSqlClient();
+    await initUsersTable(sql);
+    await initOrdersTables(sql);
 
     const body = await request.json();
 
@@ -375,12 +269,7 @@ export async function POST(request: NextRequest) {
 // PATCH - Update order (status, payment, etc.)
 export async function PATCH(request: NextRequest) {
   try {
-    const dbUrl = getDatabaseUrl();
-    if (!dbUrl) {
-      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
-    }
-
-    const sql = neon(dbUrl);
+    const sql = createSqlClient();
     const body = await request.json();
 
     if (!body.orderId) {
@@ -499,12 +388,7 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Delete order
 export async function DELETE(request: NextRequest) {
   try {
-    const dbUrl = getDatabaseUrl();
-    if (!dbUrl) {
-      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
-    }
-
-    const sql = neon(dbUrl);
+    const sql = createSqlClient();
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get("id");
 

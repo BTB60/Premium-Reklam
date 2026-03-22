@@ -1,18 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { neon } from "@neondatabase/serverless";
-
-// Get database URL from environment
-function getDatabaseUrl(): string {
-  // Try multiple environment variable names
-  const dbUrl = 
-    process.env.DATABASE_URL ||
-    process.env.premiumreklambaku_DATABASE_URL ||
-    process.env.NEXT_PUBLIC_DATABASE_URL ||
-    process.env.premiumreklambaku_POSTGRES_URL ||
-    "";
-  
-  return dbUrl;
-}
+import { createSqlClient } from "../../_lib/db";
 
 // GET - Check environment
 export async function GET(req: NextRequest) {
@@ -26,14 +13,7 @@ export async function GET(req: NextRequest) {
 // PATCH - Add payment to order
 export async function PATCH(req: NextRequest) {
   try {
-    const dbUrl = getDatabaseUrl();
-    if (!dbUrl) {
-      console.error("No database URL configured");
-      return NextResponse.json(
-        { success: false, message: "Database not configured" },
-        { status: 500 }
-      );
-    }
+    const sql = createSqlClient();
 
     const orderIdParam = req.nextUrl.searchParams.get("orderId");
     const orderId = Number(orderIdParam);
@@ -54,9 +34,6 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       );
     }
-
-    // Create sql client
-    const sql = neon(dbUrl);
 
     // Get current order
     const currentOrder = await sql`
