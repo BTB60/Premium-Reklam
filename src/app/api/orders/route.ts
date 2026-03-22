@@ -5,11 +5,37 @@ import { neon } from "@neondatabase/serverless";
 function getDatabaseUrl(): string {
   return (
     process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.premiumreklambaku_POSTGRES_URL ||
     process.env.premiumreklambaku_DATABASE_URL ||
+    process.env.premiumreklambaku_POSTGRES_URL ||
     ""
   );
+}
+
+// Debug endpoint
+export async function HEAD(req: NextRequest) {
+  try {
+    const dbUrl = getDatabaseUrl();
+    if (!dbUrl) {
+      return new Response("No database URL", { status: 500 });
+    }
+    
+    const sql = neon(dbUrl);
+    await initEnhancedOrdersTable(sql);
+    
+    const orders = await sql`SELECT COUNT(*) as count FROM orders`;
+    const users = await sql`SELECT COUNT(*) as count FROM users`;
+    
+    return new Response(JSON.stringify({
+      dbConnected: true,
+      ordersCount: Number(orders[0]?.count || 0),
+      usersCount: Number(users[0]?.count || 0),
+    }), { status: 200 });
+  } catch (error: any) {
+    return new Response(JSON.stringify({
+      dbConnected: false,
+      error: error.message
+    }), { status: 500 });
+  }
 }
 
 // Initialize enhanced orders table with payment fields
