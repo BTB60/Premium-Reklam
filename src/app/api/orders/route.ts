@@ -67,6 +67,16 @@ async function initEnhancedOrdersTable(sql: any) {
       )
     `;
 
+    // Add missing columns if they don't exist
+    try {
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'PENDING'`;
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'CASH'`;
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_credit BOOLEAN DEFAULT false`;
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS remaining_amount DECIMAL(12,2) DEFAULT 0`;
+    } catch (e) {
+      // Columns may already exist, ignore
+    }
+
     // Create order items table
     await sql`
       CREATE TABLE IF NOT EXISTS order_items (
