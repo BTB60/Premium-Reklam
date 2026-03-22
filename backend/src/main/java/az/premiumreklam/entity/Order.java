@@ -2,6 +2,7 @@ package az.premiumreklam.entity;
 
 import az.premiumreklam.enums.OrderStatus;
 import az.premiumreklam.enums.PaymentMethod;
+import az.premiumreklam.enums.PaymentStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -72,6 +73,10 @@ public class Order {
     @Column(name = "payment_method", nullable = false, length = 30)
     private PaymentMethod paymentMethod = PaymentMethod.CASH;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", nullable = false, length = 20)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
     @Column(name = "is_credit", nullable = false)
     private Boolean isCredit = false;
 
@@ -102,6 +107,7 @@ public class Order {
         if (this.paidAmount == null) this.paidAmount = BigDecimal.ZERO;
         if (this.remainingAmount == null) this.remainingAmount = BigDecimal.ZERO;
         if (this.paymentMethod == null) this.paymentMethod = PaymentMethod.CASH;
+        if (this.paymentStatus == null) this.paymentStatus = PaymentStatus.PENDING;
         if (this.isCredit == null) this.isCredit = false;
     }
 
