@@ -1,7 +1,7 @@
 // API Base URL - from environment variable or fallback to localhost for development
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : 'http://localhost:8081/api';
+  : 'https://premium-reklam-backend.onrender.com/api';
 
 // Map backend role to frontend role
 function mapRole(role: string): string {
