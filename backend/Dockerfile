@@ -1,15 +1,7 @@
-# Java 17 (və ya sizin istifadə etdiyiniz versiya)
-FROM openjdk:17-jdk-slim
-
-# İş qovluğu
+FROM eclipse-temurin:17-jdk-alpine
 WORKDIR /app
-
-# Maven və ya Gradle ilə yaradılan .jar faylını konteynerə kopyalayırıq
-# Qeyd: 'target' qovluğunda .jar faylının olduğundan əmin olun
-COPY target/*.jar app.jar
-
-# Portu açırıq (Spring Boot adətən 8080-də işləyir)
+COPY . .
+RUN chmod +x gradlew
+RUN ./gradlew bootJar -x test
 EXPOSE 8080
-
-# Proqramı işə salırıq
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "build/libs/premium-reklam-backend-1.0.0.jar"]
