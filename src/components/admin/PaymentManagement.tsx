@@ -112,11 +112,12 @@ export function PaymentManagement({ allUsers, onRefresh }: PaymentManagementProp
         ...getDateFilter(),
       };
       
-      const data = await orderApi.getAll(filters);
+      // Use Vercel API (Neon DB) instead of Render backend
+      const data = await orderApi.getOrdersFromNeon(filters);
       setOrders((data.orders || []) as unknown as ApiOrder[]);
 
       // Calculate stats
-      const allData = await orderApi.getAll({});
+      const allData = await orderApi.getOrdersFromNeon({});
       const allOrders = (allData.orders || []) as unknown as ApiOrder[];
       setStats({
         totalDebt: allOrders.reduce((sum, o) => sum + Number(o.remaining_amount || 0), 0),

@@ -502,6 +502,19 @@ export const orderApi = {
       }),
     });
   },
+
+  // Get all orders from Vercel API (Neon DB)
+  async getOrdersFromNeon(filters?: { userId?: string; status?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string }): Promise<{ orders: any[]; total: number }> {
+    const params = new URLSearchParams();
+    if (filters?.userId) params.set('userId', filters.userId);
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
+    if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+    
+    const queryString = params.toString();
+    return fetchLocalApi(`/api/orders${queryString ? '?' + queryString : ''}`);
+  },
 };
 
 export default authApi;
