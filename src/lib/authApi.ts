@@ -293,8 +293,9 @@ export const authApi = {
 
   async getAllUsers(): Promise<any[]> {
     try {
-      const data = await fetchApi("/users");
-      return data.map((user: any) => ({
+      // Use local API (Neon DB) instead of external backend
+      const data = await fetchLocalApi("/api/users");
+      return (data.users || []).map((user: any) => ({
         ...user,
         role: mapRole(user.role),
         fullName: user.fullName || user.full_name || user.username,
