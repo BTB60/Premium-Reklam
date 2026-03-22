@@ -163,18 +163,24 @@ export function PaymentManagement({ allUsers, onRefresh }: PaymentManagementProp
 
     setProcessing(true);
     try {
-      await orderApi.addPayment(
+      // Use new Vercel API Route for payment
+      const result = await orderApi.adminPayment(
         selectedOrder.id,
         amount,
         paymentMethod,
-        paymentNote
+        paymentNote || 'Admin ödənişi'
       );
-      alert("Ödəniş qeydə alındı!");
-      setShowPaymentModal(false);
-      setPaymentAmount("");
-      setPaymentNote("");
-      loadOrders();
-      onRefresh();
+      
+      if (result.success) {
+        alert(result.message || "Ödəniş qeydə alındı!");
+        setShowPaymentModal(false);
+        setPaymentAmount("");
+        setPaymentNote("");
+        loadOrders();
+        onRefresh();
+      } else {
+        alert(result.message || "Ödəniş xətası");
+      }
     } catch (error: any) {
       alert(error.message || "Ödəniş xətası");
     } finally {
@@ -185,16 +191,27 @@ export function PaymentManagement({ allUsers, onRefresh }: PaymentManagementProp
   const handleSetPaid = async (order: ApiOrder) => {
     if (!confirm("Sifarişi tam ödənilib olaraq qeyd etmək istəyirsiniz?")) return;
     
+    const remainingAmount = Number(order.remaining_amount || 0);
+    if (remainingAmount <= 0) {
+      alert("Sifariş artıq tam ödənilib");
+      return;
+    }
+    
     setProcessing(true);
     try {
-      await orderApi.updatePayment(
+      const result = await orderApi.adminPayment(
         order.id,
-        Number(order.total_amount),
+        remainingAmount,
         "CASH",
         "Tam ödəniş"
       );
-      loadOrders();
-      onRefresh();
+      
+      if (result.success) {
+        loadOrders();
+        onRefresh();
+      } else {
+        alert(result.message || "Xəta");
+      }
     } catch (error: any) {
       alert(error.message || "Xəta");
     } finally {

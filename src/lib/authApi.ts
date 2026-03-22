@@ -147,6 +147,45 @@ function getCurrentUser(): UserData | null {
   return stored ? JSON.parse(stored) : null;
 }
 
+// Local API fetch for Vercel API Routes
+async function fetchLocalApi(endpoint: string, options: RequestInit = {}) {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const res = await fetch(`${baseUrl}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  const contentType = res.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
+
+  if (!res.ok) {
+    let errorMessage = "Xəta baş verdi";
+    if (isJson) {
+      try {
+        const error = await res.json();
+        errorMessage = error.message || error.error || error.title || `Xəta (${res.status})`;
+      } catch {
+        errorMessage = `Server xətası (${res.status}): ${res.statusText}`;
+      }
+    }
+    throw new Error(errorMessage);
+  }
+
+  if (isJson) {
+    return res.json();
+  }
+  return {};
+}
+
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -449,6 +488,18 @@ export const orderApi = {
   async delete(id: number): Promise<void> {
     return fetchApi(`/orders?id=${id}`, {
       method: "DELETE",
+    });
+  },
+
+  // Admin payment via Vercel API Route
+  async adminPayment(orderId: number, amount: number, paymentMethod?: string, note?: string): Promise<any> {
+    return fetchLocalApi(`/api/admin/payment?orderId=${orderId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        amount,
+        paymentMethod: paymentMethod || 'CASH',
+        note,
+      }),
     });
   },
 };
