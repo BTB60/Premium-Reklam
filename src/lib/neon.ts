@@ -69,15 +69,16 @@ export async function initDB() {
       )
     `;
 
-    // 3. Admin istifadəçisini yoxlayırıq, yoxdursa yaradırıq
-    const adminCheck = await dbSql`SELECT id FROM users WHERE username = 'admin' LIMIT 1`;
+    // 4. Admin istifadəçisini yoxlayıb yoxdursa əlavə edirik
+    // (any) əlavə edərək TypeScript-in length xətasını keçirik
+    const adminCheck = await dbSql`SELECT id FROM users WHERE username = 'admin' LIMIT 1` as any;
     
-    if (adminCheck.length === 0) {
+    if (adminCheck && adminCheck.length === 0) {
       await dbSql`
         INSERT INTO users (full_name, username, phone, email, password_hash, role, level)
         VALUES ('Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'Nasir147286', 'ADMIN', 100)
       `;
-      console.log("✅ Admin istifadəçisi uğurla yaradıldı.");
+      console.log("✅ Admin user created successfully.");
     }
 
     console.log("🚀 Verilənlər bazası strukturu (UUID ilə) sinxronizasiya olundu.");
