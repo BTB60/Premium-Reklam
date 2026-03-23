@@ -49,6 +49,9 @@ declare global {
   var __db_order_id_counter: number | undefined;
 }
 
+// Get admin password from environment variable
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Nasir147286";
+
 // Initialize global storage
 if (!global.__db_users) {
   global.__db_users = [
@@ -59,7 +62,7 @@ if (!global.__db_users) {
       username: "admin",
       phone: "+994507988177",
       email: "premiumreklam@bk.ru",
-      password: "Nasir147286", // In production, hash this!
+      password: ADMIN_PASSWORD,
       role: "ADMIN",
       level: 100,
       totalOrders: 0,

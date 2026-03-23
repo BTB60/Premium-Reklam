@@ -1,9 +1,9 @@
-// Netlify Database Client
-// Provides API interface to Netlify serverless functions
+// ⚠️ DEPRECATED: This file is deprecated for Vercel production
+// Use the Spring Boot backend API instead: https://premium-reklam-backend.onrender.com/api
 
-const API_BASE = process.env.NODE_ENV === "production" 
-  ? "/.netlify/functions/db" 
-  : "http://localhost:8888/.netlify/functions/db";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "https://premium-reklam-backend.onrender.com/api";
 
 export const netlifyDb = {
   // Get all items from collection
