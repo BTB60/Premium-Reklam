@@ -55,3 +55,5 @@ backend/target/
 
 .vercel
 .env*.local
+
+.vercel

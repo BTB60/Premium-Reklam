@@ -5,25 +5,66 @@
 // This file is kept for reference only and should not be imported in production code
 
 export const neonDb = {
+  // Initialize database
   init: async () => {
     console.warn("⚠️ neonDb is deprecated. Use backend API instead.");
   },
+
+  // Users
   getUsers: async () => [],
-  getUserById: async (id: number) => null,
+  getUserById: async (id: number | string) => null,
   getUserByUsername: async (username: string) => null,
-  createUser: async () => null,
-  updateUser: async () => null,
+  createUser: async (userData: {
+    fullName: string;
+    username: string;
+    phone?: string;
+    email?: string;
+    passwordHash?: string;
+    role?: string;
+  }) => null,
+  updateUser: async (id: number | string, updates: any) => null,
+
+  // Orders
   getOrders: async () => [],
-  getOrdersByUserId: async () => [],
-  createOrder: async () => null,
-  updateOrderStatus: async () => null,
+  getOrdersByUserId: async (userId: number | string) => [],
+  createOrder: async (orderData: {
+    userId: number | string;
+    status?: string;
+    totalAmount?: number;
+    finalTotal?: number;
+  }) => null,
+  updateOrderStatus: async (id: number | string, status: string) => null,
+
+  // Stores
   getStores: async () => [],
-  getStoreById: async () => null,
-  createStore: async () => null,
-  getProductsByStoreId: async () => [],
-  createProduct: async () => null,
-  getReviewsByStoreId: async () => [],
-  createReview: async () => null,
+  getStoreById: async (id: number | string) => null,
+  createStore: async (storeData: {
+    name: string;
+    description?: string;
+    ownerId?: number | string;
+    logoUrl?: string;
+  }) => null,
+
+  // Products
+  getProductsByStoreId: async (storeId: number | string) => [],
+  createProduct: async (productData: {
+    storeId: number | string;
+    name: string;
+    description?: string;
+    price?: number;
+    imageUrl?: string;
+  }) => null,
+
+  // Reviews
+  getReviewsByStoreId: async (storeId: number | string) => [],
+  createReview: async (reviewData: {
+    storeId: number | string;
+    userId: number | string;
+    rating: number;
+    comment: string;
+  }) => null,
+
+  // Statistics
   getStats: async () => ({ users: 0, orders: 0, stores: 0, revenue: 0 }),
 };
 
