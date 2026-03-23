@@ -4,67 +4,97 @@
 
 // This file is kept for reference only and should not be imported in production code
 
-export const neonDb = {
-  // Initialize database
+type CreateUserInput = {
+  fullName: string;
+  username: string;
+  phone?: string;
+  email?: string;
+  passwordHash?: string;
+  role?: string;
+};
+
+type CreateOrderInput = {
+  userId: number | string;
+  status?: string;
+  totalAmount?: number;
+  finalTotal?: number;
+};
+
+type CreateStoreInput = {
+  name: string;
+  description?: string;
+  ownerId?: number | string;
+  logoUrl?: string;
+};
+
+type CreateProductInput = {
+  storeId: number | string;
+  name: string;
+  description?: string;
+  price?: number;
+  imageUrl?: string;
+};
+
+type CreateReviewInput = {
+  storeId: number | string;
+  userId: number | string;
+  rating: number;
+  comment: string;
+};
+
+type NeonDb = {
+  init: () => Promise<void>;
+
+  getUsers: () => Promise<any[]>;
+  getUserById: (id: number | string) => Promise<any | null>;
+  getUserByUsername: (username: string) => Promise<any | null>;
+  createUser: (userData: CreateUserInput) => Promise<any | null>;
+  updateUser: (id: number | string, updates: any) => Promise<any | null>;
+
+  getOrders: () => Promise<any[]>;
+  getOrdersByUserId: (userId: number | string) => Promise<any[]>;
+  createOrder: (orderData: CreateOrderInput) => Promise<any | null>;
+  updateOrderStatus: (id: number | string, status: string) => Promise<any | null>;
+
+  getStores: () => Promise<any[]>;
+  getStoreById: (id: number | string) => Promise<any | null>;
+  createStore: (storeData: CreateStoreInput) => Promise<any | null>;
+
+  getProductsByStoreId: (storeId: number | string) => Promise<any[]>;
+  createProduct: (productData: CreateProductInput) => Promise<any | null>;
+
+  getReviewsByStoreId: (storeId: number | string) => Promise<any[]>;
+  createReview: (reviewData: CreateReviewInput) => Promise<any | null>;
+
+  getStats: () => Promise<{ users: number; orders: number; stores: number; revenue: number }>;
+};
+
+export const neonDb: NeonDb = {
   init: async () => {
     console.warn("⚠️ neonDb is deprecated. Use backend API instead.");
   },
 
-  // Users
   getUsers: async () => [],
-  getUserById: async (id: number | string) => null,
-  getUserByUsername: async (username: string) => null,
-  createUser: async (userData: {
-    fullName: string;
-    username: string;
-    phone?: string;
-    email?: string;
-    passwordHash?: string;
-    role?: string;
-  }) => null,
-  updateUser: async (id: number | string, updates: any) => null,
+  getUserById: async (_id) => null,
+  getUserByUsername: async (_username) => null,
+  createUser: async (_userData) => null,
+  updateUser: async (_id, _updates) => null,
 
-  // Orders
   getOrders: async () => [],
-  getOrdersByUserId: async (userId: number | string) => [],
-  createOrder: async (orderData: {
-    userId: number | string;
-    status?: string;
-    totalAmount?: number;
-    finalTotal?: number;
-  }) => null,
-  updateOrderStatus: async (id: number | string, status: string) => null,
+  getOrdersByUserId: async (_userId) => [],
+  createOrder: async (_orderData) => null,
+  updateOrderStatus: async (_id, _status) => null,
 
-  // Stores
   getStores: async () => [],
-  getStoreById: async (id: number | string) => null,
-  createStore: async (storeData: {
-    name: string;
-    description?: string;
-    ownerId?: number | string;
-    logoUrl?: string;
-  }) => null,
+  getStoreById: async (_id) => null,
+  createStore: async (_storeData) => null,
 
-  // Products
-  getProductsByStoreId: async (storeId: number | string) => [],
-  createProduct: async (productData: {
-    storeId: number | string;
-    name: string;
-    description?: string;
-    price?: number;
-    imageUrl?: string;
-  }) => null,
+  getProductsByStoreId: async (_storeId) => [],
+  createProduct: async (_productData) => null,
 
-  // Reviews
-  getReviewsByStoreId: async (storeId: number | string) => [],
-  createReview: async (reviewData: {
-    storeId: number | string;
-    userId: number | string;
-    rating: number;
-    comment: string;
-  }) => null,
+  getReviewsByStoreId: async (_storeId) => [],
+  createReview: async (_reviewData) => null,
 
-  // Statistics
   getStats: async () => ({ users: 0, orders: 0, stores: 0, revenue: 0 }),
 };
 
