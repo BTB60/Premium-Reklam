@@ -1,6 +1,9 @@
 import { neon } from "@neondatabase/serverless";
 
-// 1. Database URL-i müxtəlif mühit dəyişənlərindən götürürük
+/**
+ * 1. Database URL-i müxtəlif mühit dəyişənlərindən götürürük.
+ * Vercel və ya local mühitdə hansı adla qeyd olunubsa, onu tapacaq.
+ */
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL ||
               process.env.POSTGRES_URL ||
@@ -10,30 +13,33 @@ function getDatabaseUrl(): string {
   return url;
 }
 
-// 2. Client-in yalnız ehtiyac olduqda yaradılması (Lazy initialization)
+// Client-in yalnız ehtiyac olduqda yaradılması (Lazy initialization)
 let sqlInstance: ReturnType<typeof neon> | null = null;
 
 export function getSql() {
   if (!sqlInstance) {
     const dbUrl = getDatabaseUrl();
     if (!dbUrl) {
-      throw new Error("DATABASE_URL is not configured in Environment Variables");
+      throw new Error("Kritik Xəta: DATABASE_URL Mühit Dəyişənlərində (Environment Variables) tapılmadı!");
     }
     sqlInstance = neon(dbUrl);
   }
   return sqlInstance;
 }
 
-// 3. Database Cədvəllərinin Yaradılması (UUID Uyğunluğu ilə)
+/**
+ * 2. Database Strukturunun (Schema) Yaradılması
+ * Bu funksiya UUID və cədvəllərin Java Backend-i ilə uyğunluğunu təmin edir.
+ */
 export async function initDB() {
   try {
-    const sql = getSql();
+    const dbSql = getSql();
 
-    // UUID yaratmaq üçün PostgreSQL extension-nı aktiv edirik
-    await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    // UUID (Universally Unique Identifier) dəstəyini aktiv edirik
+    await dbSql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
 
-    // USERS Cədvəli (Backend-dəki Java kodu ilə tam eyni ID tipi)
-    await sql`
+    // USERS Cədvəli
+    await dbSql`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         full_name VARCHAR(255) NOT NULL,
@@ -50,7 +56,7 @@ export async function initDB() {
     `;
 
     // ORDERS Cədvəli
-    await sql`
+    await dbSql`
       CREATE TABLE IF NOT EXISTS orders (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
         user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -63,28 +69,29 @@ export async function initDB() {
       )
     `;
 
-    // 4. Admin istifadəçisini yoxlayıb yoxdursa əlavə edirik
-    const adminCheck = await sql`SELECT id FROM users WHERE username = 'admin' LIMIT 1`;
+    // 3. Admin istifadəçisini yoxlayırıq, yoxdursa yaradırıq
+    const adminCheck = await dbSql`SELECT id FROM users WHERE username = 'admin' LIMIT 1`;
     
     if (adminCheck.length === 0) {
-      await sql`
+      await dbSql`
         INSERT INTO users (full_name, username, phone, email, password_hash, role, level)
         VALUES ('Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'Nasir147286', 'ADMIN', 100)
       `;
-      console.log("✅ Admin user created successfully.");
+      console.log("✅ Admin istifadəçisi uğurla yaradıldı.");
     }
 
-    console.log("🚀 Database schema synchronized with UUID.");
+    console.log("🚀 Verilənlər bazası strukturu (UUID ilə) sinxronizasiya olundu.");
   } catch (error) {
-    console.error("❌ Database initialization error:", error);
+    console.error("❌ Verilənlər bazası başladılarkən xəta baş verdi:", error);
     throw error;
   }
 }
 
-// Geriye uyğunluq üçün sql obyekti (Proxy)
-export const sql = new Proxy({} as ReturnType<typeof neon>, {
-  get: (target, prop) => {
-    const instance = getSql();
-    return (instance as any)[prop];
-  },
-});
+/**
+ * 4. Eksport edilən 'sql' obyekti. 
+ * Digər fayllarda birbaşa 'sql`SELECT...` ' kimi istifadə etmək üçün Proxy nizamlaması.
+ */
+export const sql = ((...args: any[]) => {
+  const instance = getSql();
+  return (instance as any)(...args);
+}) as ReturnType<typeof neon>;
