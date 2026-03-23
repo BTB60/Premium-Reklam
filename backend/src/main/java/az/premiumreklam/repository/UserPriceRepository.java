@@ -5,19 +5,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
-public interface UserPriceRepository extends JpaRepository<UserPrice, Long> {
+public interface UserPriceRepository extends JpaRepository<UserPrice, UUID> {
     
-    List<UserPrice> findByUserIdAndIsActiveTrue(Long userId);
+    List<UserPrice> findByUserIdAndIsActiveTrue(UUID userId);
     
-    Optional<UserPrice> findByUserIdAndProductIdAndIsActiveTrue(Long userId, Long productId);
+    Optional<UserPrice> findByUserIdAndProductIdAndIsActiveTrue(UUID userId, UUID productId);
     
-    List<UserPrice> findByUserId(Long userId);
+    List<UserPrice> findByUserId(UUID userId);
     
-    List<UserPrice> findByProductId(Long productId);
+    List<UserPrice> findByProductId(UUID productId);
     
-    void deleteByUserId(Long userId);
+    void deleteByUserId(UUID userId);
     
-    void deleteByProductId(Long productId);
+    void deleteByProductId(UUID productId);
 }
