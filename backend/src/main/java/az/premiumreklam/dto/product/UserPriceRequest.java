@@ -2,6 +2,7 @@ package az.premiumreklam.dto.product;
 
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -9,8 +10,8 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class UserPriceRequest {
-    private Long userId;
-    private Long productId;
+    private UUID userId;
+    private UUID productId;
     private BigDecimal customPrice;
     private BigDecimal discountPercent;
 }

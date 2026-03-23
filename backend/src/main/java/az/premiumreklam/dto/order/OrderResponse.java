@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Getter
@@ -17,13 +18,13 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @Builder
 public class OrderResponse {
-    private Long id;
+    private UUID id;
     private String orderNumber;
     private String customerName;
     private String customerPhone;
     private String customerWhatsapp;
     private String customerAddress;
-    private Long userId;
+    private UUID userId;
     private String userFullName;
     private String userUsername;
     private String status;
@@ -45,8 +46,8 @@ public class OrderResponse {
     @AllArgsConstructor
     @Builder
     public static class OrderItemResponse {
-        private Long id;
-        private Long productId;
+        private UUID id;
+        private UUID productId;
         private String productName;
         private String unit;
         private BigDecimal quantity;

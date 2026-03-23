@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +29,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public Order addPayment(Long orderId, BigDecimal amount) {
+    public Order addPayment(UUID orderId, BigDecimal amount) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
 

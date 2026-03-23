@@ -135,20 +135,20 @@ public class OrderService {
         return orderRepository.findByUserId(user.getId());
     }
 
-    public Order getOrderById(Long id) {
+    public Order getOrderById(UUID id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
     }
 
     @Transactional
-    public Order updateOrderStatus(Long id, OrderStatus status) {
+    public Order updateOrderStatus(UUID id, OrderStatus status) {
         Order order = getOrderById(id);
         order.setStatus(status);
         return orderRepository.save(order);
     }
 
     @Transactional
-    public void deleteOrder(Long id) {
+    public void deleteOrder(UUID id) {
         Order order = getOrderById(id);
         orderRepository.delete(order);
     }

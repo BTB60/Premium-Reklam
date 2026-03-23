@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -23,15 +24,15 @@ public class UserPriceService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
-    public List<UserPrice> getUserPrices(Long userId) {
+    public List<UserPrice> getUserPrices(UUID userId) {
         return userPriceRepository.findByUserIdAndIsActiveTrue(userId);
     }
 
-    public List<UserPrice> getProductPrices(Long productId) {
+    public List<UserPrice> getProductPrices(UUID productId) {
         return userPriceRepository.findByProductId(productId);
     }
 
-    public BigDecimal getPriceForUser(Long userId, Long productId) {
+    public BigDecimal getPriceForUser(UUID userId, UUID productId) {
         // Check for custom price first
         Optional<UserPrice> customPrice = userPriceRepository
                 .findByUserIdAndProductIdAndIsActiveTrue(userId, productId);
@@ -85,7 +86,7 @@ public class UserPriceService {
     }
 
     @Transactional
-    public void deleteUserPrice(Long userId, Long productId) {
+    public void deleteUserPrice(UUID userId, UUID productId) {
         Optional<UserPrice> existing = userPriceRepository
                 .findByUserIdAndProductIdAndIsActiveTrue(userId, productId);
         
