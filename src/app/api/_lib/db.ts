@@ -84,15 +84,16 @@ export async function initUsersTable(sql: any): Promise<void> {
  */
 export async function ensureAdminUser(sql: any): Promise<void> {
   try {
+    // 4. Admin istifadəçisini yoxlayıb yoxdursa əlavə edirik
     const adminCheck = await sql`SELECT id FROM users WHERE username = 'admin' LIMIT 1`;
     
-    if (!adminCheck || adminCheck.length === 0) {
+    // adminCheck-in massiv olduğunu və boş olduğunu belə yoxlayırıq (Type-safe)
+    if (Array.isArray(adminCheck) && adminCheck.length === 0) {
       await sql`
         INSERT INTO users (full_name, username, phone, email, password_hash, role, level)
         VALUES ('Admin', 'admin', '+994507988177', 'premiumreklam@bk.ru', 'Nasir147286', 'ADMIN', 100)
       `;
-    } else {
-      await sql`UPDATE users SET password_hash = 'Nasir147286' WHERE username = 'admin'`;
+      console.log("✅ Admin user created successfully.");
     }
   } catch (error) {
     console.error("Admin user setup error:", error);
