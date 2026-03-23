@@ -2,8 +2,6 @@
   "version": 2,
   "framework": "nextjs",
   "regions": ["fra1"],
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
   "env": {
     "NEXT_PUBLIC_API_URL": "https://premium-reklam-backend.onrender.com",
     "ADMIN_PASSWORD": "Nasir147286",
