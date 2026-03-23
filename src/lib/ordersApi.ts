@@ -16,7 +16,7 @@ export interface Order {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : 'http://localhost:8081/api';
+  : 'https://premium-reklam-backend.onrender.com/api';
 
 // Helper function to check if response is JSON
 async function parseResponse(response: Response) {
