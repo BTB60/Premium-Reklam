@@ -140,7 +140,7 @@ function findOrderUser(order: any, allUsers: any[]) {
     try {
       const [users, apiOrders, apiProducts] = await Promise.all([
         authApi.getAllUsers(),
-        orderApi.getOrdersFromNeon(),
+        orderApi.getOrdersFromBackend(),
         productApi.getAll(),
       ]);
       setAllUsers((users || []) as any);

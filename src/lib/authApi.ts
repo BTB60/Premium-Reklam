@@ -1,7 +1,12 @@
-// API Base URL - from environment variable or fallback to localhost for development
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
+// API Base URL - MUST be set in Vercel Environment Variables
+// For Vercel: NEXT_PUBLIC_API_URL = https://premium-reklam-backend.onrender.com
+const API_URL_FROM_ENV = process.env.NEXT_PUBLIC_API_URL || '(not set)';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : 'https://premium-reklam-backend.onrender.com/api';
+
+console.log('[API Config] NEXT_PUBLIC_API_URL:', API_URL_FROM_ENV);
+console.log('[API Config] BASE_URL:', BASE_URL);
 
 // Map backend role to frontend role
 function mapRole(role: string): string {
@@ -147,44 +152,7 @@ function getCurrentUser(): UserData | null {
   return stored ? JSON.parse(stored) : null;
 }
 
-// Local API fetch for Vercel API Routes
-async function fetchLocalApi(endpoint: string, options: RequestInit = {}) {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const res = await fetch(`${baseUrl}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const contentType = res.headers.get("content-type");
-  const isJson = contentType && contentType.includes("application/json");
-
-  if (!res.ok) {
-    let errorMessage = "Xəta baş verdi";
-    if (isJson) {
-      try {
-        const error = await res.json();
-        errorMessage = error.message || error.error || error.title || `Xəta (${res.status})`;
-      } catch {
-        errorMessage = `Server xətası (${res.status}): ${res.statusText}`;
-      }
-    }
-    throw new Error(errorMessage);
-  }
-
-  if (isJson) {
-    return res.json();
-  }
-  return {};
-}
+// NOTE: fetchLocalApi removed - all API calls use fetchApi which calls backend directly
 
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = getToken();
@@ -293,15 +261,44 @@ export const authApi = {
 
   async getAllUsers(): Promise<any[]> {
     try {
-      // Use local API (Neon DB) instead of external backend
-      const data = await fetchLocalApi("/api/users");
-      return (data.users || []).map((user: any) => ({
+      console.log("[API] Fetching users from:", `${BASE_URL}/users`);
+      const response = await fetch(`${BASE_URL}/users`, {
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      
+      const text = await response.text();
+      
+      // Check for HTML response (error page)
+      if (text.trim().startsWith("<")) {
+        console.error("[API] Received HTML instead of JSON:", text.substring(0, 200));
+        throw new Error("Backend cavab vermir və ya xəta verir");
+      }
+      
+      const data = JSON.parse(text);
+      console.log("[API] Users response:", data);
+      
+      if (!response.ok) {
+        console.error("[API] Users API error:", response.status, data);
+        return [];
+      }
+      
+      // Handle different response formats
+      const users = Array.isArray(data) ? data : (data.users || data.content || []);
+      
+      if (!Array.isArray(users)) {
+        console.error("[API] Unexpected data format:", users);
+        return [];
+      }
+      
+      return users.map((user: any) => ({
         ...user,
         role: mapRole(user.role),
         fullName: user.fullName || user.full_name || user.username,
         id: user.id || user.userId,
       }));
-    } catch {
+    } catch (error: any) {
+      console.error("[API] getAllUsers error:", error?.message || error);
       return [];
     }
   },
@@ -323,15 +320,65 @@ export const authApi = {
 
 export const productApi = {
   async getAll(): Promise<Product[]> {
-    return fetchApi("/products");
+    try {
+      console.log("[API] Fetching products from:", `${BASE_URL}/products`);
+      const response = await fetch(`${BASE_URL}/products`, {
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      
+      const text = await response.text();
+      
+      if (text.trim().startsWith("<")) {
+        console.error("[API] Products API returned HTML:", text.substring(0, 200));
+        return [];
+      }
+      
+      const data = JSON.parse(text);
+      console.log("[API] Products response:", data);
+      
+      // Handle different response formats
+      const products = Array.isArray(data) ? data : (data.products || data.content || []);
+      return products;
+    } catch (error: any) {
+      console.error("[API] productApi.getAll error:", error?.message || error);
+      return [];
+    }
   },
 
-  async getById(id: number): Promise<Product> {
-    return fetchApi(`/products/${id}`);
+  async getById(id: number): Promise<Product | null> {
+    try {
+      const response = await fetch(`${BASE_URL}/products/${id}`, {
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) return null;
+      
+      const text = await response.text();
+      if (text.trim().startsWith("<")) return null;
+      
+      return JSON.parse(text);
+    } catch {
+      return null;
+    }
   },
 
   async getCategories(): Promise<string[]> {
-    return fetchApi("/products/categories");
+    try {
+      const response = await fetch(`${BASE_URL}/products/categories`, {
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      if (!response.ok) return [];
+      
+      const text = await response.text();
+      if (text.trim().startsWith("<")) return [];
+      
+      const data = JSON.parse(text);
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
   },
 
   async create(product: Partial<Product>): Promise<Product> {
@@ -492,11 +539,12 @@ export const orderApi = {
     });
   },
 
-  // Admin payment via Vercel API Route
+  // Admin payment via backend API
   async adminPayment(orderId: number, amount: number, paymentMethod?: string, note?: string): Promise<any> {
-    return fetchLocalApi(`/api/admin/payment?orderId=${orderId}`, {
+    return fetchApi(`/orders/payment`, {
       method: "PATCH",
       body: JSON.stringify({
+        orderId,
         amount,
         paymentMethod: paymentMethod || 'CASH',
         note,
@@ -504,17 +552,55 @@ export const orderApi = {
     });
   },
 
-  // Get all orders from Vercel API (Neon DB)
-  async getOrdersFromNeon(filters?: { userId?: string; status?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string }): Promise<{ orders: any[]; total: number }> {
-    const params = new URLSearchParams();
-    if (filters?.userId) params.set('userId', filters.userId);
-    if (filters?.status) params.set('status', filters.status);
-    if (filters?.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
-    if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
-    if (filters?.dateTo) params.set('dateTo', filters.dateTo);
-    
-    const queryString = params.toString();
-    return fetchLocalApi(`/api/orders${queryString ? '?' + queryString : ''}`);
+  // Get all orders from backend API (replaces Neon direct access)
+  async getOrdersFromBackend(filters?: { userId?: string; status?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string }): Promise<{ orders: any[]; total: number }> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.userId) params.set('userId', filters.userId);
+      if (filters?.status) params.set('status', filters.status);
+      if (filters?.paymentStatus) params.set('paymentStatus', filters.paymentStatus);
+      if (filters?.dateFrom) params.set('dateFrom', filters.dateFrom);
+      if (filters?.dateTo) params.set('dateTo', filters.dateTo);
+      
+      const queryString = params.toString();
+      const url = `/orders${queryString ? '?' + queryString : ''}`;
+      
+      console.log("[API] Fetching orders from:", `${BASE_URL}${url}`);
+      
+      const response = await fetch(`${BASE_URL}${url}`, {
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      
+      const text = await response.text();
+      
+      // Check for HTML response (error page)
+      if (text.trim().startsWith("<")) {
+        console.error("[API] Received HTML instead of JSON:", text.substring(0, 200));
+        throw new Error("Backend cavab vermir və ya xəta verir");
+      }
+      
+      const data = JSON.parse(text);
+      console.log("[API] Orders response:", data);
+      
+      if (!response.ok) {
+        console.error("[API] Orders API error:", response.status, data);
+        return { orders: [], total: 0 };
+      }
+      
+      // Handle different response formats
+      const orders = Array.isArray(data) ? data : (data.orders || data.content || []);
+      
+      if (!Array.isArray(orders)) {
+        console.error("[API] Unexpected orders format:", orders);
+        return { orders: [], total: 0 };
+      }
+      
+      return { orders, total: orders.length };
+    } catch (error: any) {
+      console.error("[API] getOrdersFromBackend error:", error?.message || error);
+      return { orders: [], total: 0 };
+    }
   },
 };
 

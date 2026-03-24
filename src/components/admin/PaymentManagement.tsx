@@ -113,7 +113,7 @@ export function PaymentManagement({ allUsers, onRefresh }: PaymentManagementProp
       };
       
       // Use Vercel API (Neon DB) instead of Render backend
-      const data = await orderApi.getOrdersFromNeon(filters);
+      const data = await orderApi.getOrdersFromBackend(filters);
       const ordersList = data.orders || [];
       setOrders(ordersList as unknown as ApiOrder[]);
 

@@ -116,7 +116,7 @@ export default function AdminDashboardPage() {
     try {
       const [users, apiOrders] = await Promise.all([
         authApi.getAllUsers(),
-        orderApi.getOrdersFromNeon(),
+        orderApi.getOrdersFromBackend()
       ]);
       setAllUsers((users || []) as any);
       const ordersResponse = apiOrders as unknown as { orders: any[] };
