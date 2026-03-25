@@ -79,7 +79,7 @@ export default function DashboardPage() {
       const userId = user?.userId;
       
       const [ordersResponse, productsData] = await Promise.all([
-        orderApi.getOrdersFromNeon(userId ? { userId: String(userId) } : {}),
+        orderApi.getOrdersFromBackend(userId ? { userId: String(userId) } : {}),
         productApi.getAll(),
       ]);
       // Handle new API response format
