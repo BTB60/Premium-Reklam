@@ -1,5 +1,6 @@
 package az.premiumreklam.security;
 
+import az.premiumreklam.entity.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.function.Function;
 
 @Service
@@ -49,6 +51,23 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+    }
+
+    public String generateResetToken(User user) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + 3600000); // 1 hour
+
+        HashMap<String, Object> claims = new HashMap<>();
+        claims.put("type", "reset");
+        claims.put("userId", user.getId().toString());
+
+        return Jwts.builder()
+                .subject(user.getUsername())
+                .claims(claims)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(getSignInKey())
+                .compact();
     }
 
     private boolean isTokenExpired(String token) {

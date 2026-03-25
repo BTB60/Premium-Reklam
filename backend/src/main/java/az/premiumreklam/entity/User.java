@@ -67,6 +67,14 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @JsonIgnore
+    @Column(name = "reset_token")
+    private String resetToken;
+
+    @JsonIgnore
+    @Column(name = "reset_token_expiry")
+    private LocalDateTime resetTokenExpiry;
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();

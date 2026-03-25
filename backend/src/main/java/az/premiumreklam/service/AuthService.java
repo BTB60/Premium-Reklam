@@ -72,4 +72,33 @@ public class AuthService {
 
         return AuthResponse.fromUser(user, token);
     }
+
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Bu email ilə istifadəçi tapılmadı"));
+
+        // Generate reset token (valid for 1 hour)
+        String resetToken = jwtService.generateResetToken(user);
+        user.setResetToken(resetToken);
+        user.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
+        userRepository.save(user);
+
+        // In production, send email here
+        // For now, log the token
+        System.out.println("Password reset token for " + email + ": " + resetToken);
+    }
+
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Keçərsiz token"));
+
+        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token müddəti bitib");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+    }
 }
