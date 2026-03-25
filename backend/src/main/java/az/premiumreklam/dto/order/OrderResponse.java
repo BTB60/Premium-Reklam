@@ -1,4 +1,4 @@
-package az.premiumreklam.dto.order;
+﻿package az.premiumreklam.dto.order;
 
 import az.premiumreklam.entity.Order;
 import az.premiumreklam.entity.OrderItem;
@@ -67,14 +67,14 @@ public class OrderResponse {
                 .customerPhone(order.getCustomerPhone())
                 .customerWhatsapp(order.getCustomerWhatsapp())
                 .customerAddress(order.getCustomerAddress())
-                .status(order.getStatus().getValue())
+                .status(order.getStatus() != null ? order.getStatus().getValue() : "PENDING")
                 .subtotal(order.getSubtotal())
                 .discountPercent(order.getDiscountPercent())
                 .discountAmount(order.getDiscountAmount())
                 .totalAmount(order.getTotalAmount())
                 .paidAmount(order.getPaidAmount())
                 .remainingAmount(order.getRemainingAmount())
-                .paymentMethod(order.getPaymentMethod().name())
+                .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : "CASH")
                 .isCredit(order.getIsCredit())
                 .note(order.getNote())
                 .createdAt(order.getCreatedAt())

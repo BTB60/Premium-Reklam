@@ -16,6 +16,9 @@ import { InventoryManager } from "@/components/admin/InventoryManager";
 import { WorkerTasksManager } from "@/components/admin/WorkerTasksManager";
 import { SupportManager } from "@/components/admin/SupportManager";
 import { PaymentManagement } from "@/components/admin/PaymentManagement";
+import { UserLogs } from "@/components/admin/UserLogs";
+import { ImageUpscale } from "@/components/admin/ImageUpscale";
+import { OrderNotification } from "@/components/admin/OrderNotification";
 import { 
   Shield, 
   Users, 
@@ -51,7 +54,8 @@ import {
   Menu,
   ChevronLeft,
   XCircle,
-  MapPin
+  MapPin,
+  Image
 } from "lucide-react";
 
 interface EditingUser {
@@ -106,12 +110,13 @@ export default function AdminDashboardPage() {
   const [allWorkerTasks, setAllWorkerTasks] = useState<WorkerTask[]>([]);
   const [allStoreRequests, setAllStoreRequests] = useState<StoreRequest[]>([]);
   const [allVendorStores, setAllVendorStores] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "orders" | "payments" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "userDetail" | "vendors">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "users" | "orders" | "payments" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "userDetail" | "vendors" | "logs" | "upscale">("dashboard");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [newOrderAlert, setNewOrderAlert] = useState(0);
 
 // Helper to find user by order
 function findOrderUser(order: any, allUsers: any[]) {
@@ -377,7 +382,7 @@ function findOrderUser(order: any, allUsers: any[]) {
             </button>
           </div>
           <nav className="p-4 space-y-2">
-            {[              { id: "dashboard", label: "Dashboard", icon: TrendingUp },              { id: "users", label: "İstifadəçilər", icon: Users },              { id: "orders", label: "Sifarişlər", icon: Package },              { id: "payments", label: "Ödənişlər", icon: DollarSign },              { id: "vendors", label: "Mağazalar", icon: Store },              { id: "notifications", label: "Bildirişlər", icon: Bell },              { id: "analytics", label: "Analytics", icon: BarChart3 },              { id: "products", label: "Məhsullar", icon: Store },              { id: "finance", label: "Maliyyə", icon: Wallet },              { id: "inventory", label: "Anbar", icon: Boxes },              { id: "workerTasks", label: "İşçi Tapşırıqları", icon: ClipboardList },              { id: "support", label: "Dəstək", icon: Headphones },              { id: "tasks", label: "Tapşırıqlar", icon: CheckSquare },              { id: "settings", label: "Sistem Ayarları", icon: Settings },            ].map((item) => (
+            {[              { id: "dashboard", label: "Dashboard", icon: TrendingUp },              { id: "users", label: "İstifadəçilər", icon: Users },              { id: "orders", label: "Sifarişlər", icon: Package },              { id: "payments", label: "Ödənişlər", icon: DollarSign },              { id: "vendors", label: "Mağazalar", icon: Store },              { id: "notifications", label: "Bildirişlər", icon: Bell },              { id: "analytics", label: "Analytics", icon: BarChart3 },              { id: "products", label: "Məhsullar", icon: Store },              { id: "finance", label: "Maliyyə", icon: Wallet },              { id: "inventory", label: "Anbar", icon: Boxes },              { id: "workerTasks", label: "İşçi Tapşırıqları", icon: ClipboardList },              { id: "support", label: "Dəstək", icon: Headphones },              { id: "tasks", label: "Tapşırıqlar", icon: CheckSquare },              { id: "settings", label: "Sistem Ayarları", icon: Settings },              { id: "logs", label: "İstifadəçi Logları", icon: ClipboardList },              { id: "upscale", label: "Şəkil Upscale", icon: Image },            ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => {
@@ -896,8 +901,20 @@ function findOrderUser(order: any, allUsers: any[]) {
           {activeTab === "settings" && <AdminSettings />}
 
           {activeTab === "tasks" && <AdminTasks allUsers={allUsers} />}
+
+          {activeTab === "logs" && <UserLogs onClose={() => setActiveTab("dashboard")} />}
+
+          {activeTab === "upscale" && <ImageUpscale onClose={() => setActiveTab("dashboard")} />}
         </main>
       </div>
+      
+      {/* Global Order Notification */}
+      {newOrderAlert > 0 && (
+        <OrderNotification 
+          newOrderCount={newOrderAlert} 
+          onClear={() => setNewOrderAlert(0)} 
+        />
+      )}
     </div>
   );
 }

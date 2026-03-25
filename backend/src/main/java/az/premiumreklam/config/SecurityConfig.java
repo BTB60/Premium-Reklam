@@ -1,4 +1,4 @@
-package az.premiumreklam.config;
+﻿package az.premiumreklam.config;
 
 import az.premiumreklam.security.JwtAuthenticationFilter;
 import az.premiumreklam.security.CustomUserDetailsService;
@@ -69,7 +69,9 @@ public class SecurityConfig {
                         .requestMatchers("/").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/health").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())

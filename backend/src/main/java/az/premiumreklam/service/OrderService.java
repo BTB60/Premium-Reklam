@@ -1,4 +1,4 @@
-package az.premiumreklam.service;
+﻿package az.premiumreklam.service;
 
 import az.premiumreklam.dto.order.OrderItemRequest;
 import az.premiumreklam.dto.order.OrderRequest;
@@ -30,7 +30,7 @@ public class OrderService {
     @Transactional
     public Order createOrder(OrderRequest request, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+                .orElseThrow(() -> new RuntimeException("Ä°stifadÉ™Ã§i tapÄ±lmadÄ±"));
 
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
@@ -125,19 +125,20 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
+    @Transactional(readOnly = true)
     public List<Order> getAllOrders() {
         return orderRepository.findAll();
     }
 
     public List<Order> getOrdersByUsername(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+                .orElseThrow(() -> new RuntimeException("Ä°stifadÉ™Ã§i tapÄ±lmadÄ±"));
         return orderRepository.findByUserId(user.getId());
     }
 
     public Order getOrderById(UUID id) {
         return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
+                .orElseThrow(() -> new RuntimeException("SifariÅŸ tapÄ±lmadÄ±"));
     }
 
     @Transactional
