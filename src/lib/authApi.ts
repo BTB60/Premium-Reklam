@@ -75,6 +75,24 @@ export interface UserData {
   email?: string;
 }
 
+// Auth API Interface
+export interface AuthApi {
+  register(userData: any): Promise<any>;
+  login(username: string, password: string): Promise<UserData>;
+  getAllUsers(): Promise<any[]>;
+  getCurrentUser(): UserData | null;
+  saveCurrentUser(user: UserData): void;
+  logout(): void;
+  forgotPassword(email: string): Promise<any>;
+  resetPassword(token: string, newPassword: string): Promise<any>;
+  getOrdersFromBackend(filters?: any): Promise<any>;
+  getMyOrders(): Promise<any>;
+  getMySummary(): Promise<any>;
+  getById(id: number): Promise<any>;
+  create(orderData: any): Promise<any>;
+  updateOrderStatus(orderId: string, status: string): Promise<any>;
+}
+
 export interface Product {
   id: number;
   name: string;
