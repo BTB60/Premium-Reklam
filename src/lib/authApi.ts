@@ -279,9 +279,15 @@ export const authApi = {
 
   async getAllUsers(): Promise<any[]> {
     try {
+      const user = getCurrentUser();
+      const token = user?.token;
+      
       console.log("[API] Fetching users from:", `${BASE_URL}/users`);
       const response = await fetch(`${BASE_URL}/users`, {
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         credentials: "include",
       });
       
@@ -573,6 +579,9 @@ export const orderApi = {
   // Get all orders from backend API (replaces Neon direct access)
   async getOrdersFromBackend(filters?: { userId?: string; status?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string }): Promise<{ orders: any[]; total: number }> {
     try {
+      const user = getCurrentUser();
+      const token = user?.token;
+      
       const params = new URLSearchParams();
       if (filters?.userId) params.set('userId', filters.userId);
       if (filters?.status) params.set('status', filters.status);
@@ -586,7 +595,10 @@ export const orderApi = {
       console.log("[API] Fetching orders from:", `${BASE_URL}${url}`);
       
       const response = await fetch(`${BASE_URL}${url}`, {
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         credentials: "include",
       });
       
