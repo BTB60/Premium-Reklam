@@ -45,7 +45,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
 
     try {
-      await authApi.resetPassword(token!, password);
+      await (authApi as any).resetPassword(token!, password);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || "Xəta baş verdi");

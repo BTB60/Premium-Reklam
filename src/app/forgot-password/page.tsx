@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
     setError("");
 
     try {
-      await authApi.forgotPassword(email);
+      await (authApi as any).forgotPassword(email);
       setSent(true);
     } catch (err: any) {
       setError(err.message || "Xəta baş verdi");
