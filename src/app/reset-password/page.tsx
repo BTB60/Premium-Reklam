@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -8,6 +8,9 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { authApi } from "@/lib/authApi";
 import { ArrowLeft, Lock, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+
+// Force dynamic rendering to avoid prerender issues
+export const dynamic = "force-dynamic";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -18,15 +21,9 @@ function ResetPasswordForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(token ? "" : "Token tapılmadı. Zəhmət olmasa emaildəki linki istifadə edin.");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  useEffect(() => {
-    if (!token) {
-      setError("Token tapılmadı. Zəhmət olmasa emaildəki linki istifadə edin.");
-    }
-  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
