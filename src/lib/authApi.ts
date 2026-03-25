@@ -345,9 +345,15 @@ export const authApi = {
 export const productApi = {
   async getAll(): Promise<Product[]> {
     try {
+      const user = getCurrentUser();
+      const token = user?.token;
+      
       console.log("[API] Fetching products from:", `${BASE_URL}/products`);
       const response = await fetch(`${BASE_URL}/products`, {
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
         credentials: "include",
       });
       
@@ -372,8 +378,14 @@ export const productApi = {
 
   async getById(id: number): Promise<Product | null> {
     try {
+      const user = getCurrentUser();
+      const token = user?.token;
+      
       const response = await fetch(`${BASE_URL}/products/${id}`, {
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
       });
       
       if (!response.ok) return null;
@@ -389,8 +401,14 @@ export const productApi = {
 
   async getCategories(): Promise<string[]> {
     try {
+      const user = getCurrentUser();
+      const token = user?.token;
+      
       const response = await fetch(`${BASE_URL}/products/categories`, {
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
       });
       
       if (!response.ok) return [];
