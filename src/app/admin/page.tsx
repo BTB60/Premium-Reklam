@@ -290,11 +290,15 @@ function findOrderUser(order: any, allUsers: any[]) {
     }
   };
 
-  const deleteOrder = (orderId: string) => {
+  const deleteOrder = async (orderId: string) => {
     if (confirm("Sifarişi silmək istədiyinizə əminsiniz?")) {
-      const allOrders = orders.getAll().filter(o => o.id !== orderId);
-      localStorage.setItem("decor_orders", JSON.stringify(allOrders));
-      loadData();
+      try {
+        await orderApi.delete(parseInt(orderId));
+        loadData();
+      } catch (error) {
+        console.error("Sifariş silinmədi:", error);
+        alert("Xəta baş verdi");
+      }
     }
   };
 
