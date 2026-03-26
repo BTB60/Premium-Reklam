@@ -91,26 +91,26 @@ export default function DashboardPage() {
       const monthStart = today.substring(0, 7) + '-01';
       
       const todayOrders = orders.filter((o: any) => {
-        const orderDate = (o.created_at || '').split('T')[0];
+        const orderDate = (o.createdAt || '').split('T')[0];
         return orderDate === today;
       });
       
       const monthOrders = orders.filter((o: any) => {
-        const orderDate = o.created_at || '';
+        const orderDate = o.createdAt || '';
         return orderDate >= monthStart;
       });
       
-      const activeOrders = orders.filter((o: any) => o.payment_status !== 'CANCELLED');
+      const activeOrders = orders.filter((o: any) => o.paymentStatus !== 'CANCELLED');
       
       const summary = {
         todayOrderCount: todayOrders.length,
-        todayOrderAmount: todayOrders.reduce((sum: number, o: any) => sum + Number(o.total_amount || 0), 0),
+        todayOrderAmount: todayOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
         monthOrderCount: monthOrders.length,
-        monthOrderAmount: monthOrders.reduce((sum: number, o: any) => sum + Number(o.total_amount || 0), 0),
-        totalPaid: activeOrders.reduce((sum: number, o: any) => sum + Number(o.paid_amount || 0), 0),
-        totalDebt: activeOrders.reduce((sum: number, o: any) => sum + Number(o.remaining_amount || 0), 0),
+        monthOrderAmount: monthOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
+        totalPaid: activeOrders.reduce((sum: number, o: any) => sum + Number(o.paidAmount || 0), 0),
+        totalDebt: activeOrders.reduce((sum: number, o: any) => sum + Number(o.remainingAmount || 0), 0),
         totalOrders: orders.length,
-        totalAmount: activeOrders.reduce((sum: number, o: any) => sum + Number(o.total_amount || 0), 0),
+        totalAmount: activeOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
       };
       
       setOrderSummary(summary);
@@ -650,7 +650,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-bold text-[#D90429] text-lg">#{order.order_number || order.orderNumber}</p>
                         <p className="text-sm text-[#6B7280]">
-                          {new Date(order.created_at || order.createdAt).toLocaleString("az-AZ")}
+                          {new Date(order.createdAt).toLocaleString("az-AZ")}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -690,7 +690,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-[#6B7280]">Ümumi</p>
-                        <p className="text-xl font-bold text-[#D90429]">{(order.total_amount || order.totalAmount || 0).toFixed(2)} AZN</p>
+                        <p className="text-xl font-bold text-[#D90429]">{(order.totalAmount || 0).toFixed(2)} AZN</p>
                       </div>
                     </div>
 
@@ -766,11 +766,11 @@ export default function DashboardPage() {
                     <div className="bg-gray-50 rounded-xl p-4">
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Sifariş:</span>
-                        <span className="font-bold text-[#D90429]">#{(order as any).order_number || (order as any).orderNumber}</span>
+                        <span className="font-bold text-[#D90429]">#{(order as any).orderNumber}</span>
                       </div>
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Ümumi məbləğ:</span>
-                        <span className="font-bold">{(order.total_amount || order.totalAmount || 0).toFixed(2)} AZN</span>
+                        <span className="font-bold">{(order.totalAmount || 0).toFixed(2)} AZN</span>
                       </div>
                       <div className="flex justify-between mb-2">
                         <span className="text-gray-600">Ödənilib:</span>
