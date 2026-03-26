@@ -497,7 +497,9 @@ export const orderApi = {
   async getMyOrders(): Promise<{ orders: Order[]; summary?: OrderSummary; total: number }> {
     const user = getCurrentUser();
     if (!user) return { orders: [], summary: undefined, total: 0 };
-    return fetchApi(`/orders?userId=${user.userId}`);
+    // Use /orders/my endpoint for user-specific orders
+    const data = await fetchApi(`/orders/my`);
+    return { orders: Array.isArray(data) ? data : [], total: Array.isArray(data) ? data.length : 0 };
   },
 
   async getMySummary(): Promise<OrderSummary> {
@@ -514,16 +516,47 @@ export const orderApi = {
         totalAmount: 0,
       };
     }
-    const data = await fetchApi(`/orders?userId=${user.userId}&summary=true`);
-    return data.summary || {
-      todayOrderCount: 0,
-      todayOrderAmount: 0,
-      monthOrderCount: 0,
-      monthOrderAmount: 0,
-      totalPaid: 0,
-      totalDebt: 0,
-      totalOrders: 0,
-      totalAmount: 0,
+    
+    // Fetch user's orders and calculate summary locally
+    const orders = await this.getMyOrders();
+    const orderList = orders.orders || [];
+    
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const monthStart = today.substring(0, 7) + '-01';
+    
+    let todayCount = 0, todayAmount = 0;
+    let monthCount = 0, monthAmount = 0;
+    let totalAmount = 0, totalPaid = 0, totalDebt = 0;
+    
+    orderList.forEach((order: any) => {
+      const orderDate = (order.createdAt || '').split('T')[0];
+      const amount = Number(order.totalAmount) || 0;
+      const paid = Number(order.paidAmount) || 0;
+      
+      totalAmount += amount;
+      totalPaid += paid;
+      totalDebt += (amount - paid);
+      
+      if (orderDate === today) {
+        todayCount++;
+        todayAmount += amount;
+      }
+      if (orderDate >= monthStart) {
+        monthCount++;
+        monthAmount += amount;
+      }
+    });
+    
+    return {
+      todayOrderCount: todayCount,
+      todayOrderAmount: todayAmount,
+      monthOrderCount: monthCount,
+      monthOrderAmount: monthAmount,
+      totalPaid,
+      totalDebt,
+      totalOrders: orderList.length,
+      totalAmount,
     };
   },
 
