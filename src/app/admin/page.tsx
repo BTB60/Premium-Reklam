@@ -149,9 +149,10 @@ function findOrderUser(order: any, allUsers: any[]) {
         productApi.getAll(),
       ]);
       setAllUsers((users || []) as any);
-      // Handle new API response format - cast to any to bypass strict typing
-      const ordersResponse = apiOrders as unknown as { orders: any[] };
-      const ordersList = ordersResponse.orders || [];
+      
+      // Backend returns array directly, not { orders: [...] }
+      const ordersList = Array.isArray(apiOrders) ? apiOrders : (apiOrders.orders || []);
+      
       // Enrich orders with user info
       const enrichedOrders = ordersList.map((order: any) => {
         const userId = order.userId ?? order.user?.id ?? order.user_id;
@@ -320,7 +321,7 @@ function findOrderUser(order: any, allUsers: any[]) {
     totalUsers: allUsers.length,
     totalOrders: allOrders.length,
     pendingOrders: allOrders.filter(o => (o as any).status === "PENDING" || (o as any).status === "pending").length,
-    totalRevenue: allOrders.reduce((sum, o) => sum + (Number((o as any).total_amount) || Number((o as any).totalAmount) || 0), 0),
+    totalRevenue: allOrders.reduce((sum, o) => sum + (Number((o as any).totalAmount) || 0), 0),
     decorators: allUsers.filter(u => (u as any).role === "DECORATOR" || (u as any).role === "DECORCU").length,
     admins: allUsers.filter(u => (u as any).role === "ADMIN").length,
   };

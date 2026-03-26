@@ -24,31 +24,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { authApi, orderApi } from "@/lib/authApi";
 
-// Type for API response (snake_case from PostgreSQL)
-interface ApiOrder {
-  id: number;
-  order_number: string;
-  customer_name: string;
-  customer_phone?: string;
-  customer_address?: string;
-  user_id?: number;
-  user_name?: string;
-  user_username?: string;
-  status: string;
-  subtotal: number;
-  discount_percent: number;
-  discount_amount: number;
-  total_amount: number;
-  paid_amount: number;
-  remaining_amount: number;
-  payment_status: string;
-  payment_method: string;
-  is_credit: boolean;
-  note?: string;
-  created_at: string;
-  updated_at: string;
-  items: any[];
-}
+// Type for API response (camelCase from Spring Boot)
+type ApiOrder = any;
 
 interface PaymentManagementProps {
   allUsers: any[];
@@ -135,11 +112,11 @@ export function PaymentManagement({ allUsers, onRefresh }: PaymentManagementProp
   const filteredOrders = orders.filter(order => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      order.order_number?.toLowerCase().includes(searchLower) ||
-      order.customer_name?.toLowerCase().includes(searchLower) ||
-      order.user_name?.toLowerCase().includes(searchLower) ||
-      order.user_username?.toLowerCase().includes(searchLower) ||
-      order.customer_phone?.includes(searchTerm);
+      order.orderNumber?.toLowerCase().includes(searchLower) ||
+      order.customerName?.toLowerCase().includes(searchLower) ||
+      order.userFullName?.toLowerCase().includes(searchLower) ||
+      order.userUsername?.toLowerCase().includes(searchLower) ||
+      order.customerPhone?.includes(searchTerm);
     return matchesSearch;
   });
 
@@ -153,7 +130,7 @@ export function PaymentManagement({ allUsers, onRefresh }: PaymentManagementProp
     }
 
     const currentPaid = Number(selectedOrder.paid_amount || 0);
-    const totalAmount = Number(selectedOrder.total_amount || 0);
+    const totalAmount = Number(selectedOrder.totalAmount || 0);
     const maxAllowed = totalAmount - currentPaid;
 
     if (amount > maxAllowed) {
