@@ -76,10 +76,9 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const user = authApi.getCurrentUser();
-      const userId = user?.userId;
       
       const [ordersResponse, productsData] = await Promise.all([
-        orderApi.getOrdersFromBackend(userId ? { userId: String(userId) } : {}),
+        orderApi.getMyOrders(),
         productApi.getAll(),
       ]);
       // Handle new API response format
