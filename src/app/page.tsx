@@ -22,87 +22,6 @@ import {
 import { motion } from "framer-motion";
 import { useState } from "react";
 
-// Price Calculator Widget
-function PriceCalculatorWidget() {
-  const [width, setWidth] = useState("");
-  const [height, setHeight] = useState("");
-  const [productType, setProductType] = useState("banner");
-  const [price, setPrice] = useState<number | null>(null);
-
-  const calculatePrice = () => {
-    const w = parseFloat(width) || 0;
-    const h = parseFloat(height) || 0;
-    const area = w * h;
-    
-    // En x Uzunluq x 5
-    const total = area * 5;
-    setPrice(total);
-  };
-
-  return (
-    <Card className="p-6">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-[#1F2937] mb-2">
-            En (m)
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            value={width}
-            onChange={(e) => setWidth(e.target.value)}
-            placeholder="Məsələn: 4.5"
-            className="w-full h-12 rounded-[14px] border border-[#E5E7EB] px-4 focus:outline-none focus:border-[#D90429]"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#1F2937] mb-2">
-            Hündürlük (m)
-          </label>
-          <input
-            type="number"
-            step="0.1"
-            value={height}
-            onChange={(e) => setHeight(e.target.value)}
-            placeholder="Məsələn: 2.8"
-            className="w-full h-12 rounded-[14px] border border-[#E5E7EB] px-4 focus:outline-none focus:border-[#D90429]"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#1F2937] mb-2">
-            Məhsul Tipi
-          </label>
-          <select 
-            value={productType}
-            onChange={(e) => setProductType(e.target.value)}
-            className="w-full h-12 rounded-[14px] border border-[#E5E7EB] px-4 focus:outline-none focus:border-[#D90429] bg-white"
-          >
-            <option value="banner">Banner</option>
-            <option value="vinil">Vinil</option>
-            <option value="orakal">Orakal</option>
-          </select>
-        </div>
-        <Button onClick={calculatePrice} className="w-full">
-          Qiymət Hesabla
-        </Button>
-      </div>
-      {price !== null && (
-        <div className="mt-6 pt-6 border-t border-[#E5E7EB]">
-          <div className="flex items-center justify-between">
-            <span className="text-[#6B7280]">Təxmini qiymət:</span>
-            <span className="text-2xl font-bold text-[#D90429] font-[Manrope]">
-              {price.toFixed(2)} AZN
-            </span>
-          </div>
-          <p className="text-xs text-gray-400 mt-2">
-            {width}m × {height}m × 5 AZN/m²
-          </p>
-        </div>
-      )}
-    </Card>
-  );
-}
-
 // Hero Section
 function HeroSection() {
   return (
@@ -300,36 +219,6 @@ function HowItWorksSection() {
               )}
             </div>
           ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// Pricing Calculator Section
-function PricingSection() {
-  return (
-    <section id="pricing" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
-              Qiymət Hesablayıcı
-            </h2>
-            <p className="text-[#6B7280] mb-8">
-              Otağınızın ölçülərini daxil edin və təxmini qiyməti öyrənin
-            </p>
-            <PriceCalculatorWidget />
-          </div>
-          <div className="relative">
-            <div className="aspect-square rounded-[24px] bg-gradient-to-br from-[#D90429]/10 to-[#EF476F]/10 flex items-center justify-center">
-              <div className="text-center">
-                <Calculator className="w-24 h-24 text-[#D90429] mx-auto mb-6" />
-                <p className="text-xl font-semibold text-[#1F2937]">Sərfəli Qiymətlər</p>
-                <p className="text-[#6B7280] mt-2">Rəqabətli qiymətlərlə keyfiyyətli xidmət</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
@@ -651,7 +540,6 @@ export default function Home() {
       {/* Traditional Sections */}
       <ServicesSection />
       <HowItWorksSection />
-      <PricingSection />
       <TestimonialsSection />
       <FAQSection />
       <ContactSection />
