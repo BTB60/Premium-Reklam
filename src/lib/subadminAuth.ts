@@ -1,4 +1,3 @@
-frontend/src/lib/subadminAuth.ts :
 import { jwtDecode } from "jwt-decode";
 
 export type PermissionLevel = "none" | "view" | "edit";
@@ -136,5 +135,3 @@ export const subadminAuth = {
 };
 
 export default subadminAuth;
-
-=== EOF ===

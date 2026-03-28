@@ -1,4 +1,3 @@
-frontend/src/app/admin/subadmin-login/page.tsx :
 "use client";
 
 import { useState } from "react";
@@ -144,5 +143,3 @@ export default function SubadminLoginPage() {
     </div>
   );
 }
-
-=== EOF ===

@@ -1,4 +1,3 @@
-frontend/src/app/admin/dashboard/page.tsx :
 "use client";
 
 import { useEffect, useState } from "react";
@@ -35,7 +34,6 @@ interface ActivityLog {
 
 type ActiveTab = "dashboard" | "users" | "orders" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "userDetail" | "accessSettings";
 
-// ========== STORAGE HELPERS ==========
 const SUBADMINS_KEY = "premium_subadmins";
 const ACTIVITY_LOGS_KEY = "premium_activity_logs";
 
@@ -54,7 +52,6 @@ function logActivity(subadminId: string, subadminLogin: string, action: string, 
   saveActivityLogs(logs);
 }
 
-// ========== I18N ==========
 const t = {
   az: {
     accessSettings: "Giriş Ayarları", createSubadmin: "Yeni Subadmin Yarat", login: "Login", password: "Parol", permissions: "İcazələr",
@@ -83,13 +80,11 @@ function useLang() {
   return { lang, t: t[lang], toggle };
 }
 
-// ========== ORIGINAL INTERFACE ==========
 interface EditingUser {
   id: string; fullName: string; username: string; phone?: string; email?: string; password: string;
   level: number; totalOrders: number; totalSales: number;
 }
 
-// ========== ACCESS SETTINGS MANAGER ==========
 function AccessSettingsManager({ currentUser }: { currentUser: User }) {
   const { lang, t: ui } = useLang();
   const [subadmins, setSubadmins] = useState<any[]>([]);
@@ -206,7 +201,6 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
   );
 }
 
-// ========== MAIN COMPONENT ==========
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { lang, t: ui } = useLang();
@@ -228,7 +222,6 @@ export default function AdminDashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    // Check subadmin session first (JWT-based)
     const subadminSession = subadminAuth.getSession();
     if (subadminSession) {
       setUser({ role: "SUBADMIN", fullName: subadminSession.login } as User);
@@ -237,7 +230,6 @@ export default function AdminDashboardPage() {
       return;
     }
     
-    // Check main admin session
     const currentUser = authApi.getCurrentUser();
     if (!currentUser || currentUser.role !== "ADMIN") {
       router.push("/admin/login");
@@ -270,7 +262,6 @@ export default function AdminDashboardPage() {
   };
 
   const handleLogout = () => {
-    // Check if subadmin session exists
     const subadminSession = subadminAuth.getSession();
     if (subadminSession) {
       logActivity(subadminSession.subadminId, subadminSession.login, "logout", "auth");
@@ -334,13 +325,11 @@ export default function AdminDashboardPage() {
 
   const stats = { totalUsers: allUsers.length, totalOrders: allOrders.length, pendingOrders: allOrders.filter((o: any) => o.status === "pending" || o.status === "PENDING").length, totalRevenue: allOrders.reduce((sum: number, o: any) => sum + (Number(o.total_amount) || Number(o.totalAmount) || 0), 0), decorators: allUsers.filter((u: any) => u.role === "DECORATOR" || u.role === "DECORCU").length, admins: allUsers.filter((u: any) => u.role === "ADMIN").length };
 
-  // Permission checker using subadminAuth
   const can = (feature: keyof SubadminPermissions, level: PermissionLevel): boolean => {
     if (user?.role === "ADMIN") return true;
     return subadminAuth.hasPermission(feature, level);
   };
 
-  // FIXED: accessSettings visible only when NO subadmin session
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, permission: { feature: null, level: "view" } },
     { id: "users", label: "İstifadəçilər", icon: Users, permission: { feature: "users", level: "view" } },
@@ -460,7 +449,6 @@ export default function AdminDashboardPage() {
   );
 }
 
-// Admin Orders History Component
 function AdminOrdersHistory({ allOrders, allUsers, updateOrderStatus, deleteOrder, viewUserDetail }: { allOrders: Order[]; allUsers: User[]; updateOrderStatus: (id: string, status: Order["status"]) => void; deleteOrder: (id: string) => void; viewUserDetail: (user: User) => void; }) {
   const [searchQuery, setSearchQuery] = useState(""); const [statusFilter, setStatusFilter] = useState<string>("all"); const [userFilter, setUserFilter] = useState<string>("all"); const [dateFilter, setDateFilter] = useState<string>("all");
   const filteredOrders = allOrders.filter(order => {
@@ -480,7 +468,6 @@ function AdminOrdersHistory({ allOrders, allUsers, updateOrderStatus, deleteOrde
   </motion.div>);
 }
 
-// Admin Settings Component
 function AdminSettings() {
   const [currentSettings, setCurrentSettings] = useState<SystemSettings>(settings.get());
   const [formData, setFormData] = useState({ unitPricePerSqm: currentSettings.unitPricePerSqm, monthlyBonus500: currentSettings.monthlyBonus500, monthlyBonus1000: currentSettings.monthlyBonus1000, bannerDiscount: currentSettings.productDiscounts.banner, vinylDiscount: currentSettings.productDiscounts.vinyl, posterDiscount: currentSettings.productDiscounts.poster, canvasDiscount: currentSettings.productDiscounts.canvas, oracalDiscount: currentSettings.productDiscounts.oracal });
@@ -496,7 +483,6 @@ function AdminSettings() {
   </motion.div>);
 }
 
-// Admin Tasks Component
 function AdminTasks({ allUsers }: { allUsers: User[] }) {
   const [allTasks, setAllTasks] = useState<Task[]>([]); const [showForm, setShowForm] = useState(false); const [formData, setFormData] = useState({ decoratorId: "", title: "", description: "", deadline: "" });
   useEffect(() => { setAllTasks(tasks.getAll()); }, []);
@@ -510,11 +496,8 @@ function AdminTasks({ allUsers }: { allUsers: User[] }) {
   </motion.div>);
 }
 
-// Send Notification Form Component
 function SendNotificationForm({ userId, onSend }: { userId: string; onSend: (title: string, message: string) => void }) {
   const [title, setTitle] = useState(""); const [message, setMessage] = useState("");
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (title.trim() && message.trim()) { onSend(title, message); setTitle(""); setMessage(""); } };
   return (<form onSubmit={handleSubmit} className="space-y-3"><input type="text" placeholder="Bildiriş başlığı" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]" /><textarea placeholder="Bildiriş mətni" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]" /><Button type="submit" size="sm" icon={<Bell className="w-4 h-4" />}>Göndər</Button></form>);
 }
-
-=== EOF ===
