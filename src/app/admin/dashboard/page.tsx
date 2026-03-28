@@ -183,7 +183,6 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
   const handleExport = () => {
     setExportLoading(true);
     try {
-      // Защита: если subadmins или features не определены — используем пустые массивы
       const safeSubadmins = subadmins || [];
       const safeFeatures = features || [];
       
@@ -214,42 +213,19 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
     }
   };
 
-  const PermissionToggle = ({ feature, value, onChange }: { feature: string; value: PermissionLevel; onChange: (v: PermissionLevel) => void }) => {
-    // Защита: если features не определён — рендерим пустой блок
-    const safeFeatures = (typeof features !== "undefined" && Array.isArray(features)) ? features : [];
-    return (
-      <div className="flex items-center gap-4">
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={value === "view" || value === "edit"} 
-            onChange={(e) => onChange(e.target.checked ? "view" : "none")} 
-            className="rounded border-gray-300" 
-          />
-          <span className="text-[#6B7280]">{ui.view}</span>
-        </label>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input 
-            type="checkbox" 
-            checked={value === "edit"} 
-            onChange={(e) => onChange(e.target.checked ? "edit" : (value === "view" ? "view" : "none"))} 
-            className="rounded border-gray-300" 
-          />
-          <span className="text-[#6B7280]">{ui.edit}</span>
-        </label>
-      </div>
-    );
-  };
+  const PermissionToggle = ({ feature, value, onChange }: { feature: string; value: PermissionLevel; onChange: (v: PermissionLevel) => void }) => (
+    <div className="flex items-center gap-4">
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={value === "view" || value === "edit"} onChange={(e) => onChange(e.target.checked ? "view" : "none")} className="rounded border-gray-300" />
+        <span className="text-[#6B7280]">{ui.view}</span>
+      </label>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input type="checkbox" checked={value === "edit"} onChange={(e) => onChange(e.target.checked ? "edit" : (value === "view" ? "view" : "none"))} className="rounded border-gray-300" />
+        <span className="text-[#6B7280]">{ui.edit}</span>
+      </label>
+    </div>
+  );
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-[#1F2937]">{ui.accessSettings}</h1>
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={() => useLang().toggle()} icon={<Key className="w-4 h-4" />}>{lang.toUpperCase()}</Button>
-          <Button onClick={() => setShowForm(!showForm)} icon={<Plus className="w-4 h-4" />}>{ui.createSubadmin}</Button>
-        </div>
-      </div>
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="flex items-center justify-between mb-6">
@@ -270,22 +246,88 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-2">{ui.permissions}</label>
               <div className="grid md:grid-cols-2 gap-4">
-                {features.map(f => (<div key={f.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"><span className="text-sm font-medium text-[#1F2937]">{f.label}</span><PermissionToggle feature={f.key} value={formData.permissions[f.key]} onChange={(v) => setFormData({...formData, permissions: {...formData.permissions, [f.key]: v}})} /></div>))}
+                {features.map(f => (
+                  <div key={f.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-[#1F2937]">{f.label}</span>
+                    <PermissionToggle feature={f.key} value={formData.permissions[f.key]} onChange={(v) => setFormData({...formData, permissions: {...formData.permissions, [f.key]: v}})} />
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="flex gap-2"><Button type="submit" icon={<Save className="w-4 h-4" />}>{ui.save}</Button><Button variant="ghost" onClick={() => { setShowForm(false); setEditingId(null); }}>{ui.cancel}</Button></div>
+            <div className="flex gap-2">
+              <Button type="submit" icon={<Save className="w-4 h-4" />}>{ui.save}</Button>
+              <Button variant="ghost" onClick={() => { setShowForm(false); setEditingId(null); }}>{ui.cancel}</Button>
+            </div>
           </form>
         </Card>
       )}
       <Card className="p-6 mb-6">
-        <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-[#1F2937]">{ui.subadminsList}</h3><Button variant="ghost" size="sm" onClick={handleExport} loading={exportLoading} icon={<FileSpreadsheet className="w-4 h-4" />}>{ui.exportToExcel}</Button></div>
-        {subadmins.length === 0 ? (<p className="text-[#6B7280] text-center py-4">{ui.noSubadmins}</p>) : (
-          <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50"><tr><th className="text-left py-2 px-3">{ui.login}</th><th className="text-left py-2 px-3">{ui.createdAt}</th><th className="text-left py-2 px-3">{ui.lastLogin}</th><th className="text-left py-2 px-3">{ui.permissions}</th><th className="text-left py-2 px-3">{ui.actions}</th></tr></thead><tbody>
-            {subadmins.map((s: any) => (<tr key={s.id} className="border-t"><td className="py-2 px-3 font-medium">{s.login}</td><td className="py-2 px-3 text-[#6B7280]">{new Date(s.createdAt).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US")}</td><td className="py-2 px-3 text-[#6B7280]">{s.lastLogin ? new Date(s.lastLogin).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US") : "-"}</td><td className="py-2 px-3"><div className="flex flex-wrap gap-1">{features.filter(f => s.permissions[f.key] !== "none").map(f => (<span key={f.key} className={`px-2 py-0.5 rounded text-xs ${s.permissions[f.key] === "edit" ? "bg-[#D90429]/10 text-[#D90429]" : "bg-blue-100 text-blue-700"}`}>{f.label} {s.permissions[f.key] === "edit" ? "✏️" : "👁️"}</span>))}</div></td><td className="py-2 px-3"><div className="flex gap-1"><button onClick={() => { setEditingId(s.id); setFormData({ login: s.login, password: s.password, permissions: s.permissions }); setShowForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button><button onClick={() => handleDelete(s.id, s.login)} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button></div></td></tr>))}
-          </tbody></table></div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-[#1F2937]">{ui.subadminsList}</h3>
+          <Button variant="ghost" size="sm" onClick={handleExport} loading={exportLoading} icon={<FileSpreadsheet className="w-4 h-4" />}>{ui.exportToExcel}</Button>
+        </div>
+        {subadmins.length === 0 ? (
+          <p className="text-[#6B7280] text-center py-4">{ui.noSubadmins}</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left py-2 px-3">{ui.login}</th>
+                  <th className="text-left py-2 px-3">{ui.createdAt}</th>
+                  <th className="text-left py-2 px-3">{ui.lastLogin}</th>
+                  <th className="text-left py-2 px-3">{ui.permissions}</th>
+                  <th className="text-left py-2 px-3">{ui.actions}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {subadmins.map((s: any) => (
+                  <tr key={s.id} className="border-t">
+                    <td className="py-2 px-3 font-medium">{s.login}</td>
+                    <td className="py-2 px-3 text-[#6B7280]">{new Date(s.createdAt).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US")}</td>
+                    <td className="py-2 px-3 text-[#6B7280]">{s.lastLogin ? new Date(s.lastLogin).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US") : "-"}</td>
+                    <td className="py-2 px-3">
+                      <div className="flex flex-wrap gap-1">
+                        {features.filter(f => s.permissions?.[f.key] !== "none").map(f => (
+                          <span key={f.key} className={`px-2 py-0.5 rounded text-xs ${s.permissions[f.key] === "edit" ? "bg-[#D90429]/10 text-[#D90429]" : "bg-blue-100 text-blue-700"}`}>
+                            {f.label} {s.permissions[f.key] === "edit" ? "✏️" : "👁️"}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-2 px-3">
+                      <div className="flex gap-1">
+                        <button onClick={() => { setEditingId(s.id); setFormData({ login: s.login, password: s.password, permissions: s.permissions }); setShowForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(s.id, s.login)} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
-      <Card className="p-6"><h3 className="font-bold text-[#1F2937] mb-4">{ui.activityLogs}</h3>{logs.length === 0 ? (<p className="text-[#6B7280] text-center py-4">{ui.noLogs}</p>) : (<div className="space-y-2 max-h-64 overflow-y-auto">{logs.map(log => (<div key={log.id} className="text-sm p-2 bg-gray-50 rounded flex items-center justify-between"><div><span className="font-medium">{log.subadminLogin}</span><span className="text-[#6B7280] ml-2">{log.action}</span><span className="text-[#6B7280] ml-2">[{log.feature}]</span>{log.details && <span className="text-[#9CA3AF] ml-2">({log.details})</span>}</div><span className="text-[#9CA3AF] text-xs">{new Date(log.timestamp).toLocaleString(lang === "az" ? "az-AZ" : "en-US")}</span></div>))}</div>)}</Card>
+      <Card className="p-6">
+        <h3 className="font-bold text-[#1F2937] mb-4">{ui.activityLogs}</h3>
+        {logs.length === 0 ? (
+          <p className="text-[#6B7280] text-center py-4">{ui.noLogs}</p>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {logs.map(log => (
+              <div key={log.id} className="text-sm p-2 bg-gray-50 rounded flex items-center justify-between">
+                <div>
+                  <span className="font-medium">{log.subadminLogin}</span>
+                  <span className="text-[#6B7280] ml-2">{log.action}</span>
+                  <span className="text-[#6B7280] ml-2">[{log.feature}]</span>
+                  {log.details && <span className="text-[#9CA3AF] ml-2">({log.details})</span>}
+                </div>
+                <span className="text-[#9CA3AF] text-xs">{new Date(log.timestamp).toLocaleString(lang === "az" ? "az-AZ" : "en-US")}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
     </motion.div>
   );
 }
@@ -312,30 +354,37 @@ export default function AdminDashboardPage() {
   const [subadminSession, setSubadminSession] = useState<SubadminSession | null>(null);
 
   useEffect(() => {
-    // Check subadmin session (localStorage)
-    if (typeof window !== "undefined") {
-      const raw = sessionStorage.getItem(SUBADMIN_SESSION_KEY);
-      if (raw) {
-        try {
-          const session = JSON.parse(raw) as SubadminSession;
-          setSubadminSession(session);
-          setUser({ role: "SUBADMIN", fullName: session.login } as unknown as User);
-          loadData();
-          setLoading(false);
-          return;
-        } catch {}
+    try {
+      if (typeof window !== "undefined") {
+        const raw = sessionStorage.getItem(SUBADMIN_SESSION_KEY);
+        if (raw) {
+          try {
+            const session = JSON.parse(raw) as SubadminSession;
+            setSubadminSession(session);
+            setUser({ role: "SUBADMIN", fullName: session.login } as unknown as User);
+            loadData();
+            setLoading(false);
+            return;
+          } catch {}
+        }
       }
+      
+      const currentUser = authApi.getCurrentUser();
+      if (!currentUser || !currentUser.token || currentUser.role !== "ADMIN") {
+        try { router.push("/admin/login"); } catch {}
+        return;
+      }
+      setUser(currentUser as any);
+      loadData();
+      setLoading(false);
+    } catch (error) {
+      console.error("[Dashboard] Init error:", error);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("decor_current_user");
+        sessionStorage.clear();
+      }
+      try { router.push("/admin/login"); } catch {}
     }
-    
-    // Check main admin
-    const currentUser = authApi.getCurrentUser();
-    if (!currentUser || currentUser.role !== "ADMIN") {
-      router.push("/admin/login");
-      return;
-    }
-    setUser(currentUser as any);
-    loadData();
-    setLoading(false);
   }, [router]);
 
   useEffect(() => {
