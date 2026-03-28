@@ -366,12 +366,13 @@ export default function AdminDashboardPage() {
     { id: "tasks", label: "Tapşırıqlar", icon: CheckSquare, permission: { feature: "tasks", level: "view" } },
     { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: { feature: "settings", level: "view" } },
     { id: "accessSettings", label: ui.accessSettings, icon: Shield, permission: { feature: null, level: "view" }, adminOnly: true },
-  ].filter((item: any) => {
-    // FIXED: accessSettings only for main admin, not subadmin
-    if (item.adminOnly) return user?.role === "ADMIN" && !subadminSession;
-    if (!item.permission.feature) return true;
-    return can(item.permission.feature, item.permission.level);
-  });
+
+].filter((item: any) => {
+  // accessSettings: показывать, если НЕТ сессии subadmin
+  if (item.adminOnly) return !subadminSession;
+  if (!item.permission.feature) return true;
+  return can(item.permission.feature, item.permission.level);
+});
 
   if (loading) return <div className="min-h-screen bg-[#1F2937] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D90429]" /></div>;
   if (!user) return null;
@@ -464,7 +465,7 @@ export default function AdminDashboardPage() {
           {activeTab === "settings" && <AdminSettings />}
           {activeTab === "tasks" && <AdminTasks allUsers={allUsers} />}
           {/* FIXED: Added && !subadminSession for extra safety */}
-          {activeTab === "accessSettings" && user?.role === "ADMIN" && !subadminSession && <AccessSettingsManager currentUser={user} />}
+          {activeTab === "accessSettings" && !subadminSession && <AccessSettingsManager currentUser={user} />}
         </main>
       </div>
     </div>
