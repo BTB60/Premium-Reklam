@@ -129,15 +129,6 @@ interface EditingUser {
   level: number; totalOrders: number; totalSales: number;
 }
 
-// ========== NEW: NAV ITEM TYPE (FIXES TS ERROR) ==========
-interface NavItem {
-  id: ActiveTab;
-  label: string;
-  icon: React.ElementType;
-  permission: { feature: keyof SubadminPermissions | null; level: PermissionLevel };
-  adminOnly?: boolean;
-}
-
 // ========== ACCESS SETTINGS MANAGER ==========
 function AccessSettingsManager({ currentUser }: { currentUser: User }) {
   const { lang, t: ui } = useLang();
@@ -360,8 +351,8 @@ export default function AdminDashboardPage() {
     return false;
   };
 
-  // FIXED: Explicit NavItem type to resolve TypeScript error
-  const navItems: NavItem[] = [
+  // FIXED: Simple array, no explicit type annotations that cause inference issues
+  const navItems = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, permission: { feature: null, level: "view" } },
     { id: "users", label: "İstifadəçilər", icon: Users, permission: { feature: "users", level: "view" } },
     { id: "orders", label: "Sifarişlər", icon: Package, permission: { feature: "orders", level: "view" } },
@@ -375,7 +366,7 @@ export default function AdminDashboardPage() {
     { id: "tasks", label: "Tapşırıqlar", icon: CheckSquare, permission: { feature: "tasks", level: "view" } },
     { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: { feature: "settings", level: "view" } },
     { id: "accessSettings", label: ui.accessSettings, icon: Shield, permission: { feature: null, level: "view" }, adminOnly: true },
-  ].filter(item => {
+  ].filter((item: any) => {
     if (item.adminOnly) return user?.role === "ADMIN";
     if (!item.permission.feature) return true;
     return can(item.permission.feature, item.permission.level);
@@ -406,7 +397,7 @@ export default function AdminDashboardPage() {
         <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white min-h-screen border-r border-gray-200 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
           <div className="flex items-center justify-between p-4 lg:hidden"><span className="font-bold text-lg">Menyu</span><button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg"><ChevronLeft className="w-5 h-5" /></button></div>
           <nav className="p-4 space-y-2">
-            {navItems.map((item) => (<button key={item.id} onClick={() => { setActiveTab(item.id as ActiveTab); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id ? "bg-[#D90429] text-white" : "text-[#6B7280] hover:bg-gray-100"}`}>
+            {navItems.map((item: any) => (<button key={item.id} onClick={() => { setActiveTab(item.id as ActiveTab); setSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === item.id ? "bg-[#D90429] text-white" : "text-[#6B7280] hover:bg-gray-100"}`}>
               <item.icon className="w-5 h-5" /><span className="text-sm">{item.label}</span>
             </button>))}
           </nav>
