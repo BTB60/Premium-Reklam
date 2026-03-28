@@ -351,7 +351,7 @@ export default function AdminDashboardPage() {
     return false;
   };
 
-  // FIXED: Added && !subadminSession to adminOnly check
+  // FIXED: accessSettings visible only when NO subadmin session
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, permission: { feature: null, level: "view" } },
     { id: "users", label: "İstifadəçilər", icon: Users, permission: { feature: "users", level: "view" } },
@@ -366,13 +366,11 @@ export default function AdminDashboardPage() {
     { id: "tasks", label: "Tapşırıqlar", icon: CheckSquare, permission: { feature: "tasks", level: "view" } },
     { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: { feature: "settings", level: "view" } },
     { id: "accessSettings", label: ui.accessSettings, icon: Shield, permission: { feature: null, level: "view" }, adminOnly: true },
-
-].filter((item: any) => {
-  // accessSettings: показывать, если НЕТ сессии subadmin
-  if (item.adminOnly) return !subadminSession;
-  if (!item.permission.feature) return true;
-  return can(item.permission.feature, item.permission.level);
-});
+  ].filter((item: any) => {
+    if (item.adminOnly) return !subadminSession;
+    if (!item.permission.feature) return true;
+    return can(item.permission.feature, item.permission.level);
+  });
 
   if (loading) return <div className="min-h-screen bg-[#1F2937] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D90429]" /></div>;
   if (!user) return null;
@@ -464,7 +462,6 @@ export default function AdminDashboardPage() {
           {activeTab === "support" && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="flex items-center justify-between mb-6"><h1 className="text-2xl font-bold text-[#1F2937]">Dəstək Mərkəzi</h1></div><SupportManager users={allUsers} /></motion.div>)}
           {activeTab === "settings" && <AdminSettings />}
           {activeTab === "tasks" && <AdminTasks allUsers={allUsers} />}
-          {/* FIXED: Added && !subadminSession for extra safety */}
           {activeTab === "accessSettings" && !subadminSession && <AccessSettingsManager currentUser={user} />}
         </main>
       </div>
