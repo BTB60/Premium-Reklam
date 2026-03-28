@@ -8,7 +8,35 @@ import { Card } from "@/components/ui/Card";
 import { Shield, Lock, ArrowRight, AlertTriangle, Key } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { subadminAuth } from "@/lib/subadminAuth";
+
+const SUBADMINS_KEY = "premium_subadmins";
+
+interface SubadminPermissions {
+  users: "none" | "view" | "edit";
+  orders: "none" | "view" | "edit";
+  finance: "none" | "view" | "edit";
+  products: "none" | "view" | "edit";
+  inventory: "none" | "view" | "edit";
+  tasks: "none" | "view" | "edit";
+  support: "none" | "view" | "edit";
+  analytics: "none" | "view" | "edit";
+  settings: "none" | "view" | "edit";
+}
+
+interface Subadmin {
+  id: string;
+  login: string;
+  password: string;
+  permissions: SubadminPermissions;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+function getSubadmins(): Subadmin[] {
+  if (typeof window === "undefined") return [];
+  const stored = localStorage.getItem(SUBADMINS_KEY);
+  return stored ? JSON.parse(stored) : [];
+}
 
 const t = {
   az: {
@@ -18,7 +46,6 @@ const t = {
     password: "Parol",
     submit: "Daxil ol",
     error: "Login və ya parol yanlışdır",
-    networkError: "Server bağlantısı yoxdur",
     back: "← Əsas admin girişinə qayıt",
     lang: "AZ",
   },
@@ -29,7 +56,6 @@ const t = {
     password: "Password",
     submit: "Sign in",
     error: "Invalid login or password",
-    networkError: "Server connection failed",
     back: "← Back to main admin login",
     lang: "EN",
   }
@@ -49,15 +75,30 @@ export default function SubadminLoginPage() {
     setLoading(true);
 
     try {
-      await subadminAuth.login(login, password);
+      const subadmins = getSubadmins();
+      const subadmin = subadmins.find(s => s.login === login && s.password === password);
+
+      if (!subadmin) {
+        throw new Error("Invalid credentials");
+      }
+
+      sessionStorage.setItem("premium_subadmin_jwt", JSON.stringify({
+        token: "local-" + subadmin.id,
+        subadminId: subadmin.id,
+        login: subadmin.login,
+        role: "SUBADMIN",
+        permissions: subadmin.permissions
+      }));
+      
+      subadmin.lastLogin = new Date().toISOString();
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SUBADMINS_KEY, JSON.stringify(subadmins));
+      }
+
       router.push("/admin/dashboard");
       router.refresh();
-    } catch (err: any) {
-      const isNetwork = err.message?.includes("fetch") || err.message?.includes("Failed");
-      setError(isNetwork 
-        ? (lang === "az" ? t.az.networkError : t.en.networkError)
-        : (lang === "az" ? t.az.error : t.en.error)
-      );
+    } catch {
+      setError(lang === "az" ? t.az.error : t.en.error);
     } finally {
       setLoading(false);
     }
