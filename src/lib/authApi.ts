@@ -162,8 +162,20 @@ function getToken(): string | null {
 
 function getCurrentUser(): UserData | null {
   if (typeof window === "undefined") return null;
-  const stored = localStorage.getItem("decor_current_user");
-  return stored ? JSON.parse(stored) : null;
+  try {
+    const stored = localStorage.getItem("decor_current_user");
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    // Минимальная валидация
+    if (!parsed || typeof parsed !== "object") return null;
+    if (!parsed.token || !parsed.role || !parsed.userId) return null;
+    return parsed;
+  } catch (e) {
+    // Битый JSON — очищаем и возвращаем null
+    console.warn("[Auth] Corrupted user session, clearing");
+    localStorage.removeItem("decor_current_user");
+    return null;
+  }
 }
 
 async function fetchApi(endpoint: string, options: RequestInit = {}) {

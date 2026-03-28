@@ -118,8 +118,12 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
 
   useEffect(() => { 
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(SUBADMINS_KEY);
-      setSubadmins(stored ? JSON.parse(stored) : []);
+      try {
+        const stored = localStorage.getItem(SUBADMINS_KEY);
+        setSubadmins(stored ? JSON.parse(stored) : []);
+      } catch {
+        setSubadmins([]);
+      }
     }
     setLogs(getActivityLogs()); 
   }, [lang]);
@@ -128,47 +132,94 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
     e.preventDefault();
     if (!formData.login || !formData.password) return;
     if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(SUBADMINS_KEY);
-    const list = stored ? JSON.parse(stored) : [];
-    if (editingId) {
-      const idx = list.findIndex((s: any) => s.id === editingId);
-      if (idx !== -1) { list[idx] = { ...list[idx], ...formData }; logActivity(editingId, formData.login, "updated", "access_settings"); }
-    } else {
-      const newSub = { id: crypto.randomUUID(), ...formData, createdAt: new Date().toISOString() };
-      list.push(newSub);
-      logActivity(newSub.id, formData.login, "created", "access_settings");
+    
+    try {
+      const stored = localStorage.getItem(SUBADMINS_KEY);
+      const list = stored ? JSON.parse(stored) : [];
+      
+      if (editingId) {
+        const idx = list.findIndex((s: any) => s.id === editingId);
+        if (idx !== -1) { 
+          list[idx] = { ...list[idx], ...formData }; 
+          logActivity(editingId, formData.login, "updated", "access_settings"); 
+        }
+      } else {
+        const newSub = { id: crypto.randomUUID(), ...formData, createdAt: new Date().toISOString() };
+        list.push(newSub);
+        logActivity(newSub.id, formData.login, "created", "access_settings");
+      }
+      localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
+      setSubadmins(list); 
+      setShowForm(false); 
+      setEditingId(null);
+      setFormData({ 
+        login: "", 
+        password: "", 
+        permissions: { 
+          users: "none", orders: "none", finance: "none", products: "none", 
+          inventory: "none", tasks: "none", support: "none", analytics: "none", settings: "none" 
+        } 
+      });
+    } catch {
+      // Игнорируем ошибки парсинга
     }
-    localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
-    setSubadmins(list); setShowForm(false); setEditingId(null);
-    setFormData({ login: "", password: "", permissions: { users: "none", orders: "none", finance: "none", products: "none", inventory: "none", tasks: "none", support: "none", analytics: "none", settings: "none" } });
   };
 
   const handleDelete = (id: string, login: string) => {
     if (!confirm(ui.confirmDelete)) return;
     if (typeof window === "undefined") return;
-    const stored = localStorage.getItem(SUBADMINS_KEY);
-    const list = (stored ? JSON.parse(stored) : []).filter((s: any) => s.id !== id);
-    localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
-    setSubadmins(list);
-    logActivity(id, login, "deleted", "access_settings");
+    
+    try {
+      const stored = localStorage.getItem(SUBADMINS_KEY);
+      const list = (stored ? JSON.parse(stored) : []).filter((s: any) => s.id !== id);
+      localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
+      setSubadmins(list);
+      logActivity(id, login, "deleted", "access_settings");
+    } catch {
+      // Игнорируем ошибки парсинга
+    }
   };
 
   const handleExport = () => {
     setExportLoading(true);
-    const headers = ["ID", "Login", "Created", "Last Login", ...features.map(f => `${f.key}:view`), ...features.map(f => `${f.key}:edit`)];
-    const rows = subadmins.map((s: any) => [s.id, s.login, s.createdAt, s.lastLogin || "", ...features.map(f => s.permissions[f.key] !== "none" ? "1" : "0"), ...features.map(f => s.permissions[f.key] === "edit" ? "1" : "0")]);
-    const csv = [headers, ...rows].map((r: any) => r.join(",")).join("\n");
-    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `subadmins_export_${new Date().toISOString().slice(0,10)}.csv`; a.click();
-    URL.revokeObjectURL(url); setExportLoading(false);
-    logActivity("system", "admin", "exported", "access_settings", `${subadmins.length} rows`);
+    try {
+      const headers = ["ID", "Login", "Created", "Last Login", ...features.map(f => `${f.key}:view`), ...features.map(f => `${f.key}:edit`)];
+      const rows = subadmins.map((s: any) => [s.id, s.login, s.createdAt, s.lastLogin || "", ...features.map(f => s.permissions[f.key] !== "none" ? "1" : "0"), ...features.map(f => s.permissions[f.key] === "edit" ? "1" : "0")]);
+      const csv = [headers, ...rows].map((r: any) => r.join(",")).join("\n");
+      const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); 
+      a.href = url; 
+      a.download = `subadmins_export_${new Date().toISOString().slice(0,10)}.csv`; 
+      a.click();
+      URL.revokeObjectURL(url); 
+      setExportLoading(false);
+      logActivity("system", "admin", "exported", "access_settings", `${subadmins.length} rows`);
+    } catch {
+      setExportLoading(false);
+    }
   };
 
   const PermissionToggle = ({ feature, value, onChange }: { feature: string; value: PermissionLevel; onChange: (v: PermissionLevel) => void }) => (
     <div className="flex items-center gap-4">
-      <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={value === "view" || value === "edit"} onChange={(e) => onChange(e.target.checked ? "view" : "none")} className="rounded border-gray-300" /><span className="text-[#6B7280]">{ui.view}</span></label>
-      <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="checkbox" checked={value === "edit"} onChange={(e) => onChange(e.target.checked ? "edit" : (value === "view" ? "view" : "none"))} className="rounded border-gray-300" /><span className="text-[#6B7280]">{ui.edit}</span></label>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input 
+          type="checkbox" 
+          checked={value === "view" || value === "edit"} 
+          onChange={(e) => onChange(e.target.checked ? "view" : "none")} 
+          className="rounded border-gray-300" 
+        />
+        <span className="text-[#6B7280]">{ui.view}</span>
+      </label>
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input 
+          type="checkbox" 
+          checked={value === "edit"} 
+          onChange={(e) => onChange(e.target.checked ? "edit" : (value === "view" ? "view" : "none"))} 
+          className="rounded border-gray-300" 
+        />
+        <span className="text-[#6B7280]">{ui.edit}</span>
+      </label>
     </div>
   );
 
