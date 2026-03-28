@@ -161,7 +161,7 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
         } 
       });
     } catch {
-      // Игнорируем ошибки парсинга
+      // Игнорируем ошибки
     }
   };
 
@@ -176,15 +176,29 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
       setSubadmins(list);
       logActivity(id, login, "deleted", "access_settings");
     } catch {
-      // Игнорируем ошибки парсинга
+      // Игнорируем ошибки
     }
   };
 
   const handleExport = () => {
     setExportLoading(true);
     try {
-      const headers = ["ID", "Login", "Created", "Last Login", ...features.map(f => `${f.key}:view`), ...features.map(f => `${f.key}:edit`)];
-      const rows = subadmins.map((s: any) => [s.id, s.login, s.createdAt, s.lastLogin || "", ...features.map(f => s.permissions[f.key] !== "none" ? "1" : "0"), ...features.map(f => s.permissions[f.key] === "edit" ? "1" : "0")]);
+      // Защита: если subadmins или features не определены — используем пустые массивы
+      const safeSubadmins = subadmins || [];
+      const safeFeatures = features || [];
+      
+      const headers = ["ID", "Login", "Created", "Last Login", ...safeFeatures.map(f => `${f.key}:view`), ...safeFeatures.map(f => `${f.key}:edit`)];
+      const rows = safeSubadmins.map((s: any) => {
+        const perms = s?.permissions || {};
+        return [
+          s.id, 
+          s.login, 
+          s.createdAt, 
+          s.lastLogin || "", 
+          ...safeFeatures.map(f => perms[f.key] !== "none" ? "1" : "0"), 
+          ...safeFeatures.map(f => perms[f.key] === "edit" ? "1" : "0")
+        ];
+      });
       const csv = [headers, ...rows].map((r: any) => r.join(",")).join("\n");
       const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -194,35 +208,48 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
       a.click();
       URL.revokeObjectURL(url); 
       setExportLoading(false);
-      logActivity("system", "admin", "exported", "access_settings", `${subadmins.length} rows`);
+      logActivity("system", "admin", "exported", "access_settings", `${safeSubadmins.length} rows`);
     } catch {
       setExportLoading(false);
     }
   };
 
-  const PermissionToggle = ({ feature, value, onChange }: { feature: string; value: PermissionLevel; onChange: (v: PermissionLevel) => void }) => (
-    <div className="flex items-center gap-4">
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input 
-          type="checkbox" 
-          checked={value === "view" || value === "edit"} 
-          onChange={(e) => onChange(e.target.checked ? "view" : "none")} 
-          className="rounded border-gray-300" 
-        />
-        <span className="text-[#6B7280]">{ui.view}</span>
-      </label>
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input 
-          type="checkbox" 
-          checked={value === "edit"} 
-          onChange={(e) => onChange(e.target.checked ? "edit" : (value === "view" ? "view" : "none"))} 
-          className="rounded border-gray-300" 
-        />
-        <span className="text-[#6B7280]">{ui.edit}</span>
-      </label>
-    </div>
-  );
+  const PermissionToggle = ({ feature, value, onChange }: { feature: string; value: PermissionLevel; onChange: (v: PermissionLevel) => void }) => {
+    // Защита: если features не определён — рендерим пустой блок
+    const safeFeatures = (typeof features !== "undefined" && Array.isArray(features)) ? features : [];
+    return (
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={value === "view" || value === "edit"} 
+            onChange={(e) => onChange(e.target.checked ? "view" : "none")} 
+            className="rounded border-gray-300" 
+          />
+          <span className="text-[#6B7280]">{ui.view}</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input 
+            type="checkbox" 
+            checked={value === "edit"} 
+            onChange={(e) => onChange(e.target.checked ? "edit" : (value === "view" ? "view" : "none"))} 
+            className="rounded border-gray-300" 
+          />
+          <span className="text-[#6B7280]">{ui.edit}</span>
+        </label>
+      </div>
+    );
+  };
 
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-[#1F2937]">{ui.accessSettings}</h1>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => useLang().toggle()} icon={<Key className="w-4 h-4" />}>{lang.toUpperCase()}</Button>
+          <Button onClick={() => setShowForm(!showForm)} icon={<Plus className="w-4 h-4" />}>{ui.createSubadmin}</Button>
+        </div>
+      </div>
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="flex items-center justify-between mb-6">
