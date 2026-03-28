@@ -84,10 +84,8 @@ export default function SubadminLoginPage() {
         throw new Error("Invalid credentials");
       }
 
-      // Save session
       localStorage.setItem("premium_subadmin_session", JSON.stringify(subadmin));
       
-      // Update last login
       subadmin.lastLogin = new Date().toISOString();
       localStorage.setItem(SUBADMINS_KEY, JSON.stringify(subadmins));
 
@@ -109,7 +107,6 @@ export default function SubadminLoginPage() {
         className="w-full max-w-md"
       >
         <Card className="p-8 border-2 border-[#D90429]">
-          {/* Header */}
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-[#D90429]/10 rounded-full flex items-center justify-center">
@@ -130,7 +127,6 @@ export default function SubadminLoginPage() {
             </Button>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -138,7 +134,6 @@ export default function SubadminLoginPage() {
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
               label={ui.login}
@@ -147,7 +142,6 @@ export default function SubadminLoginPage() {
               onChange={setLogin}
               icon={<Shield className="w-5 h-5" />}
               required
-              autoComplete="username"
             />
 
             <Input
@@ -158,7 +152,6 @@ export default function SubadminLoginPage() {
               onChange={setPassword}
               icon={<Lock className="w-5 h-5" />}
               required
-              autoComplete="current-password"
             />
 
             <Button
@@ -171,7 +164,6 @@ export default function SubadminLoginPage() {
             </Button>
           </form>
 
-          {/* Back link */}
           <div className="mt-6 text-center">
             <Link
               href="/admin/login"
