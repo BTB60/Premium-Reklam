@@ -351,7 +351,7 @@ export default function AdminDashboardPage() {
     return false;
   };
 
-  // FIXED: Simple array, no explicit type annotations that cause inference issues
+  // FIXED: Added && !subadminSession to adminOnly check
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: TrendingUp, permission: { feature: null, level: "view" } },
     { id: "users", label: "İstifadəçilər", icon: Users, permission: { feature: "users", level: "view" } },
@@ -367,7 +367,8 @@ export default function AdminDashboardPage() {
     { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: { feature: "settings", level: "view" } },
     { id: "accessSettings", label: ui.accessSettings, icon: Shield, permission: { feature: null, level: "view" }, adminOnly: true },
   ].filter((item: any) => {
-    if (item.adminOnly) return user?.role === "ADMIN";
+    // FIXED: accessSettings only for main admin, not subadmin
+    if (item.adminOnly) return user?.role === "ADMIN" && !subadminSession;
     if (!item.permission.feature) return true;
     return can(item.permission.feature, item.permission.level);
   });
@@ -462,7 +463,8 @@ export default function AdminDashboardPage() {
           {activeTab === "support" && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="flex items-center justify-between mb-6"><h1 className="text-2xl font-bold text-[#1F2937]">Dəstək Mərkəzi</h1></div><SupportManager users={allUsers} /></motion.div>)}
           {activeTab === "settings" && <AdminSettings />}
           {activeTab === "tasks" && <AdminTasks allUsers={allUsers} />}
-          {activeTab === "accessSettings" && user?.role === "ADMIN" && <AccessSettingsManager currentUser={user} />}
+          {/* FIXED: Added && !subadminSession for extra safety */}
+          {activeTab === "accessSettings" && user?.role === "ADMIN" && !subadminSession && <AccessSettingsManager currentUser={user} />}
         </main>
       </div>
     </div>
