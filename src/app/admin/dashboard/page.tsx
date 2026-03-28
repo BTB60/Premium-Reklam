@@ -224,7 +224,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const subadminSession = subadminAuth.getSession();
     if (subadminSession) {
-      setUser({ role: "SUBADMIN", fullName: subadminSession.login } as User);
+      setUser({ role: "SUBADMIN", fullName: subadminSession.login } as unknown as User);
       loadData();
       setLoading(false);
       return;
