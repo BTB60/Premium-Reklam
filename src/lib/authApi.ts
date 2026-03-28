@@ -22,7 +22,6 @@ function mapRole(role: string): string {
 // Map frontend status to backend status (lowercase for backend enum)
 function mapStatus(status: string): string {
   const statusMap: Record<string, string> = {
-    // Backend enum values (lowercase as sent to backend)
     'pending': 'pending',
     'approved': 'approved',
     'confirmed': 'confirmed',
@@ -33,7 +32,6 @@ function mapStatus(status: string): string {
     'delivering': 'delivering',
     'completed': 'completed',
     'cancelled': 'cancelled',
-    // Backend enum names (UPPERCASE) - convert to lowercase
     'PENDING': 'pending',
     'APPROVED': 'approved',
     'CONFIRMED': 'confirmed',
@@ -44,7 +42,6 @@ function mapStatus(status: string): string {
     'DELIVERING': 'delivering',
     'COMPLETED': 'completed',
     'CANCELLED': 'cancelled',
-    // Azərbaycanca statuslar
     'gözləyir': 'pending',
     'tesdiqləndi': 'approved',
     'təsdiqləndi': 'confirmed',
@@ -75,7 +72,6 @@ export interface UserData {
   email?: string;
 }
 
-// Auth API Interface
 export interface AuthApi {
   register(userData: any): Promise<any>;
   login(username: string, password: string): Promise<UserData>;
@@ -170,8 +166,6 @@ function getCurrentUser(): UserData | null {
   return stored ? JSON.parse(stored) : null;
 }
 
-// NOTE: fetchLocalApi removed - all API calls use fetchApi which calls backend directly
-
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -188,7 +182,6 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
       headers,
     });
 
-    // Check content type first
     const contentType = res.headers.get("content-type");
     const isJson = contentType && contentType.includes("application/json");
 
@@ -212,7 +205,6 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
     if (isJson) {
       return res.json();
     } else {
-      // If not JSON, try to parse anyway, otherwise return empty object
       try {
         const text = await res.text();
         if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
@@ -255,7 +247,6 @@ export const authApi = {
 
       const text = await res.text();
       
-      // Check if response is HTML (error page) instead of JSON
       if (text.startsWith("<")) {
         throw new Error("Server bağlantısı yoxdur. Backend xidmətini işə salın.");
       }
@@ -282,7 +273,6 @@ export const authApi = {
       const user = getCurrentUser();
       const token = user?.token;
       
-      console.log("[API] Fetching users from:", `${BASE_URL}/users`);
       const response = await fetch(`${BASE_URL}/users`, {
         headers: { 
           "Content-Type": "application/json",
@@ -291,35 +281,36 @@ export const authApi = {
         credentials: "include",
       });
       
+      if (!response.ok) {
+        console.warn("[API] getAllUsers error:", response.status);
+        return [];
+      }
+      
       const text = await response.text();
       
-      // Check for HTML response (error page)
+      if (!text || text.trim() === "") {
+        return [];
+      }
+      
       if (text.trim().startsWith("<")) {
-        console.error("[API] Received HTML instead of JSON:", text.substring(0, 200));
-        throw new Error("Backend cavab vermir və ya xəta verir");
+        console.error("[API] Received HTML instead of JSON");
+        return [];
       }
       
       const data = JSON.parse(text);
-      console.log("[API] Users response:", data);
       
-      if (!response.ok) {
-        console.error("[API] Users API error:", response.status, data);
-        return [];
-      }
-      
-      // Handle different response formats
       const users = Array.isArray(data) ? data : (data.users || data.content || []);
       
       if (!Array.isArray(users)) {
-        console.error("[API] Unexpected data format:", users);
+        console.error("[API] Unexpected data format:", typeof users);
         return [];
       }
       
-      return users.map((user: any) => ({
-        ...user,
-        role: mapRole(user.role),
-        fullName: user.fullName || user.full_name || user.username,
-        id: user.id || user.userId,
+      return users.map((u: any) => ({
+        ...u,
+        role: mapRole(u.role),
+        fullName: u.fullName || u.full_name || u.username,
+        id: u.id || u.userId,
       }));
     } catch (error: any) {
       console.error("[API] getAllUsers error:", error?.message || error);
@@ -340,6 +331,30 @@ export const authApi = {
       localStorage.removeItem("decor_current_user");
     }
   },
+
+  async forgotPassword(email: string) {
+    const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Xəta baş verdi");
+    return data;
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, newPassword }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || data.error || "Xəta baş verdi");
+    return data;
+  },
 };
 
 export const productApi = {
@@ -348,7 +363,6 @@ export const productApi = {
       const user = getCurrentUser();
       const token = user?.token;
       
-      console.log("[API] Fetching products from:", `${BASE_URL}/products`);
       const response = await fetch(`${BASE_URL}/products`, {
         headers: { 
           "Content-Type": "application/json",
@@ -365,9 +379,7 @@ export const productApi = {
       }
       
       const data = JSON.parse(text);
-      console.log("[API] Products response:", data);
       
-      // Handle different response formats
       const products = Array.isArray(data) ? data : (data.products || data.content || []);
       return products;
     } catch (error: any) {
@@ -497,7 +509,6 @@ export const orderApi = {
   async getMyOrders(): Promise<{ orders: Order[]; summary?: OrderSummary; total: number }> {
     const user = getCurrentUser();
     if (!user) return { orders: [], summary: undefined, total: 0 };
-    // Use /orders/my endpoint for user-specific orders
     const data = await fetchApi(`/orders/my`);
     return { orders: Array.isArray(data) ? data : [], total: Array.isArray(data) ? data.length : 0 };
   },
@@ -517,7 +528,6 @@ export const orderApi = {
       };
     }
     
-    // Fetch user's orders and calculate summary locally
     const orders = await this.getMyOrders();
     const orderList = orders.orders || [];
     
@@ -614,7 +624,6 @@ export const orderApi = {
     });
   },
 
-  // Admin payment via backend API
   async adminPayment(orderId: number, amount: number, paymentMethod?: string, note?: string): Promise<any> {
     return fetchApi(`/orders/payment`, {
       method: "PATCH",
@@ -627,7 +636,6 @@ export const orderApi = {
     });
   },
 
-  // Get all orders from backend API (replaces Neon direct access)
   async getOrdersFromBackend(filters?: { userId?: string; status?: string; paymentStatus?: string; dateFrom?: string; dateTo?: string }): Promise<{ orders: any[]; total: number }> {
     try {
       const user = getCurrentUser();
@@ -643,8 +651,6 @@ export const orderApi = {
       const queryString = params.toString();
       const url = `/orders${queryString ? '?' + queryString : ''}`;
       
-      console.log("[API] Fetching orders from:", `${BASE_URL}${url}`);
-      
       const response = await fetch(`${BASE_URL}${url}`, {
         headers: { 
           "Content-Type": "application/json",
@@ -653,23 +659,19 @@ export const orderApi = {
         credentials: "include",
       });
       
-      const text = await response.text();
-      
-      // Check for HTML response (error page)
-      if (text.trim().startsWith("<")) {
-        console.error("[API] Received HTML instead of JSON:", text.substring(0, 200));
-        throw new Error("Backend cavab vermir və ya xəta verir");
-      }
-      
-      const data = JSON.parse(text);
-      console.log("[API] Orders response:", data);
-      
       if (!response.ok) {
-        console.error("[API] Orders API error:", response.status, data);
+        console.warn("[API] getOrdersFromBackend error:", response.status);
         return { orders: [], total: 0 };
       }
       
-      // Handle different response formats
+      const text = await response.text();
+      
+      if (!text || text.trim() === "" || text.trim().startsWith("<")) {
+        return { orders: [], total: 0 };
+      }
+      
+      const data = JSON.parse(text);
+      
       const orders = Array.isArray(data) ? data : (data.orders || data.content || []);
       
       if (!Array.isArray(orders)) {
@@ -682,30 +684,6 @@ export const orderApi = {
       console.error("[API] getOrdersFromBackend error:", error?.message || error);
       return { orders: [], total: 0 };
     }
-  },
-
-  async forgotPassword(email: string) {
-    const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || data.error || "Xəta baş verdi");
-    return data;
-  },
-
-  async resetPassword(token: string, newPassword: string) {
-    const res = await fetch(`${BASE_URL}/auth/reset-password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, newPassword }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || data.error || "Xəta baş verdi");
-    return data;
   },
 };
 
