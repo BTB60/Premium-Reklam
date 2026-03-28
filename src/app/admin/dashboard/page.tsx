@@ -1,3 +1,4 @@
+frontend/src/app/admin/dashboard/page.tsx :
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,6 +7,7 @@ import { motion } from "framer-motion";
 import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, messages, playNotificationSound, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask } from "@/lib/db";
 import { authApi, orderApi } from "@/lib/authApi";
 import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
+import { subadminAuth, type PermissionLevel, type SubadminPermissions } from "@/lib/subadminAuth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -20,30 +22,6 @@ import {
   UserCircle, ShoppingBag, Award, Phone, Mail, Lock, Settings, ClipboardList, Calendar, CheckSquare, DollarSign,
   Clock, BarChart3, Store, Wallet, Boxes, Headphones, Menu, ChevronLeft, Key, Download, FileSpreadsheet
 } from "lucide-react";
-
-// ========== PERMISSION SYSTEM TYPES ==========
-type PermissionLevel = "none" | "view" | "edit";
-
-interface SubadminPermissions {
-  users: PermissionLevel;
-  orders: PermissionLevel;
-  finance: PermissionLevel;
-  products: PermissionLevel;
-  inventory: PermissionLevel;
-  tasks: PermissionLevel;
-  support: PermissionLevel;
-  analytics: PermissionLevel;
-  settings: PermissionLevel;
-}
-
-interface Subadmin {
-  id: string;
-  login: string;
-  password: string;
-  permissions: SubadminPermissions;
-  createdAt: string;
-  lastLogin?: string;
-}
 
 interface ActivityLog {
   id: string;
@@ -61,15 +39,6 @@ type ActiveTab = "dashboard" | "users" | "orders" | "notifications" | "analytics
 const SUBADMINS_KEY = "premium_subadmins";
 const ACTIVITY_LOGS_KEY = "premium_activity_logs";
 
-function getSubadmins(): Subadmin[] {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(SUBADMINS_KEY);
-  return stored ? JSON.parse(stored) : [];
-}
-function saveSubadmins(list: Subadmin[]) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
-}
 function getActivityLogs(): ActivityLog[] {
   if (typeof window === "undefined") return [];
   const stored = localStorage.getItem(ACTIVITY_LOGS_KEY);
@@ -83,15 +52,6 @@ function logActivity(subadminId: string, subadminLogin: string, action: string, 
   const logs = getActivityLogs();
   logs.unshift({ id: crypto.randomUUID(), subadminId, subadminLogin, action, feature, timestamp: new Date().toISOString(), details });
   saveActivityLogs(logs);
-}
-
-// ========== PERMISSION CHECKER ==========
-function hasPermission(permissions: SubadminPermissions | undefined, feature: keyof SubadminPermissions, level: PermissionLevel): boolean {
-  if (!permissions) return false;
-  const perm = permissions[feature];
-  if (level === "edit") return perm === "edit";
-  if (level === "view") return perm === "view" || perm === "edit";
-  return false;
 }
 
 // ========== I18N ==========
@@ -132,7 +92,7 @@ interface EditingUser {
 // ========== ACCESS SETTINGS MANAGER ==========
 function AccessSettingsManager({ currentUser }: { currentUser: User }) {
   const { lang, t: ui } = useLang();
-  const [subadmins, setSubadmins] = useState<Subadmin[]>([]);
+  const [subadmins, setSubadmins] = useState<any[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<{ login: string; password: string; permissions: SubadminPermissions }>({
@@ -148,36 +108,50 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
     { key: "support", label: ui.feature_support }, { key: "analytics", label: ui.feature_analytics }, { key: "settings", label: ui.feature_settings },
   ];
 
-  useEffect(() => { setSubadmins(getSubadmins()); setLogs(getActivityLogs()); }, [lang]);
+  useEffect(() => { 
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(SUBADMINS_KEY);
+      setSubadmins(stored ? JSON.parse(stored) : []);
+    }
+    setLogs(getActivityLogs()); 
+  }, [lang]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.login || !formData.password) return;
-    const list = getSubadmins();
+    if (typeof window === "undefined") return;
+    
+    const stored = localStorage.getItem(SUBADMINS_KEY);
+    const list = stored ? JSON.parse(stored) : [];
+    
     if (editingId) {
-      const idx = list.findIndex(s => s.id === editingId);
+      const idx = list.findIndex((s: any) => s.id === editingId);
       if (idx !== -1) { list[idx] = { ...list[idx], ...formData }; logActivity(editingId, formData.login, "updated", "access_settings"); }
     } else {
-      const newSub: Subadmin = { id: crypto.randomUUID(), ...formData, createdAt: new Date().toISOString() };
+      const newSub = { id: crypto.randomUUID(), ...formData, createdAt: new Date().toISOString() };
       list.push(newSub);
       logActivity(newSub.id, formData.login, "created", "access_settings");
     }
-    saveSubadmins(list); setSubadmins(list); setShowForm(false); setEditingId(null);
+    localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
+    setSubadmins(list); setShowForm(false); setEditingId(null);
     setFormData({ login: "", password: "", permissions: { users: "none", orders: "none", finance: "none", products: "none", inventory: "none", tasks: "none", support: "none", analytics: "none", settings: "none" } });
   };
 
   const handleDelete = (id: string, login: string) => {
     if (!confirm(ui.confirmDelete)) return;
-    const list = getSubadmins().filter(s => s.id !== id);
-    saveSubadmins(list); setSubadmins(list);
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem(SUBADMINS_KEY);
+    const list = (stored ? JSON.parse(stored) : []).filter((s: any) => s.id !== id);
+    localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
+    setSubadmins(list);
     logActivity(id, login, "deleted", "access_settings");
   };
 
   const handleExport = () => {
     setExportLoading(true);
     const headers = ["ID", "Login", "Created", "Last Login", ...features.map(f => `${f.key}:view`), ...features.map(f => `${f.key}:edit`)];
-    const rows = subadmins.map(s => [s.id, s.login, s.createdAt, s.lastLogin || "", ...features.map(f => s.permissions[f.key] !== "none" ? "1" : "0"), ...features.map(f => s.permissions[f.key] === "edit" ? "1" : "0")]);
-    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+    const rows = subadmins.map((s: any) => [s.id, s.login, s.createdAt, s.lastLogin || "", ...features.map(f => s.permissions[f.key] !== "none" ? "1" : "0"), ...features.map(f => s.permissions[f.key] === "edit" ? "1" : "0")]);
+    const csv = [headers, ...rows].map((r: any) => r.join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `subadmins_export_${new Date().toISOString().slice(0,10)}.csv`; a.click();
@@ -223,7 +197,7 @@ function AccessSettingsManager({ currentUser }: { currentUser: User }) {
         <div className="flex items-center justify-between mb-4"><h3 className="font-bold text-[#1F2937]">{ui.subadminsList}</h3><Button variant="ghost" size="sm" onClick={handleExport} loading={exportLoading} icon={<FileSpreadsheet className="w-4 h-4" />}>{ui.exportToExcel}</Button></div>
         {subadmins.length === 0 ? (<p className="text-[#6B7280] text-center py-4">{ui.noSubadmins}</p>) : (
           <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-gray-50"><tr><th className="text-left py-2 px-3">{ui.login}</th><th className="text-left py-2 px-3">{ui.createdAt}</th><th className="text-left py-2 px-3">{ui.lastLogin}</th><th className="text-left py-2 px-3">{ui.permissions}</th><th className="text-left py-2 px-3">{ui.actions}</th></tr></thead><tbody>
-            {subadmins.map(s => (<tr key={s.id} className="border-t"><td className="py-2 px-3 font-medium">{s.login}</td><td className="py-2 px-3 text-[#6B7280]">{new Date(s.createdAt).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US")}</td><td className="py-2 px-3 text-[#6B7280]">{s.lastLogin ? new Date(s.lastLogin).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US") : "-"}</td><td className="py-2 px-3"><div className="flex flex-wrap gap-1">{features.filter(f => s.permissions[f.key] !== "none").map(f => (<span key={f.key} className={`px-2 py-0.5 rounded text-xs ${s.permissions[f.key] === "edit" ? "bg-[#D90429]/10 text-[#D90429]" : "bg-blue-100 text-blue-700"}`}>{f.label} {s.permissions[f.key] === "edit" ? "✏️" : "👁️"}</span>))}</div></td><td className="py-2 px-3"><div className="flex gap-1"><button onClick={() => { setEditingId(s.id); setFormData({ login: s.login, password: s.password, permissions: s.permissions }); setShowForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button><button onClick={() => handleDelete(s.id, s.login)} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button></div></td></tr>))}
+            {subadmins.map((s: any) => (<tr key={s.id} className="border-t"><td className="py-2 px-3 font-medium">{s.login}</td><td className="py-2 px-3 text-[#6B7280]">{new Date(s.createdAt).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US")}</td><td className="py-2 px-3 text-[#6B7280]">{s.lastLogin ? new Date(s.lastLogin).toLocaleDateString(lang === "az" ? "az-AZ" : "en-US") : "-"}</td><td className="py-2 px-3"><div className="flex flex-wrap gap-1">{features.filter(f => s.permissions[f.key] !== "none").map(f => (<span key={f.key} className={`px-2 py-0.5 rounded text-xs ${s.permissions[f.key] === "edit" ? "bg-[#D90429]/10 text-[#D90429]" : "bg-blue-100 text-blue-700"}`}>{f.label} {s.permissions[f.key] === "edit" ? "✏️" : "👁️"}</span>))}</div></td><td className="py-2 px-3"><div className="flex gap-1"><button onClick={() => { setEditingId(s.id); setFormData({ login: s.login, password: s.password, permissions: s.permissions }); setShowForm(true); }} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Edit className="w-4 h-4" /></button><button onClick={() => handleDelete(s.id, s.login)} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button></div></td></tr>))}
           </tbody></table></div>
         )}
       </Card>
@@ -252,17 +226,26 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [subadminSession, setSubadminSession] = useState<Subadmin | null>(null);
 
   useEffect(() => {
-    const currentUser = authApi.getCurrentUser();
-    if (!currentUser || currentUser.role !== "ADMIN") {
-      const subSession = localStorage.getItem("premium_subadmin_session");
-      if (subSession) { const session = JSON.parse(subSession); setSubadminSession(session); setUser({ ...currentUser, role: "SUBADMIN" } as any); }
-      else { router.push("/admin/login"); }
+    // Check subadmin session first (JWT-based)
+    const subadminSession = subadminAuth.getSession();
+    if (subadminSession) {
+      setUser({ role: "SUBADMIN", fullName: subadminSession.login } as User);
+      loadData();
+      setLoading(false);
       return;
     }
-    setUser(currentUser as any); loadData(); setLoading(false);
+    
+    // Check main admin session
+    const currentUser = authApi.getCurrentUser();
+    if (!currentUser || currentUser.role !== "ADMIN") {
+      router.push("/admin/login");
+      return;
+    }
+    setUser(currentUser as any);
+    loadData();
+    setLoading(false);
   }, [router]);
 
   useEffect(() => {
@@ -287,8 +270,14 @@ export default function AdminDashboardPage() {
   };
 
   const handleLogout = () => {
-    if (subadminSession) { logActivity(subadminSession.id, subadminSession.login, "logout", "auth"); localStorage.removeItem("premium_subadmin_session"); setSubadminSession(null); }
-    else { authApi.logout(); }
+    // Check if subadmin session exists
+    const subadminSession = subadminAuth.getSession();
+    if (subadminSession) {
+      logActivity(subadminSession.subadminId, subadminSession.login, "logout", "auth");
+      subadminAuth.logout();
+    } else {
+      authApi.logout();
+    }
     router.push("/admin/login");
   };
 
@@ -345,10 +334,10 @@ export default function AdminDashboardPage() {
 
   const stats = { totalUsers: allUsers.length, totalOrders: allOrders.length, pendingOrders: allOrders.filter((o: any) => o.status === "pending" || o.status === "PENDING").length, totalRevenue: allOrders.reduce((sum: number, o: any) => sum + (Number(o.total_amount) || Number(o.totalAmount) || 0), 0), decorators: allUsers.filter((u: any) => u.role === "DECORATOR" || u.role === "DECORCU").length, admins: allUsers.filter((u: any) => u.role === "ADMIN").length };
 
+  // Permission checker using subadminAuth
   const can = (feature: keyof SubadminPermissions, level: PermissionLevel): boolean => {
     if (user?.role === "ADMIN") return true;
-    if (subadminSession?.permissions) return hasPermission(subadminSession.permissions, feature, level);
-    return false;
+    return subadminAuth.hasPermission(feature, level);
   };
 
   // FIXED: accessSettings visible only when NO subadmin session
@@ -367,13 +356,15 @@ export default function AdminDashboardPage() {
     { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: { feature: "settings", level: "view" } },
     { id: "accessSettings", label: ui.accessSettings, icon: Shield, permission: { feature: null, level: "view" }, adminOnly: true },
   ].filter((item: any) => {
-    if (item.adminOnly) return !subadminSession;
+    if (item.adminOnly) return !subadminAuth.getSession();
     if (!item.permission.feature) return true;
     return can(item.permission.feature, item.permission.level);
   });
 
   if (loading) return <div className="min-h-screen bg-[#1F2937] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D90429]" /></div>;
   if (!user) return null;
+
+  const subadminSession = subadminAuth.getSession();
 
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
@@ -462,7 +453,7 @@ export default function AdminDashboardPage() {
           {activeTab === "support" && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="flex items-center justify-between mb-6"><h1 className="text-2xl font-bold text-[#1F2937]">Dəstək Mərkəzi</h1></div><SupportManager users={allUsers} /></motion.div>)}
           {activeTab === "settings" && <AdminSettings />}
           {activeTab === "tasks" && <AdminTasks allUsers={allUsers} />}
-          {activeTab === "accessSettings" && !subadminSession && <AccessSettingsManager currentUser={user} />}
+          {activeTab === "accessSettings" && !subadminAuth.getSession() && <AccessSettingsManager currentUser={user} />}
         </main>
       </div>
     </div>
@@ -525,3 +516,5 @@ function SendNotificationForm({ userId, onSend }: { userId: string; onSend: (tit
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); if (title.trim() && message.trim()) { onSend(title, message); setTitle(""); setMessage(""); } };
   return (<form onSubmit={handleSubmit} className="space-y-3"><input type="text" placeholder="Bildiriş başlığı" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]" /><textarea placeholder="Bildiriş mətni" value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]" /><Button type="submit" size="sm" icon={<Bell className="w-4 h-4" />}>Göndər</Button></form>);
 }
+
+=== EOF ===
