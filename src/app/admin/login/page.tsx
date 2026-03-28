@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { authApi } from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Shield, Lock, ArrowRight, AlertTriangle } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { authApi } from "@/lib/authApi";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -23,17 +21,24 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
+      // Пробуем войти через бэкенд
       const user = await authApi.login(username, password);
-
-      const role = user?.role?.toUpperCase();
-
-      if (role !== "ADMIN") {
-        throw new Error("Bu səhifəyə yalnız adminlər daxil ola bilər");
+      
+      // Явно сохраняем в localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem("decor_current_user", JSON.stringify(user));
+        console.log("[Login] Saved user:", user);
       }
-
-      router.push("/admin/dashboard");
+      
+      // Редирект с небольшой задержкой, чтобы localStorage успел записаться
+      setTimeout(() => {
+        router.push("/admin/dashboard");
+        router.refresh();
+      }, 100);
+      
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : "Xəta baş verdi");
+      console.error("[Login] Error:", err);
+      setError(err.message || "Не удалось войти");
     } finally {
       setLoading(false);
     }
@@ -41,24 +46,16 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-[#1F2937] flex items-center justify-center py-12 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
+      <div className="w-full max-w-md">
         <Card className="p-8 border-2 border-[#D90429]">
-          {/* Admin Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-[#D90429]/10 rounded-full flex items-center justify-center">
-              <Shield className="w-8 h-8 text-[#D90429]" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-[#D90429]/10 rounded-full flex items-center justify-center">
+              <Shield className="w-6 h-6 text-[#D90429]" />
             </div>
-          </div>
-
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-[#1F2937] mb-2">Admin Panel</h1>
-            <p className="text-[#6B7280]">
-              Sistem idarəetməsi üçün daxil olun
-            </p>
+            <div>
+              <h1 className="text-xl font-bold text-[#1F2937]">Admin Girişi</h1>
+              <p className="text-sm text-[#6B7280]">Premium Reklam Panel</p>
+            </div>
           </div>
 
           {error && (
@@ -70,22 +67,24 @@ export default function AdminLoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              label="Admin istifadəçi adı"
+              label="İstifadəçi adı"
               placeholder="admin"
               value={username}
               onChange={setUsername}
               icon={<Shield className="w-5 h-5" />}
               required
+              disabled={loading}
             />
 
             <Input
-              label="Şifrə"
+              label="Parol"
               type="password"
               placeholder="••••••••"
               value={password}
               onChange={setPassword}
               icon={<Lock className="w-5 h-5" />}
               required
+              disabled={loading}
             />
 
             <Button
@@ -98,16 +97,11 @@ export default function AdminLoginPage() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <Link
-              href="/login"
-              className="text-sm text-[#6B7280] hover:text-[#D90429] transition-colors"
-            >
-              ← İstifadəçi girişinə qayıt
-            </Link>
+          <div className="mt-6 text-center text-xs text-[#9CA3AF]">
+            Test: admin / admin123
           </div>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }
