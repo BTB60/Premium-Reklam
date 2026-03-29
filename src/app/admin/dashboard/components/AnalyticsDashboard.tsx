@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { 
   TrendingUp, TrendingDown, DollarSign, ShoppingBag, Users, 
-  Package, Calendar, Download, ArrowUpRight, ArrowDownRight
+  Package, Calendar, Download, ArrowUpRight, ArrowDownRight, AlertCircle
 } from "lucide-react";
 
 interface Order {
@@ -15,7 +15,7 @@ interface Order {
   userFullName?: string;
   status: string;
   totalAmount: number;
-  paidAmount: number;
+  paidAmount?: number;
   createdAt: string;
   items: OrderItem[];
 }
@@ -42,10 +42,15 @@ interface DailyStats {
   orders: number;
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "https://premium-reklam-backend.onrender.com/api";
+
 export default function AnalyticsDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
 
@@ -53,57 +58,107 @@ export default function AnalyticsDashboard() {
     loadAnalytics();
   }, [dateRange]);
 
-  const loadAnalytics = async () => {
+  const getToken = () => {
+    if (typeof window === "undefined") return null;
     try {
-      // Загрузка заказов
-      const ordersRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://premium-reklam-backend.onrender.com"}/api/orders`,
-        {
-          headers: {
-            "Authorization": `Bearer ${JSON.parse(localStorage.getItem("decor_current_user") || "{}")?.token}`
-          }
-        }
-      );
+      const stored = localStorage.getItem("decor_current_user");
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      return parsed?.token || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const loadAnalytics = async () => {
+    setError("");
+    setLoading(true);
+    
+    try {
+      const token = getToken();
+      const headers: HeadersInit = token ? { "Authorization": `Bearer ${token}` } : {};
+
+      console.log("[Analytics] Fetching orders from:", `${API_BASE}/orders`);
+      
+      // 🔥 Загрузка заказов
+      const ordersRes = await fetch(`${API_BASE}/orders`, { headers });
+      console.log("[Analytics] Orders response status:", ordersRes.status);
+      
       if (ordersRes.ok) {
         const data = await ordersRes.json();
-        const ordersList = data.orders || data || [];
+        console.log("[Analytics] Orders data:", data);
+        
+        // 🔥 Поддержка разных форматов ответа
+        const ordersList = Array.isArray(data) 
+          ? data 
+          : data?.orders 
+          ? data.orders 
+          : data?.content 
+          ? data.content 
+          : [];
+        
+        console.log("[Analytics] Parsed orders count:", ordersList.length);
         
         // Фильтр по дате
         const now = new Date();
         const daysToSubtract = dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : dateRange === "90d" ? 90 : 365;
         const cutoffDate = new Date(now.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
         
-        const filtered = ordersList.filter((o: Order) => new Date(o.createdAt) >= cutoffDate);
+        const filtered = ordersList.filter((o: Order) => {
+          const orderDate = new Date(o.createdAt || o.createdDate || o.date);
+          return !isNaN(orderDate.getTime()) && orderDate >= cutoffDate;
+        });
+        
+        console.log("[Analytics] Filtered orders count:", filtered.length);
         setOrders(filtered);
         
         // Группировка по дням
         const statsByDate: Record<string, DailyStats> = {};
         filtered.forEach((order: Order) => {
-          const date = order.createdAt.split("T")[0];
-          if (!statsByDate[date]) {
-            statsByDate[date] = { date, revenue: 0, orders: 0 };
+          const date = (order.createdAt || order.createdDate || "").split("T")[0];
+          if (date) {
+            if (!statsByDate[date]) {
+              statsByDate[date] = { date, revenue: 0, orders: 0 };
+            }
+            statsByDate[date].revenue += order.totalAmount || 0;
+            statsByDate[date].orders += 1;
           }
-          statsByDate[date].revenue += order.totalAmount || 0;
-          statsByDate[date].orders += 1;
         });
         setDailyStats(Object.values(statsByDate).sort((a, b) => a.date.localeCompare(b.date)));
+      } else {
+        const errText = await ordersRes.text().catch(() => "Unknown error");
+        console.error("[Analytics] Orders fetch error:", ordersRes.status, errText);
+        setError(`Orders: ${ordersRes.status} ${errText.slice(0, 100)}`);
       }
 
-      // Загрузка пользователей
-      const usersRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://premium-reklam-backend.onrender.com"}/api/users`,
-        {
-          headers: {
-            "Authorization": `Bearer ${JSON.parse(localStorage.getItem("decor_current_user") || "{}")?.token}`
-          }
+      // 🔥 Загрузка пользователей (опционально)
+      try {
+        const usersRes = await fetch(`${API_BASE}/users`, { headers });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const usersList = Array.isArray(usersData) ? usersData : usersData?.users || [];
+          setUsers(usersList);
+          console.log("[Analytics] Users loaded:", usersList.length);
         }
-      );
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData);
+      } catch (e) {
+        console.warn("[Analytics] Users fetch skipped:", e);
+        // Не блокируем, если пользователей нет
       }
-    } catch (error) {
-      console.error("[Analytics] Load error:", error);
+
+    } catch (err: any) {
+      console.error("[Analytics] Load error:", err);
+      setError(err.message || "Failed to load analytics");
+      
+      // 🔥 Фолбэк: пробуем загрузить из localStorage
+      try {
+        const stored = localStorage.getItem("decor_orders");
+        if (stored) {
+          const localOrders = JSON.parse(stored);
+          console.log("[Analytics] Fallback: loaded from localStorage:", localOrders.length);
+          setOrders(localOrders);
+          setError(""); // Скрываем ошибку, если фолбэк сработал
+        }
+      } catch {}
     } finally {
       setLoading(false);
     }
@@ -114,33 +169,36 @@ export default function AnalyticsDashboard() {
     totalRevenue: orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
     totalOrders: orders.length,
     avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0) / orders.length : 0,
-    totalPaid: orders.reduce((sum, o) => sum + (o.paidAmount || 0), 0),
-    totalDebt: orders.reduce((sum, o) => sum + ((o.totalAmount || 0) - (o.paidAmount || 0)), 0),
-    completedOrders: orders.filter(o => o.status === "completed").length,
-    pendingOrders: orders.filter(o => o.status === "pending").length,
-    activeCustomers: new Set(orders.map(o => o.userId)).size,
+    totalPaid: orders.reduce((sum, o) => sum + (o.paidAmount || o.totalAmount || 0), 0),
+    totalDebt: 0, // Можно добавить, если есть поле debt
+    completedOrders: orders.filter(o => o.status === "completed" || o.status === "COMPLETED").length,
+    pendingOrders: orders.filter(o => o.status === "pending" || o.status === "PENDING").length,
+    activeCustomers: new Set(orders.map(o => o.userId || o.customerId)).size,
   };
 
-  // 🔥 Статусы заказов (для круговой диаграммы)
-  const statusDistribution = {
-    pending: orders.filter(o => o.status === "pending").length,
-    approved: orders.filter(o => o.status === "approved").length,
-    production: orders.filter(o => o.status === "production").length,
-    ready: orders.filter(o => o.status === "ready").length,
-    completed: orders.filter(o => o.status === "completed").length,
-    cancelled: orders.filter(o => o.status === "cancelled").length,
+  // 🔥 Статусы заказов
+  const statusDistribution: Record<string, number> = {
+    pending: orders.filter(o => o.status?.toLowerCase() === "pending").length,
+    approved: orders.filter(o => o.status?.toLowerCase() === "approved").length,
+    production: orders.filter(o => o.status?.toLowerCase() === "production").length,
+    ready: orders.filter(o => o.status?.toLowerCase() === "ready").length,
+    completed: orders.filter(o => o.status?.toLowerCase() === "completed").length,
+    cancelled: orders.filter(o => o.status?.toLowerCase() === "cancelled").length,
   };
 
   // 🔥 Топ продуктов
   const productStats: Record<string, { quantity: number; revenue: number }> = {};
   orders.forEach(order => {
-    order.items.forEach(item => {
-      if (!productStats[item.productName]) {
-        productStats[item.productName] = { quantity: 0, revenue: 0 };
-      }
-      productStats[item.productName].quantity += item.quantity;
-      productStats[item.productName].revenue += item.lineTotal || 0;
-    });
+    if (Array.isArray(order.items)) {
+      order.items.forEach((item: any) => {
+        const name = item.productName || item.name || "Unknown";
+        if (!productStats[name]) {
+          productStats[name] = { quantity: 0, revenue: 0 };
+        }
+        productStats[name].quantity += item.quantity || 1;
+        productStats[name].revenue += item.lineTotal || item.totalPrice || item.unitPrice || 0;
+      });
+    }
   });
   const topProducts = Object.entries(productStats)
     .map(([name, stats]) => ({ name, ...stats }))
@@ -150,10 +208,10 @@ export default function AnalyticsDashboard() {
   // 🔥 Топ клиентов
   const customerStats: Record<string, { name: string; orders: number; revenue: number }> = {};
   orders.forEach(order => {
-    const customerId = String(order.userId);
+    const customerId = String(order.userId || order.customerId || "unknown");
     if (!customerStats[customerId]) {
       customerStats[customerId] = { 
-        name: order.userFullName || "Naməlum", 
+        name: order.userFullName || order.customerName || "Naməlum", 
         orders: 0, 
         revenue: 0 
       };
@@ -166,8 +224,8 @@ export default function AnalyticsDashboard() {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  // 🔥 Динамика выручки (для линейного графика)
-  const maxDailyRevenue = Math.max(...dailyStats.map(s => s.revenue), 1);
+  // 🔥 Динамика выручки
+  const maxDailyRevenue = dailyStats.length > 0 ? Math.max(...dailyStats.map(s => s.revenue), 1) : 1;
 
   const handleExport = () => {
     const headers = ["Tarix", "Gəlir (AZN)", "Sifariş sayı"];
@@ -214,14 +272,20 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
+      {error && (
+        <Card className="p-4 mb-6 bg-red-50 border border-red-200">
+          <div className="flex items-center gap-2 text-red-700 text-sm">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error}</span>
+          </div>
+        </Card>
+      )}
+
       {/* 🔥 Ключевые метрики */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="w-5 h-5 text-green-500" />
-            <span className="text-xs text-green-600 flex items-center gap-1">
-              <ArrowUpRight className="w-3 h-3" /> +12%
-            </span>
           </div>
           <p className="text-[#6B7280] text-sm">Ümumi gəlir</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.totalRevenue.toFixed(2)} AZN</p>
@@ -230,9 +294,6 @@ export default function AnalyticsDashboard() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <ShoppingBag className="w-5 h-5 text-blue-500" />
-            <span className="text-xs text-blue-600 flex items-center gap-1">
-              <ArrowUpRight className="w-3 h-3" /> +8%
-            </span>
           </div>
           <p className="text-[#6B7280] text-sm">Sifariş sayı</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.totalOrders}</p>
@@ -241,9 +302,6 @@ export default function AnalyticsDashboard() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <Users className="w-5 h-5 text-purple-500" />
-            <span className="text-xs text-purple-600 flex items-center gap-1">
-              <ArrowUpRight className="w-3 h-3" /> +5%
-            </span>
           </div>
           <p className="text-[#6B7280] text-sm">Aktiv müştərilər</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.activeCustomers}</p>
@@ -252,9 +310,6 @@ export default function AnalyticsDashboard() {
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <Package className="w-5 h-5 text-amber-500" />
-            <span className="text-xs text-amber-600 flex items-center gap-1">
-              <ArrowDownRight className="w-3 h-3" /> -3%
-            </span>
           </div>
           <p className="text-[#6B7280] text-sm">Orta çək</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.avgOrderValue.toFixed(2)} AZN</p>
@@ -267,10 +322,6 @@ export default function AnalyticsDashboard() {
           <p className="text-green-600 text-sm">Ödənilib</p>
           <p className="text-xl font-bold text-green-700">{metrics.totalPaid.toFixed(2)} AZN</p>
         </Card>
-        <Card className="p-4 bg-red-50">
-          <p className="text-red-600 text-sm">Borc</p>
-          <p className="text-xl font-bold text-red-700">{metrics.totalDebt.toFixed(2)} AZN</p>
-        </Card>
         <Card className="p-4 bg-emerald-50">
           <p className="text-emerald-600 text-sm">Tamamlanıb</p>
           <p className="text-xl font-bold text-emerald-700">{metrics.completedOrders}</p>
@@ -278,6 +329,10 @@ export default function AnalyticsDashboard() {
         <Card className="p-4 bg-amber-50">
           <p className="text-amber-600 text-sm">Gözləyir</p>
           <p className="text-xl font-bold text-amber-700">{metrics.pendingOrders}</p>
+        </Card>
+        <Card className="p-4 bg-gray-50">
+          <p className="text-gray-600 text-sm">Ləğv edildi</p>
+          <p className="text-xl font-bold text-gray-700">{statusDistribution.cancelled}</p>
         </Card>
       </div>
 
@@ -322,38 +377,40 @@ export default function AnalyticsDashboard() {
             <p className="text-[#6B7280] text-center py-8">Məlumat yoxdur</p>
           ) : (
             <div className="space-y-3">
-              {Object.entries(statusDistribution).map(([status, count]) => {
-                const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0;
-                const colors: Record<string, string> = {
-                  pending: "bg-amber-500",
-                  approved: "bg-blue-500",
-                  production: "bg-purple-500",
-                  ready: "bg-indigo-500",
-                  completed: "bg-green-500",
-                  cancelled: "bg-red-500",
-                };
-                const labels: Record<string, string> = {
-                  pending: "Gözləyir",
-                  approved: "Təsdiqləndi",
-                  production: "İstehsalat",
-                  ready: "Hazır",
-                  completed: "Tamamlandı",
-                  cancelled: "Ləğv edildi",
-                };
-                return (
-                  <div key={status} className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${colors[status]}`} />
-                    <span className="text-sm text-[#6B7280] flex-1">{labels[status]}</span>
-                    <span className="text-sm font-medium text-[#1F2937]">{count}</span>
-                    <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${colors[status]} rounded-full`}
-                        style={{ width: `${percentage}%` }}
-                      />
+              {Object.entries(statusDistribution)
+                .filter(([_, count]) => count > 0)
+                .map(([status, count]) => {
+                  const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0;
+                  const colors: Record<string, string> = {
+                    pending: "bg-amber-500",
+                    approved: "bg-blue-500",
+                    production: "bg-purple-500",
+                    ready: "bg-indigo-500",
+                    completed: "bg-green-500",
+                    cancelled: "bg-red-500",
+                  };
+                  const labels: Record<string, string> = {
+                    pending: "Gözləyir",
+                    approved: "Təsdiqləndi",
+                    production: "İstehsalat",
+                    ready: "Hazır",
+                    completed: "Tamamlandı",
+                    cancelled: "Ləğv edildi",
+                  };
+                  return (
+                    <div key={status} className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${colors[status]}`} />
+                      <span className="text-sm text-[#6B7280] flex-1">{labels[status]}</span>
+                      <span className="text-sm font-medium text-[#1F2937]">{count}</span>
+                      <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${colors[status]} rounded-full`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </Card>
