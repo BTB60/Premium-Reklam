@@ -208,15 +208,22 @@ if (editingId) {
     } catch (error: any) {
       console.error("[Products] Save error:", error);
       
-      // 🔥 Фолбэк: localStorage
-      const productToSave: Product = {
-        id: editingId || Date.now(),
-        ...requestBody,
-        createdAt: editingId 
-          ? products.find(p => p.id === editingId)?.createdAt || new Date().toISOString()
-          : new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+// 🔥 Фолбэк: localStorage
+const productToSave: Product = {
+  id: editingId || Date.now(),
+  name: requestBody.name,
+  description: requestBody.description,
+  category: requestBody.category,
+  unitPrice: requestBody.unitPrice,
+  width: requestBody.width,
+  height: requestBody.height,
+  status: requestBody.status as "active" | "inactive" | "draft",  // 🔥 Явное приведение
+  imageUrl: requestBody.imageUrl,
+  createdAt: editingId 
+    ? products.find(p => p.id === editingId)?.createdAt || new Date().toISOString()
+    : new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
 
       let updated: Product[];
       if (editingId) {
