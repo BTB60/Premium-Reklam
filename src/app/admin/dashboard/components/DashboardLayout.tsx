@@ -164,11 +164,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <ProductsManager />
               </motion.div>
             )}
-            {activeTab === "finance" && (
-              <motion.div key="finance" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="text-[#6B7280]">Maliyyə tezliklə əlavə olunacaq...</div>
-              </motion.div>
-            )}
+{activeTab === "finance" && (
+  <motion.div key="finance" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <FinanceDashboard />
+  </motion.div>
+)}
             {activeTab === "inventory" && (
               <motion.div key="inventory" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="text-[#6B7280]">Anbar tezliklə əlavə olunacaq...</div>
