@@ -7,6 +7,7 @@ import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
 import OrdersTable from "./OrdersTable";
 import NotificationsList from "./NotificationsList";
+import AnalyticsDashboard from "./AnalyticsDashboard";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import { 
@@ -63,15 +64,13 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
   const isAdmin = user?.role === "ADMIN";
   const permissions = subadminSession?.permissions;
 
-  // 🔥 ФИКС: Админ видит ВСЁ, subadmin — только по правам
   const navItems = ALL_NAV_ITEMS.filter((item) => {
-    if (isAdmin) return true; // Админу — всё доступно
-    if (item.adminOnly) return false; // Subadmin не видит adminOnly
+    if (isAdmin) return true;
+    if (item.adminOnly) return false;
     if (!item.permission) return true;
     return hasPermission(permissions, item.permission);
   });
 
-  // Если текущая вкладка недоступна — переключаем на dashboard
   const currentTabAllowed = navItems.some((item) => item.id === activeTab);
   if (!currentTabAllowed && activeTab !== "dashboard") {
     onTabChange("dashboard");
@@ -79,7 +78,6 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
 
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
-      {/* Header */}
       <header className="bg-[#1F2937] text-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -107,7 +105,6 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
       </header>
 
       <div className="flex relative">
-        {/* Sidebar */}
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
@@ -134,7 +131,6 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
           </nav>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
           <AnimatePresence mode="wait">
             {activeTab === "dashboard" && (
@@ -157,11 +153,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <NotificationsList />
               </motion.div>
             )}
-{activeTab === "analytics" && (
-  <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <AnalyticsDashboard />
-  </motion.div>
-)}
+            {activeTab === "analytics" && (
+              <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AnalyticsDashboard />
+              </motion.div>
+            )}
             {activeTab === "products" && (
               <motion.div key="products" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="text-[#6B7280]">Məhsullar tezliklə əlavə olunacaq...</div>
