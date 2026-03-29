@@ -94,6 +94,11 @@ export default function SubadminLoginPage() {
       };
 
       if (typeof window !== "undefined") {
+        // 🔥 Очищаем админ-сессию перед входом subadmin
+        localStorage.removeItem("decor_current_user");
+        // 🔥 Устанавливаем флаг типа сессии
+        localStorage.setItem("premium_session_type", "subadmin");
+        
         sessionStorage.setItem(SUBADMIN_SESSION_KEY, JSON.stringify(session));
 
         // Обновляем lastLogin в списке subadmin

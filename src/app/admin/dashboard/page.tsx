@@ -11,7 +11,7 @@ interface SubadminSession {
   subadminId: string;
   login: string;
   role: "SUBADMIN";
-  permissions: any;
+  permissions: Record<string, "none" | "view" | "edit">;
   lastLogin?: string;
 }
 
@@ -24,44 +24,53 @@ export default function DashboardPage() {
 
   useEffect(() => {
     try {
-      // 1. Проверяем сессию subadmin
-      const storedSubadmin = typeof window !== "undefined" ? sessionStorage.getItem("premium_subadmin_session") : null;
-      if (storedSubadmin) {
-        try {
-          const parsed = JSON.parse(storedSubadmin) as SubadminSession;
-          if (parsed?.subadminId && parsed?.role === "SUBADMIN") {
-            setSubadminSession(parsed);
-            setUser({
-              role: "SUBADMIN",
-              fullName: parsed.login,
-              permissions: parsed.permissions,
-            });
-            setLoading(false);
-            return;
+      // 🔥 1. Проверяем флаг типа сессии
+      const sessionType = typeof window !== "undefined" ? localStorage.getItem("premium_session_type") : null;
+      
+      // 2. Если сессия subadmin — загружаем её
+      if (sessionType === "subadmin") {
+        const stored = typeof window !== "undefined" ? sessionStorage.getItem("premium_subadmin_session") : null;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored) as SubadminSession;
+            if (parsed?.subadminId && parsed?.role === "SUBADMIN") {
+              setSubadminSession(parsed);
+              setUser({
+                role: "SUBADMIN",
+                fullName: parsed.login,
+                permissions: parsed.permissions,
+              });
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error("[Dashboard] Subadmin parse error:", e);
+            sessionStorage.removeItem("premium_subadmin_session");
+            localStorage.removeItem("premium_session_type");
           }
-        } catch (e) {
-          console.error("[Dashboard] Subadmin parse error:", e);
-          sessionStorage.removeItem("premium_subadmin_session");
+        }
+      }
+      
+      // 3. Если сессия admin — загружаем её
+      if (sessionType === "admin" || !sessionType) {
+        const stored = typeof window !== "undefined" ? localStorage.getItem("decor_current_user") : null;
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed?.token && parsed?.role && parsed.role === "ADMIN") {
+              setUser(parsed);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error("[Dashboard] Admin parse error:", e);
+            localStorage.removeItem("decor_current_user");
+            localStorage.removeItem("premium_session_type");
+          }
         }
       }
 
-      // 2. Проверяем сессию admin
-      const stored = typeof window !== "undefined" ? localStorage.getItem("decor_current_user") : null;
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed?.token && parsed?.role) {
-            setUser(parsed);
-            setLoading(false);
-            return;
-          }
-        } catch (e) {
-          console.error("[Dashboard] Admin parse error:", e);
-          localStorage.removeItem("decor_current_user");
-        }
-      }
-
-      // 3. Нет сессии — редирект на логин
+      // 4. Нет валидной сессии — редирект
       router.push("/admin/login");
     } catch (error) {
       console.error("[Dashboard] Init error:", error);
@@ -71,8 +80,14 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("decor_current_user");
-      sessionStorage.removeItem("premium_subadmin_session");
+      // 🔥 Очищаем ТОЛЬКО текущую сессию по типу
+      const sessionType = localStorage.getItem("premium_session_type");
+      if (sessionType === "subadmin") {
+        sessionStorage.removeItem("premium_subadmin_session");
+      } else {
+        localStorage.removeItem("decor_current_user");
+      }
+      localStorage.removeItem("premium_session_type");
     }
     authApi.logout();
     router.push("/admin/login");
