@@ -147,11 +147,11 @@ export default function DashboardLayout({ user, activeTab, onTabChange, onLogout
                 <div className="text-[#6B7280]">Dəstək tezliklə əlavə olunacaq...</div>
               </motion.div>
             )}
-            {activeTab === "settings" && (
-              <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="text-[#6B7280]">Ayarlar tezliklə əlavə olunacaq...</div>
-              </motion.div>
-            )}
+{activeTab === "settings" && (
+  <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <SettingsManager />
+  </motion.div>
+)}
           </AnimatePresence>
         </main>
       </div>
