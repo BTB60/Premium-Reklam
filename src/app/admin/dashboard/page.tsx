@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import DashboardLayout from "./components/DashboardLayout";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
+// 🔥 ДОБАВЛЕНО: "shops" в тип ActiveTab
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
 
 interface SubadminSession {
   subadminId: string;
@@ -24,7 +25,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     try {
-      // 🔥 ЛОГИ: что в localStorage/sessionStorage
       const sessionType = typeof window !== "undefined" ? localStorage.getItem("premium_session_type") : null;
       const adminSession = typeof window !== "undefined" ? localStorage.getItem("decor_current_user") : null;
       const subadminSessionStored = typeof window !== "undefined" ? sessionStorage.getItem("premium_subadmin_session") : null;
@@ -33,7 +33,6 @@ export default function DashboardPage() {
       console.log("[Dashboard] adminSession:", adminSession);
       console.log("[Dashboard] subadminSession:", subadminSessionStored);
 
-      // 1. Если сессия subadmin — загружаем её
       if (sessionType === "subadmin" && subadminSessionStored) {
         try {
           const parsed = JSON.parse(subadminSessionStored) as SubadminSession;
@@ -55,7 +54,6 @@ export default function DashboardPage() {
         }
       }
       
-      // 2. Если сессия admin — загружаем её
       if (sessionType === "admin" || !sessionType) {
         if (adminSession) {
           try {
@@ -79,7 +77,6 @@ export default function DashboardPage() {
         }
       }
 
-      // 3. Нет валидной сессии — редирект
       console.warn("[Dashboard] No valid session, redirecting to login");
       router.push("/admin/login");
     } catch (error) {
@@ -102,6 +99,11 @@ export default function DashboardPage() {
     router.push("/admin/login");
   };
 
+  // 🔥 ФИКС: оборачиваем setActiveTab в функцию нужного типа
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#1F2937] flex items-center justify-center">
@@ -117,7 +119,7 @@ export default function DashboardPage() {
       user={user}
       subadminSession={subadminSession}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange}  // 🔥 ИСПРАВЛЕНО: используем обёрнутую функцию
       onLogout={handleLogout}
     />
   );
