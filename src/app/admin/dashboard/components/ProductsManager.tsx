@@ -172,22 +172,29 @@ export default function ProductsManager() {
         const savedProduct = responseText ? JSON.parse(responseText) : requestBody;
         
         // 🔥 Обновляем состояние с сохранённой ценой
-        let updated: Product[];
-        if (editingId) {
-          updated = products.map(p => 
-            p.id === editingId 
-              ? { ...p, ...requestBody, id: savedProduct.id || editingId, updatedAt: new Date().toISOString() } 
-              : p
-          );
-        } else {
-          const newProduct: Product = {
-            ...requestBody,
-            id: savedProduct.id || Date.now(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          updated = [...products, newProduct];
-        }
+let updated: Product[];
+if (editingId) {
+  updated = products.map(p => 
+    p.id === editingId 
+      ? { 
+          ...p, 
+          ...requestBody, 
+          id: savedProduct.id || editingId, 
+          status: requestBody.status as "active" | "inactive" | "draft",
+          updatedAt: new Date().toISOString() 
+        } 
+      : p
+  );
+} else {
+  const newProduct: Product = {
+    ...requestBody,
+    id: savedProduct.id || Date.now(),
+    status: requestBody.status as "active" | "inactive" | "draft",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  updated = [...products, newProduct];
+}
         
         setProducts(updated);
         localStorage.setItem("decor_products", JSON.stringify(updated));
