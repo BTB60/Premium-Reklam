@@ -72,8 +72,17 @@ export default function ProductsManager() {
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.products || [];
-        setProducts(list);
-        localStorage.setItem("decor_products", JSON.stringify(list));
+        
+        // Мапим backend salePrice → frontend unitPrice
+        const mapped = list.map((p: any) => ({
+          ...p,
+          id: p.id ? (typeof p.id === 'object' ? p.id.toString() : p.id) : Date.now(),
+          unitPrice: p.salePrice !== undefined && p.salePrice !== null ? Number(p.salePrice) : 0,
+          status: p.status ? p.status.toLowerCase() : "active",
+        }));
+        
+        setProducts(mapped);
+        localStorage.setItem("decor_products", JSON.stringify(mapped));
       }
     } catch (error) {
       console.error("[Products] Load error:", error);
@@ -121,29 +130,26 @@ export default function ProductsManager() {
     }
 
     const priceValue = parseFloat(unitPrice);
-    const finalPrice = isNaN(priceValue) ? 0 : priceValue;
-    
+    const finalPrice = isNaN(priceValue) || priceValue < 0 ? 0 : priceValue;
     const widthValue = width === "" ? undefined : parseFloat(width);
     const heightValue = height === "" ? undefined : parseFloat(height);
 
-    // 🔥 Явно формируем тело запроса
     const requestBody = {
       name: name.trim(),
       description: description.trim() || "",
       category: category.trim() || "Banner",
-      unitPrice: finalPrice,  // 🔥 Число, не строка
+      salePrice: finalPrice,
       width: widthValue,
       height: heightValue,
-      status: status,
+      status: status.toUpperCase(),
       imageUrl: imageUrl.trim() || "",
     };
 
-    // 🔥 ЛОГ: что отправляем
-    console.log("[Products] Sending to API:", {
-      method: editingId ? "PUT" : "POST",
-      url: editingId ? `${API_BASE}/products/${editingId}` : `${API_BASE}/products`,
-      body: requestBody
-    });
+    // 🔥 ЖЕСТКОЕ ЛОГИРОВАНИЕ
+    console.log("=== [PRODUCTS] SAVING ===");
+    console.log("Editing ID:", editingId);
+    console.log("Request body:", JSON.stringify(requestBody, null, 2));
+    console.log("Expected salePrice:", finalPrice);
 
     try {
       const token = getToken();
@@ -151,6 +157,9 @@ export default function ProductsManager() {
       const url = editingId 
         ? `${API_BASE}/products/${editingId}` 
         : `${API_BASE}/products`;
+
+      console.log("Fetch URL:", url);
+      console.log("Method:", method);
 
       const res = await fetch(url, {
         method,
@@ -161,84 +170,107 @@ export default function ProductsManager() {
         body: JSON.stringify(requestBody)
       });
 
-      // 🔥 ЛОГ: ответ сервера
       const responseText = await res.text();
-      console.log("[Products] API Response:", {
-        status: res.status,
-        body: responseText
-      });
+      console.log("Response status:", res.status);
+      console.log("Response body:", responseText);
 
       if (res.ok) {
-        const savedProduct = responseText ? JSON.parse(responseText) : requestBody;
+        const savedProduct = responseText ? JSON.parse(responseText) : {};
         
-        // 🔥 Обновляем состояние с сохранённой ценой
-let updated: Product[];
-if (editingId) {
-  updated = products.map(p => 
-    p.id === editingId 
-      ? { 
-          ...p, 
-          ...requestBody, 
-          id: savedProduct.id || editingId, 
-          status: requestBody.status as "active" | "inactive" | "draft",
-          updatedAt: new Date().toISOString() 
-        } 
-      : p
-  );
-} else {
-  const newProduct: Product = {
-    ...requestBody,
-    id: savedProduct.id || Date.now(),
-    status: requestBody.status as "active" | "inactive" | "draft",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-  updated = [...products, newProduct];
-}
+        // 🔥 Проверка: вернул ли бэкенд salePrice?
+        const returnedPrice = savedProduct.salePrice;
+        console.log("Backend returned salePrice:", returnedPrice);
+        
+        if (returnedPrice === undefined || returnedPrice === null) {
+          console.warn("⚠️ Backend did NOT return salePrice - check ProductService.java");
+        }
+
+        // Обновляем локально
+        let updated: Product[];
+        if (editingId) {
+          updated = products.map(p => 
+            p.id === editingId 
+              ? { 
+                  ...p, 
+                  name: requestBody.name,
+                  description: requestBody.description,
+                  category: requestBody.category,
+                  unitPrice: requestBody.salePrice,
+                  width: requestBody.width,
+                  height: requestBody.height,
+                  status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+                  imageUrl: requestBody.imageUrl,
+                  updatedAt: new Date().toISOString() 
+                } 
+              : p
+          );
+        } else {
+          const newProduct: Product = {
+            id: typeof savedProduct.id === 'object' ? savedProduct.id.toString() : (savedProduct.id || Date.now()),
+            name: requestBody.name,
+            description: requestBody.description,
+            category: requestBody.category,
+            unitPrice: requestBody.salePrice,
+            width: requestBody.width,
+            height: requestBody.height,
+            status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+            imageUrl: requestBody.imageUrl,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          updated = [...products, newProduct];
+        }
         
         setProducts(updated);
         localStorage.setItem("decor_products", JSON.stringify(updated));
+        
         setShowForm(false);
         setEditingId(null);
         resetForm();
-        setFormError("Yadda saxlandı");
+        setFormError("Yadda saxlandı: " + finalPrice + " AZN");
       } else {
+        console.error("Backend error:", res.status, responseText);
         throw new Error(responseText || `HTTP ${res.status}`);
       }
     } catch (error: any) {
       console.error("[Products] Save error:", error);
       
-// 🔥 Фолбэк: localStorage
-const productToSave: Product = {
-  id: editingId || Date.now(),
-  name: requestBody.name,
-  description: requestBody.description,
-  category: requestBody.category,
-  unitPrice: requestBody.unitPrice,
-  width: requestBody.width,
-  height: requestBody.height,
-  status: requestBody.status as "active" | "inactive" | "draft",  // 🔥 Явное приведение
-  imageUrl: requestBody.imageUrl,
-  createdAt: editingId 
-    ? products.find(p => p.id === editingId)?.createdAt || new Date().toISOString()
-    : new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-};
-
+      // Фолбэк
       let updated: Product[];
       if (editingId) {
-        updated = products.map(p => p.id === editingId ? productToSave : p);
+        updated = products.map(p => 
+          p.id === editingId 
+            ? { 
+                ...p, 
+                name: requestBody.name, 
+                unitPrice: requestBody.salePrice, 
+                status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+                updatedAt: new Date().toISOString() 
+              } 
+            : p
+        );
       } else {
-        updated = [...products, productToSave];
+        updated = [...products, { 
+          id: Date.now(), 
+          name: requestBody.name, 
+          unitPrice: requestBody.salePrice,
+          status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+          category: requestBody.category,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }];
       }
       
       setProducts(updated);
       localStorage.setItem("decor_products", JSON.stringify(updated));
+      
       setShowForm(false);
       setEditingId(null);
       resetForm();
-      setFormError("Yadda saxlandı (lokal)");
+      setFormError("Yadda saxlandı (lokal): " + requestBody.salePrice + " AZN");
     }
+    
+    console.log("=== [PRODUCTS] END ===");
   };
 
   const handleDelete = async (id: number) => {
