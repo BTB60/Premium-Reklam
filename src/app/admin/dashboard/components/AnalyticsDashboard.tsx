@@ -208,7 +208,7 @@ export default function AnalyticsDashboard() {
   // 🔥 Топ клиентов
   const customerStats: Record<string, { name: string; orders: number; revenue: number }> = {};
   orders.forEach(order => {
-    const customerId = String(order.userId || order.customerId || "unknown");
+    const customerId = String((order as any).userId || (order as any).customerId || "unknown");
     if (!customerStats[customerId]) {
       customerStats[customerId] = { 
         name: (order as any).userFullName || (order as any).customerName || "Naməlum",
