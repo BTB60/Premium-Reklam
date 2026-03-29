@@ -173,7 +173,7 @@ export default function AnalyticsDashboard() {
     totalDebt: 0, // Можно добавить, если есть поле debt
     completedOrders: orders.filter(o => o.status === "completed" || o.status === "COMPLETED").length,
     pendingOrders: orders.filter(o => o.status === "pending" || o.status === "PENDING").length,
-    activeCustomers: new Set(orders.map(o => o.userId || o.customerId)).size,
+    activeCustomers: new Set(orders.map(o => (o as any).userId || (o as any).customerId)).size,
   };
 
   // 🔥 Статусы заказов
@@ -196,7 +196,7 @@ export default function AnalyticsDashboard() {
           productStats[name] = { quantity: 0, revenue: 0 };
         }
         productStats[name].quantity += item.quantity || 1;
-        productStats[name].revenue += item.lineTotal || item.totalPrice || item.unitPrice || 0;
+        productStats[name].revenue += (item as any).lineTotal || (item as any).totalPrice || (item as any).unitPrice || 0;
       });
     }
   });
@@ -211,7 +211,7 @@ export default function AnalyticsDashboard() {
     const customerId = String(order.userId || order.customerId || "unknown");
     if (!customerStats[customerId]) {
       customerStats[customerId] = { 
-        name: order.userFullName || order.customerName || "Naməlum", 
+        name: (order as any).userFullName || (order as any).customerName || "Naməlum",
         orders: 0, 
         revenue: 0 
       };
