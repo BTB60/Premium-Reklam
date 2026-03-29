@@ -13,6 +13,7 @@ import FinanceDashboard from "./FinanceDashboard";
 import InventoryManager from "./InventoryManager";
 import WorkerTasksManager from "./WorkerTasksManager";
 import ShopsManager from "./ShopsManager";
+import SupportManager from "./SupportManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import { 
@@ -189,11 +190,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <WorkerTasksManager />
               </motion.div>
             )}
-{activeTab === "support" && (
-  <motion.div key="support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <SupportManager />
-  </motion.div>
-)}
+            {activeTab === "support" && (
+              <motion.div key="support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <SupportManager />
+              </motion.div>
+            )}
             {activeTab === "settings" && (
               <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <SettingsManager />
