@@ -7,6 +7,7 @@ import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
 import OrdersTable from "./OrdersTable";
 import SettingsManager from "./SettingsManager";
+import AccessSettingsManager from "./AccessSettingsManager";
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
@@ -33,7 +34,8 @@ const navItems: { id: ActiveTab; label: string; icon: any }[] = [
   { id: "inventory", label: "Anbar", icon: Boxes },
   { id: "workerTasks", label: "Tapşırıqlar", icon: ClipboardList },
   { id: "support", label: "Dəstək", icon: Headphones },
-  { id: "settings", label: "Ayarlar", icon: Settings },
+  { id: "settings", label: "Sistem Ayarları", icon: Settings },
+  { id: "accessSettings", label: "Giriş Ayarları", icon: Shield },
 ];
 
 export default function DashboardLayout({ user, activeTab, onTabChange, onLogout }: DashboardLayoutProps) {
@@ -151,6 +153,11 @@ export default function DashboardLayout({ user, activeTab, onTabChange, onLogout
             {activeTab === "settings" && (
               <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <SettingsManager />
+              </motion.div>
+            )}
+            {activeTab === "accessSettings" && (
+              <motion.div key="accessSettings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AccessSettingsManager />
               </motion.div>
             )}
           </AnimatePresence>
