@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
 import OrdersTable from "./OrdersTable";
+import SettingsManager from "./SettingsManager";
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
@@ -147,11 +148,11 @@ export default function DashboardLayout({ user, activeTab, onTabChange, onLogout
                 <div className="text-[#6B7280]">Dəstək tezliklə əlavə olunacaq...</div>
               </motion.div>
             )}
-{activeTab === "settings" && (
-  <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <SettingsManager />
-  </motion.div>
-)}
+            {activeTab === "settings" && (
+              <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <SettingsManager />
+              </motion.div>
+            )}
           </AnimatePresence>
         </main>
       </div>
