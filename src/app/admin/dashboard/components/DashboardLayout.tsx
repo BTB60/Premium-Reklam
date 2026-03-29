@@ -10,6 +10,7 @@ import NotificationsList from "./NotificationsList";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import ProductsManager from "./ProductsManager";
 import FinanceDashboard from "./FinanceDashboard";
+import InventoryManager from "./InventoryManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import { 
@@ -170,11 +171,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <FinanceDashboard />
               </motion.div>
             )}
-{activeTab === "inventory" && (
-  <motion.div key="inventory" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <InventoryManager />
-  </motion.div>
-)}
+            {activeTab === "inventory" && (
+              <motion.div key="inventory" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <InventoryManager />
+              </motion.div>
+            )}
             {activeTab === "workerTasks" && (
               <motion.div key="workerTasks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="text-[#6B7280]">Tapşırıqlar tezliklə əlavə olunacaq...</div>
