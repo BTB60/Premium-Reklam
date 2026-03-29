@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
 import OrdersTable from "./OrdersTable";
+import NotificationsList from "./NotificationsList";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import { 
@@ -151,11 +152,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <OrdersTable />
               </motion.div>
             )}
-{activeTab === "notifications" && (
-  <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <NotificationsList />
-  </motion.div>
-)}
+            {activeTab === "notifications" && (
+              <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <NotificationsList />
+              </motion.div>
+            )}
             {activeTab === "analytics" && (
               <motion.div key="analytics" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="text-[#6B7280]">Analytics tezliklə əlavə olunacaq...</div>
