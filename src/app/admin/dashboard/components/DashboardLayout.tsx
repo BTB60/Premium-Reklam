@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
+import ShopsManager from "./ShopsManager";
 import OrdersTable from "./OrdersTable";
 import NotificationsList from "./NotificationsList";
 import AnalyticsDashboard from "./AnalyticsDashboard";
@@ -42,6 +43,7 @@ const ALL_NAV_ITEMS: { id: ActiveTab; label: string; icon: any; permission?: key
   { id: "dashboard", label: "Dashboard", icon: TrendingUp },
   { id: "users", label: "İstifadəçilər", icon: Users, permission: "users" },
   { id: "orders", label: "Sifarişlər", icon: Package, permission: "orders" },
+  { id: "shops", label: "Mağazalar", icon: Store, permission: "products" },
   { id: "notifications", label: "Bildirişlər", icon: Bell, permission: "support" },
   { id: "analytics", label: "Analytics", icon: BarChart3, permission: "analytics" },
   { id: "products", label: "Məhsullar", icon: Store, permission: "products" },
@@ -152,6 +154,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <OrdersTable />
               </motion.div>
             )}
+{activeTab === "shops" && (
+  <motion.div key="shops" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <ShopsManager />
+  </motion.div>
+)}
             {activeTab === "notifications" && (
               <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <NotificationsList />
