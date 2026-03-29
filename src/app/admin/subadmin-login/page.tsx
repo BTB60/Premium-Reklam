@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -34,8 +34,14 @@ interface Subadmin {
 
 function getSubadmins(): Subadmin[] {
   if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(SUBADMINS_KEY);
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem(SUBADMINS_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export default function SubadminLoginPage() {
@@ -45,6 +51,16 @@ export default function SubadminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lang, setLang] = useState<"az" | "en">("az");
+  const [debugInfo, setDebugInfo] = useState<string>("");
+
+  // 🔥 Отладка: покажем, какие subadmin-ы есть в localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const subs = getSubadmins();
+      setDebugInfo(`Найдено subadmin-ов: ${subs.length}\n${subs.map(s => `• ${s.login}`).join("\n") || "Пусто"}`);
+      console.log("[SubadminLogin] Available subadmins:", subs);
+    }
+  }, []);
 
   const t = {
     az: {
@@ -76,11 +92,33 @@ export default function SubadminLoginPage() {
     setError("");
     setLoading(true);
 
+    // 🔥 Нормализуем ввод
+    const inputLogin = login.trim();
+    const inputPassword = password.trim();
+
+    console.log("[SubadminLogin] Attempting login:", { inputLogin, inputPassword });
+
     try {
       const subadmins = getSubadmins();
-      const subadmin = subadmins.find((s) => s.login === login && s.password === password);
+      console.log("[SubadminLogin] All subadmins in storage:", subadmins);
+
+      // 🔥 Ищем с тримом и сравнением строка-в-строку
+      const subadmin = subadmins.find((s) => 
+        s.login.trim() === inputLogin && s.password === inputPassword
+      );
+
+      console.log("[SubadminLogin] Found subadmin:", subadmin ? "YES" : "NO");
 
       if (!subadmin) {
+        // 🔥 Детальная отладка: покажем, что не совпало
+        const loginMatch = subadmins.find(s => s.login.trim() === inputLogin);
+        if (loginMatch) {
+          console.warn("[SubadminLogin] Login OK, password mismatch");
+          setError("Parol yanlışdır");
+        } else {
+          console.warn("[SubadminLogin] Login not found");
+          setError("Login tapılmadı");
+        }
         throw new Error("Invalid credentials");
       }
 
@@ -96,7 +134,6 @@ export default function SubadminLoginPage() {
       if (typeof window !== "undefined") {
         // 🔥 Очищаем админ-сессию перед входом subadmin
         localStorage.removeItem("decor_current_user");
-        // 🔥 Устанавливаем флаг типа сессии
         localStorage.setItem("premium_session_type", "subadmin");
         
         sessionStorage.setItem(SUBADMIN_SESSION_KEY, JSON.stringify(session));
@@ -106,11 +143,14 @@ export default function SubadminLoginPage() {
           s.id === subadmin.id ? { ...s, lastLogin: session.lastLogin } : s
         );
         localStorage.setItem(SUBADMINS_KEY, JSON.stringify(updated));
+        
+        console.log("[SubadminLogin] Session saved:", session);
       }
 
       router.push("/admin/dashboard");
       router.refresh();
-    } catch {
+    } catch (err: any) {
+      console.error("[SubadminLogin] Error:", err);
       setError(ui.error);
     } finally {
       setLoading(false);
@@ -148,12 +188,19 @@ export default function SubadminLoginPage() {
             </div>
           )}
 
+          {/* 🔥 Отладочная панель (видна только в консоли, но можно раскомментировать для UI) */}
+          {process.env.NODE_ENV === "development" && debugInfo && (
+            <pre className="mb-4 p-3 bg-gray-100 rounded text-xs text-gray-700 overflow-auto max-h-32">
+              {debugInfo}
+            </pre>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
               label={ui.login}
               placeholder="subadmin1"
               value={login}
-              onChange={setLogin}
+              onChange={(v) => setLogin(v)}
               icon={<Shield className="w-5 h-5" />}
               required
               disabled={loading}
@@ -164,7 +211,7 @@ export default function SubadminLoginPage() {
               type="password"
               placeholder="••••••••"
               value={password}
-              onChange={setPassword}
+              onChange={(v) => setPassword(v)}
               icon={<Lock className="w-5 h-5" />}
               required
               disabled={loading}
