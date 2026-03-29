@@ -5,8 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { 
-  Search, Plus, Edit, Trash2, Save, X, Package, Tag, DollarSign, 
-  Image as ImageIcon, CheckCircle, AlertCircle
+  Search, Plus, Edit, Trash2, Save, X, Package, AlertCircle
 } from "lucide-react";
 
 interface Product {
@@ -34,9 +33,20 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
 
+// 🔥 ДЕФОЛТНЫЕ КАТЕГОРИИ — всегда доступны
+const DEFAULT_CATEGORIES: ProductCategory[] = [
+  { id: 1, name: "Banner", color: "bg-blue-100 text-blue-700" },
+  { id: 2, name: "Vinil", color: "bg-green-100 text-green-700" },
+  { id: 3, name: "Poster", color: "bg-purple-100 text-purple-700" },
+  { id: 4, name: "Kətan", color: "bg-amber-100 text-amber-700" },
+  { id: 5, name: "Oracal", color: "bg-pink-100 text-pink-700" },
+  { id: 6, name: "Digiflex", color: "bg-cyan-100 text-cyan-700" },
+  { id: 7, name: "Laminat", color: "bg-indigo-100 text-indigo-700" },
+];
+
 export default function ProductsManager() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -84,9 +94,12 @@ export default function ProductsManager() {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.products || [];
         setProducts(list);
+        // Сохраняем в localStorage для фолбэка
+        localStorage.setItem("decor_products", JSON.stringify(list));
       }
     } catch (error) {
       console.error("[Products] Load error:", error);
+      // Фолбэк: localStorage
       try {
         const stored = localStorage.getItem("decor_products");
         if (stored) setProducts(JSON.parse(stored));
@@ -105,17 +118,13 @@ export default function ProductsManager() {
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.categories || [];
-        setCategories(list);
+        if (list.length > 0) {
+          setCategories(list);
+        }
       }
     } catch (error) {
-      console.error("[Products] Load categories error:", error);
-      setCategories([
-        { id: 1, name: "Banner", color: "bg-blue-100 text-blue-700" },
-        { id: 2, name: "Vinil", color: "bg-green-100 text-green-700" },
-        { id: 3, name: "Poster", color: "bg-purple-100 text-purple-700" },
-        { id: 4, name: "Kətan", color: "bg-amber-100 text-amber-700" },
-        { id: 5, name: "Oracal", color: "bg-pink-100 text-pink-700" },
-      ]);
+      console.warn("[Products] Categories fetch failed, using defaults");
+      // Оставляем DEFAULT_CATEGORIES
     }
   };
 
@@ -123,8 +132,9 @@ export default function ProductsManager() {
     e.preventDefault();
     setFormError("");
 
-    if (!formData.name || !formData.category || !formData.unitPrice) {
-      setFormError("Ad, kateqoriya və qiymət tələb olunur");
+    // 🔥 Категория НЕ обязательна для localStorage-фолбэка
+    if (!formData.name || !formData.unitPrice) {
+      setFormError("Ad və qiymət tələb olunur");
       return;
     }
 
@@ -141,7 +151,10 @@ export default function ProductsManager() {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          category: formData.category || "Banner" // 🔥 Дефолт если пусто
+        })
       });
 
       if (res.ok) {
@@ -150,41 +163,40 @@ export default function ProductsManager() {
         setEditingId(null);
         resetForm();
       } else {
-        const err = await res.json().catch(() => ({}));
-        setFormError(err.message || "Xəta baş verdi");
+        throw new Error("API error");
       }
     } catch (error) {
       console.error("[Products] Save error:", error);
-      setFormError("Server ilə əlaqə xətası");
       
+      // 🔥 Фолбэк: сохранить в localStorage
       try {
+        const productToSave = {
+          ...formData,
+          id: editingId || Date.now(),
+          category: formData.category || "Banner",
+          status: formData.status || "active",
+          createdAt: editingId ? undefined : new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as Product;
+
         if (editingId) {
           const updated = products.map(p => 
-            p.id === editingId ? { ...p, ...formData, updatedAt: new Date().toISOString() } : p
+            p.id === editingId ? { ...p, ...productToSave } : p
           );
           setProducts(updated);
           localStorage.setItem("decor_products", JSON.stringify(updated));
         } else {
-          const newProduct: Product = {
-            id: Date.now(),
-            name: formData.name!,
-            description: formData.description,
-            category: formData.category!,
-            unitPrice: formData.unitPrice!,
-            width: formData.width,
-            height: formData.height,
-            status: formData.status as any || "active",
-            imageUrl: formData.imageUrl,
-            createdAt: new Date().toISOString(),
-          };
-          const updated = [...products, newProduct];
+          const updated = [...products, productToSave];
           setProducts(updated);
           localStorage.setItem("decor_products", JSON.stringify(updated));
         }
         setShowForm(false);
         setEditingId(null);
         resetForm();
-      } catch {}
+        setFormError("Yadda saxlandı (lokal)");
+      } catch (e) {
+        setFormError("Xəta baş verdi");
+      }
     }
   };
 
@@ -201,12 +213,13 @@ export default function ProductsManager() {
       if (res.ok) {
         await loadProducts();
       } else {
-        const updated = products.filter(p => p.id !== id);
-        setProducts(updated);
-        localStorage.setItem("decor_products", JSON.stringify(updated));
+        throw new Error("API error");
       }
     } catch (error) {
-      console.error("[Products] Delete error:", error);
+      // Фолбэк: удалить из localStorage
+      const updated = products.filter(p => p.id !== id);
+      setProducts(updated);
+      localStorage.setItem("decor_products", JSON.stringify(updated));
     }
   };
 
@@ -360,14 +373,13 @@ export default function ProductsManager() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Kateqoriya *</label>
+                <label className="block text-sm font-medium text-[#6B7280] mb-1">Kateqoriya</label>
                 <select
                   value={formData.category || ""}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                  required
                 >
-                  <option value="">Seçin</option>
+                  <option value="">Seçin (default: Banner)</option>
                   {categories.map(c => (
                     <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
@@ -497,7 +509,7 @@ export default function ProductsManager() {
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       categories.find(c => c.name === product.category)?.color || "bg-gray-100 text-gray-700"
                     }`}>
-                      {product.category}
+                      {product.category || "-"}
                     </span>
                   </td>
                   <td className="py-3 px-4 text-sm text-[#6B7280]">
