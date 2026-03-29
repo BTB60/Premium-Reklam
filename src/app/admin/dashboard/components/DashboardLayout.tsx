@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
-import ShopsManager from "./ShopsManager";
 import OrdersTable from "./OrdersTable";
 import NotificationsList from "./NotificationsList";
 import AnalyticsDashboard from "./AnalyticsDashboard";
@@ -13,6 +12,7 @@ import ProductsManager from "./ProductsManager";
 import FinanceDashboard from "./FinanceDashboard";
 import InventoryManager from "./InventoryManager";
 import WorkerTasksManager from "./WorkerTasksManager";
+import ShopsManager from "./ShopsManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import { 
@@ -21,7 +21,7 @@ import {
   TrendingUp, Award
 } from "lucide-react";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
 type PermissionLevel = "none" | "view" | "edit";
 
 interface SubadminSession {
@@ -154,11 +154,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <OrdersTable />
               </motion.div>
             )}
-{activeTab === "shops" && (
-  <motion.div key="shops" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <ShopsManager />
-  </motion.div>
-)}
+            {activeTab === "shops" && (
+              <motion.div key="shops" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <ShopsManager />
+              </motion.div>
+            )}
             {activeTab === "notifications" && (
               <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <NotificationsList />
