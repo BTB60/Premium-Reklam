@@ -30,6 +30,7 @@ interface User {
   username: string;
   email?: string;
   phone?: string;
+  role?: string;
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
@@ -76,7 +77,6 @@ export default function ShopsManager() {
   const loadShops = async () => {
     try {
       const token = getToken();
-      // Пока нет эндпоинта магазинов - используем localStorage
       const stored = localStorage.getItem("decor_shops");
       if (stored) {
         setShops(JSON.parse(stored));
@@ -97,8 +97,7 @@ export default function ShopsManager() {
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.users || [];
-        // Фильтруем не-админов
-        const customers = list.filter((u: User) => u.role !== "ADMIN");
+        const customers = list.filter((u: User) => (u as any).role !== "ADMIN");
         setUsers(customers);
       }
     } catch (error) {
@@ -173,7 +172,6 @@ export default function ShopsManager() {
     } catch (error) {
       console.error("[Shops] Save error:", error);
       
-      // Фолбэк: localStorage
       const selectedUser = users.find(u => u.id === formData.userId);
       const shopToSave: Shop = {
         id: editingId || Date.now(),
@@ -246,7 +244,6 @@ export default function ShopsManager() {
       if (res.ok) {
         await loadShops();
       } else {
-        // Фолбэк
         const updated = shops.map(s => 
           s.id === shopId ? { ...s, status: status as any, updatedAt: new Date().toISOString() } : s
         );
@@ -326,7 +323,6 @@ export default function ShopsManager() {
         </div>
       </div>
 
-      {/* Статистика */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4">
           <p className="text-[#6B7280] text-sm">Ümumi</p>
@@ -348,7 +344,6 @@ export default function ShopsManager() {
         </Card>
       </div>
 
-      {/* Фильтры */}
       <Card className="p-4 mb-6">
         <div className="grid md:grid-cols-3 gap-4">
           <div className="relative md:col-span-2">
@@ -374,7 +369,6 @@ export default function ShopsManager() {
         </div>
       </Card>
 
-      {/* Форма создания/редактирования */}
       {showForm && (
         <Card className="p-6 mb-6 border-2 border-[#D90429]">
           <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
@@ -481,7 +475,6 @@ export default function ShopsManager() {
         </Card>
       )}
 
-      {/* Таблица магазинов */}
       <Card className="overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -596,7 +589,6 @@ export default function ShopsManager() {
         </table>
       </Card>
 
-      {/* Итоговая строка */}
       {filteredShops.length > 0 && (
         <Card className="mt-4 p-4 bg-[#1F2937] text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
