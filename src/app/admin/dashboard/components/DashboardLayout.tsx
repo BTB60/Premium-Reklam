@@ -62,9 +62,10 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
   const isAdmin = user?.role === "ADMIN";
   const permissions = subadminSession?.permissions;
 
-  // Фильтруем меню по правам
+  // 🔥 ФИКС: Админ видит ВСЁ, subadmin — только по правам
   const navItems = ALL_NAV_ITEMS.filter((item) => {
-    if (item.adminOnly) return isAdmin;
+    if (isAdmin) return true; // Админу — всё доступно
+    if (item.adminOnly) return false; // Subadmin не видит adminOnly
     if (!item.permission) return true;
     return hasPermission(permissions, item.permission);
   });
