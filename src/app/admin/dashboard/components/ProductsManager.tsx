@@ -33,7 +33,6 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
 
-// 🔥 ДЕФОЛТНЫЕ КАТЕГОРИИ — всегда доступны
 const DEFAULT_CATEGORIES: ProductCategory[] = [
   { id: 1, name: "Banner", color: "bg-blue-100 text-blue-700" },
   { id: 2, name: "Vinil", color: "bg-green-100 text-green-700" },
@@ -67,10 +66,24 @@ export default function ProductsManager() {
     imageUrl: "",
   });
 
+  // 🔥 Для ввода чисел с десятичной точкой (0.6)
+  const [widthInput, setWidthInput] = useState<string>("");
+  const [heightInput, setHeightInput] = useState<string>("");
+  const [priceInput, setPriceInput] = useState<string>("");
+
   useEffect(() => {
     loadProducts();
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    // 🔥 Синхронизируем input-ы с formData при открытии формы
+    if (showForm) {
+      setWidthInput(formData.width !== undefined ? String(formData.width) : "");
+      setHeightInput(formData.height !== undefined ? String(formData.height) : "");
+      setPriceInput(formData.unitPrice !== undefined ? String(formData.unitPrice) : "0");
+    }
+  }, [showForm, formData.width, formData.height, formData.unitPrice]);
 
   const getToken = () => {
     if (typeof window === "undefined") return null;
@@ -94,12 +107,10 @@ export default function ProductsManager() {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.products || [];
         setProducts(list);
-        // Сохраняем в localStorage для фолбэка
         localStorage.setItem("decor_products", JSON.stringify(list));
       }
     } catch (error) {
       console.error("[Products] Load error:", error);
-      // Фолбэк: localStorage
       try {
         const stored = localStorage.getItem("decor_products");
         if (stored) setProducts(JSON.parse(stored));
@@ -124,7 +135,6 @@ export default function ProductsManager() {
       }
     } catch (error) {
       console.warn("[Products] Categories fetch failed, using defaults");
-      // Оставляем DEFAULT_CATEGORIES
     }
   };
 
@@ -132,11 +142,13 @@ export default function ProductsManager() {
     e.preventDefault();
     setFormError("");
 
-    // 🔥 Категория НЕ обязательна для localStorage-фолбэка
-    if (!formData.name || !formData.unitPrice) {
-      setFormError("Ad və qiymət tələb olunur");
+    if (!formData.name) {
+      setFormError("Ad tələb olunur");
       return;
     }
+
+    // 🔥 Парсим цену из строкового input
+    const priceValue = parseFloat(priceInput) || 0;
 
     try {
       const token = getToken();
@@ -145,16 +157,24 @@ export default function ProductsManager() {
         ? `${API_BASE}/products/${editingId}` 
         : `${API_BASE}/products`;
 
+      const productData = {
+        name: formData.name,
+        description: formData.description,
+        category: formData.category || "Banner",
+        unitPrice: priceValue,
+        width: formData.width,
+        height: formData.height,
+        status: formData.status || "active",
+        imageUrl: formData.imageUrl,
+      };
+
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({
-          ...formData,
-          category: formData.category || "Banner" // 🔥 Дефолт если пусто
-        })
+        body: JSON.stringify(productData)
       });
 
       if (res.ok) {
@@ -168,20 +188,25 @@ export default function ProductsManager() {
     } catch (error) {
       console.error("[Products] Save error:", error);
       
-      // 🔥 Фолбэк: сохранить в localStorage
+      // 🔥 Фолбэк: localStorage
       try {
-        const productToSave = {
-          ...formData,
+        const productToSave: Product = {
           id: editingId || Date.now(),
+          name: formData.name!,
+          description: formData.description,
           category: formData.category || "Banner",
-          status: formData.status || "active",
-          createdAt: editingId ? undefined : new Date().toISOString(),
+          unitPrice: parseFloat(priceInput) || 0,
+          width: formData.width,
+          height: formData.height,
+          status: formData.status as any || "active",
+          imageUrl: formData.imageUrl,
+          createdAt: editingId ? products.find(p => p.id === editingId)?.createdAt || new Date().toISOString() : new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        } as Product;
+        };
 
         if (editingId) {
           const updated = products.map(p => 
-            p.id === editingId ? { ...p, ...productToSave } : p
+            p.id === editingId ? productToSave : p
           );
           setProducts(updated);
           localStorage.setItem("decor_products", JSON.stringify(updated));
@@ -216,7 +241,6 @@ export default function ProductsManager() {
         throw new Error("API error");
       }
     } catch (error) {
-      // Фолбэк: удалить из localStorage
       const updated = products.filter(p => p.id !== id);
       setProducts(updated);
       localStorage.setItem("decor_products", JSON.stringify(updated));
@@ -235,6 +259,10 @@ export default function ProductsManager() {
       status: product.status,
       imageUrl: product.imageUrl,
     });
+    // 🔥 Устанавливаем строковые значения для input
+    setPriceInput(product.unitPrice !== undefined ? String(product.unitPrice) : "0");
+    setWidthInput(product.width !== undefined ? String(product.width) : "");
+    setHeightInput(product.height !== undefined ? String(product.height) : "");
     setShowForm(true);
   };
 
@@ -249,6 +277,9 @@ export default function ProductsManager() {
       status: "active",
       imageUrl: "",
     });
+    setPriceInput("0");
+    setWidthInput("");
+    setHeightInput("");
     setFormError("");
   };
 
@@ -391,8 +422,11 @@ export default function ProductsManager() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.unitPrice || 0}
-                  onChange={(e) => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 })}
+                  value={priceInput}
+                  onChange={(e) => {
+                    setPriceInput(e.target.value);
+                    setFormData({ ...formData, unitPrice: parseFloat(e.target.value) || 0 });
+                  }}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
                   required
                 />
@@ -415,8 +449,11 @@ export default function ProductsManager() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.width || ""}
-                  onChange={(e) => setFormData({ ...formData, width: parseFloat(e.target.value) || undefined })}
+                  value={widthInput}
+                  onChange={(e) => {
+                    setWidthInput(e.target.value);
+                    setFormData({ ...formData, width: e.target.value === "" ? undefined : parseFloat(e.target.value) });
+                  }}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
                 />
               </div>
@@ -426,8 +463,11 @@ export default function ProductsManager() {
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.height || ""}
-                  onChange={(e) => setFormData({ ...formData, height: parseFloat(e.target.value) || undefined })}
+                  value={heightInput}
+                  onChange={(e) => {
+                    setHeightInput(e.target.value);
+                    setFormData({ ...formData, height: e.target.value === "" ? undefined : parseFloat(e.target.value) });
+                  }}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
                 />
               </div>
