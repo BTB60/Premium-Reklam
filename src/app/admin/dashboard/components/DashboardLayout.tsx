@@ -15,32 +15,65 @@ import {
 } from "lucide-react";
 
 type ActiveTab = "dashboard" | "users" | "orders" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
+type PermissionLevel = "none" | "view" | "edit";
+
+interface SubadminSession {
+  subadminId: string;
+  login: string;
+  role: "SUBADMIN";
+  permissions: Record<string, PermissionLevel>;
+}
 
 interface DashboardLayoutProps {
   user: any;
+  subadminSession: SubadminSession | null;
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
   onLogout: () => void;
 }
 
-const navItems: { id: ActiveTab; label: string; icon: any }[] = [
+const ALL_NAV_ITEMS: { id: ActiveTab; label: string; icon: any; permission?: keyof SubadminSession["permissions"]; adminOnly?: boolean }[] = [
   { id: "dashboard", label: "Dashboard", icon: TrendingUp },
-  { id: "users", label: "İstifadəçilər", icon: Users },
-  { id: "orders", label: "Sifarişlər", icon: Package },
-  { id: "notifications", label: "Bildirişlər", icon: Bell },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "products", label: "Məhsullar", icon: Store },
-  { id: "finance", label: "Maliyyə", icon: Wallet },
-  { id: "inventory", label: "Anbar", icon: Boxes },
-  { id: "workerTasks", label: "Tapşırıqlar", icon: ClipboardList },
-  { id: "support", label: "Dəstək", icon: Headphones },
-  { id: "settings", label: "Sistem Ayarları", icon: Settings },
-  { id: "accessSettings", label: "Giriş Ayarları", icon: Shield },
+  { id: "users", label: "İstifadəçilər", icon: Users, permission: "users" },
+  { id: "orders", label: "Sifarişlər", icon: Package, permission: "orders" },
+  { id: "notifications", label: "Bildirişlər", icon: Bell, permission: "support" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, permission: "analytics" },
+  { id: "products", label: "Məhsullar", icon: Store, permission: "products" },
+  { id: "finance", label: "Maliyyə", icon: Wallet, permission: "finance" },
+  { id: "inventory", label: "Anbar", icon: Boxes, permission: "inventory" },
+  { id: "workerTasks", label: "Tapşırıqlar", icon: ClipboardList, permission: "tasks" },
+  { id: "support", label: "Dəstək", icon: Headphones, permission: "support" },
+  { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: "settings" },
+  { id: "accessSettings", label: "Giriş Ayarları", icon: Shield, adminOnly: true },
 ];
 
-export default function DashboardLayout({ user, activeTab, onTabChange, onLogout }: DashboardLayoutProps) {
+function hasPermission(permissions: Record<string, PermissionLevel> | undefined, feature: string, level: PermissionLevel = "view"): boolean {
+  if (!permissions) return false;
+  const perm = permissions[feature];
+  if (level === "edit") return perm === "edit";
+  if (level === "view") return perm === "view" || perm === "edit";
+  return false;
+}
+
+export default function DashboardLayout({ user, subadminSession, activeTab, onTabChange, onLogout }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lang, setLang] = useState<"az" | "en">("az");
+
+  const isAdmin = user?.role === "ADMIN";
+  const permissions = subadminSession?.permissions;
+
+  // Фильтруем меню по правам
+  const navItems = ALL_NAV_ITEMS.filter((item) => {
+    if (item.adminOnly) return isAdmin;
+    if (!item.permission) return true;
+    return hasPermission(permissions, item.permission);
+  });
+
+  // Если текущая вкладка недоступна — переключаем на dashboard
+  const currentTabAllowed = navItems.some((item) => item.id === activeTab);
+  if (!currentTabAllowed && activeTab !== "dashboard") {
+    onTabChange("dashboard");
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
@@ -54,13 +87,15 @@ export default function DashboardLayout({ user, activeTab, onTabChange, onLogout
               </button>
               <Shield className="w-6 h-6 text-[#D90429]" />
               <span className="font-bold text-lg">Admin Panel</span>
-              <span className="text-xs text-gray-400">({user.role})</span>
+              <span className="text-xs text-gray-400">
+                {user?.role} {subadminSession && `(${subadminSession.login})`}
+              </span>
             </div>
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" onClick={() => setLang(lang === "az" ? "en" : "az")} icon={<Key className="w-4 h-4" />}>
                 {lang.toUpperCase()}
               </Button>
-              <span className="text-gray-400 text-sm hidden sm:block">{user.fullName}</span>
+              <span className="text-gray-400 text-sm hidden sm:block">{user?.fullName}</span>
               <Button variant="ghost" size="sm" onClick={onLogout} icon={<LogOut className="w-4 h-4" />}>
                 <span className="hidden sm:inline">Çıxış</span>
               </Button>

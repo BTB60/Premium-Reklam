@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Shield, Lock, ArrowRight, AlertTriangle, Key } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 const SUBADMINS_KEY = "premium_subadmins";
+const SUBADMIN_SESSION_KEY = "premium_subadmin_session";
 
 interface SubadminPermissions {
   users: "none" | "view" | "edit";
@@ -38,36 +38,38 @@ function getSubadmins(): Subadmin[] {
   return stored ? JSON.parse(stored) : [];
 }
 
-const t = {
-  az: {
-    title: "Subadmin Girişi",
-    subtitle: "Məhdud icazələrlə panelə daxil olun",
-    login: "Login",
-    password: "Parol",
-    submit: "Daxil ol",
-    error: "Login və ya parol yanlışdır",
-    back: "← Əsas admin girişinə qayıt",
-    lang: "AZ",
-  },
-  en: {
-    title: "Subadmin Login",
-    subtitle: "Sign in with limited permissions",
-    login: "Login",
-    password: "Password",
-    submit: "Sign in",
-    error: "Invalid login or password",
-    back: "← Back to main admin login",
-    lang: "EN",
-  }
-};
-
 export default function SubadminLoginPage() {
   const router = useRouter();
-  const [lang, setLang] = useState<"az" | "en">("az");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [lang, setLang] = useState<"az" | "en">("az");
+
+  const t = {
+    az: {
+      title: "Subadmin Girişi",
+      subtitle: "Məhdud icazələrlə panelə daxil olun",
+      login: "Login",
+      password: "Parol",
+      submit: "Daxil ol",
+      error: "Login və ya parol yanlışdır",
+      back: "← Əsas admin girişinə qayıt",
+      lang: "AZ",
+    },
+    en: {
+      title: "Subadmin Login",
+      subtitle: "Sign in with limited permissions",
+      login: "Login",
+      password: "Password",
+      submit: "Sign in",
+      error: "Invalid login or password",
+      back: "← Back to main admin login",
+      lang: "EN",
+    },
+  };
+
+  const ui = t[lang];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,43 +78,43 @@ export default function SubadminLoginPage() {
 
     try {
       const subadmins = getSubadmins();
-      const subadmin = subadmins.find(s => s.login === login && s.password === password);
+      const subadmin = subadmins.find((s) => s.login === login && s.password === password);
 
       if (!subadmin) {
         throw new Error("Invalid credentials");
       }
 
-      sessionStorage.setItem("premium_subadmin_jwt", JSON.stringify({
-        token: "local-" + subadmin.id,
+      // Сохраняем сессию subadmin
+      const session = {
         subadminId: subadmin.id,
         login: subadmin.login,
-        role: "SUBADMIN",
-        permissions: subadmin.permissions
-      }));
-      
-      subadmin.lastLogin = new Date().toISOString();
+        role: "SUBADMIN" as const,
+        permissions: subadmin.permissions,
+        lastLogin: new Date().toISOString(),
+      };
+
       if (typeof window !== "undefined") {
-        localStorage.setItem(SUBADMINS_KEY, JSON.stringify(subadmins));
+        sessionStorage.setItem(SUBADMIN_SESSION_KEY, JSON.stringify(session));
+
+        // Обновляем lastLogin в списке subadmin
+        const updated = subadmins.map((s) =>
+          s.id === subadmin.id ? { ...s, lastLogin: session.lastLogin } : s
+        );
+        localStorage.setItem(SUBADMINS_KEY, JSON.stringify(updated));
       }
 
       router.push("/admin/dashboard");
       router.refresh();
     } catch {
-      setError(lang === "az" ? t.az.error : t.en.error);
+      setError(ui.error);
     } finally {
       setLoading(false);
     }
   };
 
-  const ui = t[lang];
-
   return (
     <div className="min-h-screen bg-[#1F2937] flex items-center justify-center py-12 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
+      <div className="w-full max-w-md">
         <Card className="p-8 border-2 border-[#D90429]">
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-3">
@@ -124,9 +126,9 @@ export default function SubadminLoginPage() {
                 <p className="text-sm text-[#6B7280]">{ui.subtitle}</p>
               </div>
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setLang(lang === "az" ? "en" : "az")}
               icon={<Key className="w-4 h-4" />}
             >
@@ -149,6 +151,7 @@ export default function SubadminLoginPage() {
               onChange={setLogin}
               icon={<Shield className="w-5 h-5" />}
               required
+              disabled={loading}
             />
 
             <Input
@@ -159,6 +162,7 @@ export default function SubadminLoginPage() {
               onChange={setPassword}
               icon={<Lock className="w-5 h-5" />}
               required
+              disabled={loading}
             />
 
             <Button
@@ -180,7 +184,7 @@ export default function SubadminLoginPage() {
             </Link>
           </div>
         </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }
