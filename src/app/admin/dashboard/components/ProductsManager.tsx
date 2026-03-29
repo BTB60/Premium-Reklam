@@ -517,10 +517,7 @@ export default function ProductsManager() {
                     {product.unitPrice.toFixed(2)} AZN
                   </td>
                   <td className="py-3 px-4">
-                    <StatusBadge 
-                      status={product.status}
-                      labels={{ active: "Aktiv", inactive: "Qeyri-aktiv", draft: "Qaralama" }}
-                    />
+<StatusBadge status={product.status} />
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
