@@ -94,7 +94,6 @@ export default function SupportManager() {
   const loadTickets = async () => {
     try {
       const token = getToken();
-      // Пока нет эндпоинта - используем localStorage
       const stored = localStorage.getItem("decor_support_tickets");
       if (stored) {
         setTickets(JSON.parse(stored));
@@ -201,7 +200,6 @@ export default function SupportManager() {
     } catch (error) {
       console.error("[Support] Save error:", error);
       
-      // Фолбэк: localStorage
       const selectedUser = users.find(u => u.id === formData.userId);
       const newTicket: SupportTicket = {
         id: selectedTicket?.id || Date.now(),
@@ -285,7 +283,6 @@ export default function SupportManager() {
       if (res.ok) {
         await loadTickets();
       } else {
-        // Фолбэк
         const updated = tickets.map(t => 
           t.id === ticketId 
             ? { 
@@ -325,7 +322,6 @@ export default function SupportManager() {
         await loadTickets();
         setReplyMessage("");
         setShowReply(false);
-        // Обновляем выбранный тикет
         const updated = tickets.find(t => t.id === selectedTicket.id);
         if (updated) setSelectedTicket(updated);
       } else {
@@ -334,7 +330,6 @@ export default function SupportManager() {
     } catch (error) {
       console.error("[Support] Reply error:", error);
       
-      // Фолбэк: добавляем сообщение локально
       const newMessage: SupportMessage = {
         id: Date.now(),
         ticketId: selectedTicket.id,
@@ -484,7 +479,6 @@ export default function SupportManager() {
         </div>
       </div>
 
-      {/* Статистика */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <Card className="p-4">
           <p className="text-[#6B7280] text-sm">Ümumi</p>
@@ -514,7 +508,6 @@ export default function SupportManager() {
         </Card>
       </div>
 
-      {/* Фильтры */}
       <Card className="p-4 mb-6">
         <div className="grid md:grid-cols-5 gap-4">
           <div className="relative md:col-span-2">
@@ -564,7 +557,6 @@ export default function SupportManager() {
         </div>
       </Card>
 
-      {/* Форма создания/редактирования тикета */}
       {showForm && (
         <Card className="p-6 mb-6 border-2 border-[#D90429]">
           <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
@@ -677,7 +669,6 @@ export default function SupportManager() {
         </Card>
       )}
 
-      {/* Просмотр тикета с ответами */}
       {selectedTicket && !showForm && (
         <Card className="p-6 mb-6 border-2 border-[#D90429]">
           <div className="flex items-start justify-between mb-4">
@@ -733,7 +724,6 @@ export default function SupportManager() {
             )}
           </div>
 
-          {/* Сообщения тикета */}
           <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
             {selectedTicket.messages.map((msg) => (
               <div
@@ -760,7 +750,6 @@ export default function SupportManager() {
             ))}
           </div>
 
-          {/* Форма ответа */}
           {showReply ? (
             <div className="border-t pt-4">
               <textarea
@@ -786,7 +775,7 @@ export default function SupportManager() {
           ) : (
             <Button
               onClick={() => setShowReply(true)}
-              variant="outline"
+              variant="secondary"
               icon={<Reply className="w-4 h-4" />}
             >
               Cavab ver
@@ -795,7 +784,6 @@ export default function SupportManager() {
         </Card>
       )}
 
-      {/* Список тикетов */}
       {!selectedTicket && !showForm && (
         <Card className="overflow-hidden">
           <table className="w-full">
@@ -900,7 +888,6 @@ export default function SupportManager() {
         </Card>
       )}
 
-      {/* Итоговая строка */}
       {filteredTickets.length > 0 && !selectedTicket && !showForm && (
         <Card className="mt-4 p-4 bg-[#1F2937] text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
