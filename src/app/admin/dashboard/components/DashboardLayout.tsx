@@ -176,11 +176,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <InventoryManager />
               </motion.div>
             )}
-            {activeTab === "workerTasks" && (
-              <motion.div key="workerTasks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <div className="text-[#6B7280]">Tapşırıqlar tezliklə əlavə olunacaq...</div>
-              </motion.div>
-            )}
+{activeTab === "workerTasks" && (
+  <motion.div key="workerTasks" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+    <WorkerTasksManager />
+  </motion.div>
+)}
             {activeTab === "support" && (
               <motion.div key="support" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <div className="text-[#6B7280]">Dəstək tezliklə əlavə olunacaq...</div>
