@@ -97,7 +97,7 @@ export default function ShopsManager() {
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.users || [];
-        const customers = list.filter((u: User) => (u as any).role !== "ADMIN");
+        const customers = list;  // Берём всех пользователей без фильтрации
         setUsers(customers);
       }
     } catch (error) {
