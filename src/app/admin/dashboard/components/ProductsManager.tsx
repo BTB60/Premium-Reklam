@@ -14,7 +14,7 @@ interface Product {
   name: string;
   description?: string;
   category: string;
-  unitPrice: number;
+  unitPrice?: number;
   width?: number;
   height?: number;
   status: "active" | "inactive" | "draft";
@@ -87,7 +87,6 @@ export default function ProductsManager() {
       }
     } catch (error) {
       console.error("[Products] Load error:", error);
-      // Фолбэк: localStorage
       try {
         const stored = localStorage.getItem("decor_products");
         if (stored) setProducts(JSON.parse(stored));
@@ -110,7 +109,6 @@ export default function ProductsManager() {
       }
     } catch (error) {
       console.error("[Products] Load categories error:", error);
-      // Дефолтные категории
       setCategories([
         { id: 1, name: "Banner", color: "bg-blue-100 text-blue-700" },
         { id: 2, name: "Vinil", color: "bg-green-100 text-green-700" },
@@ -159,7 +157,6 @@ export default function ProductsManager() {
       console.error("[Products] Save error:", error);
       setFormError("Server ilə əlaqə xətası");
       
-      // Фолбэк: сохранить в localStorage
       try {
         if (editingId) {
           const updated = products.map(p => 
@@ -204,7 +201,6 @@ export default function ProductsManager() {
       if (res.ok) {
         await loadProducts();
       } else {
-        // Фолбэк: удалить из localStorage
         const updated = products.filter(p => p.id !== id);
         setProducts(updated);
         localStorage.setItem("decor_products", JSON.stringify(updated));
@@ -255,9 +251,9 @@ export default function ProductsManager() {
     active: products.filter(p => p.status === "active").length,
     inactive: products.filter(p => p.status === "inactive").length,
     draft: products.filter(p => p.status === "draft").length,
-avgPrice: products.length > 0 
-  ? products.reduce((sum, p) => sum + (p.unitPrice || 0), 0) / products.length 
-  : 0,
+    avgPrice: products.length > 0 
+      ? products.reduce((sum, p) => sum + (p.unitPrice || 0), 0) / products.length 
+      : 0,
   };
 
   if (loading) {
@@ -280,7 +276,6 @@ avgPrice: products.length > 0
         </Button>
       </div>
 
-      {/* Статистика */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-4">
           <p className="text-[#6B7280] text-sm">Ümumi</p>
@@ -300,7 +295,6 @@ avgPrice: products.length > 0
         </Card>
       </div>
 
-      {/* Фильтры */}
       <Card className="p-4 mb-6">
         <div className="grid md:grid-cols-4 gap-4">
           <div className="relative">
@@ -339,7 +333,6 @@ avgPrice: products.length > 0
         </div>
       </Card>
 
-      {/* Форма создания/редактирования */}
       {showForm && (
         <Card className="p-6 mb-6 border-2 border-[#D90429]">
           <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
@@ -465,7 +458,6 @@ avgPrice: products.length > 0
         </Card>
       )}
 
-      {/* Таблица продуктов */}
       <Card className="overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -512,11 +504,12 @@ avgPrice: products.length > 0
                     {product.width && product.height 
                       ? `${product.width} × ${product.height} m²` 
                       : "-"}
-<td className="py-3 px-4 font-bold text-[#1F2937]">
-  {(product.unitPrice || 0).toFixed(2)} AZN
-</td>
+                  </td>
+                  <td className="py-3 px-4 font-bold text-[#1F2937]">
+                    {(product.unitPrice || 0).toFixed(2)} AZN
+                  </td>
                   <td className="py-3 px-4">
-<StatusBadge status={product.status} />
+                    <StatusBadge status={product.status} />
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex gap-1">
