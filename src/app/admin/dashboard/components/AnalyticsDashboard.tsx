@@ -105,7 +105,7 @@ export default function AnalyticsDashboard() {
         const cutoffDate = new Date(now.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
         
         const filtered = ordersList.filter((o: Order) => {
-          const orderDate = new Date(o.createdAt || o.createdDate || o.date);
+          const orderDate = new Date((o as any).createdAt || (o as any).createdDate || (o as any).date);
           return !isNaN(orderDate.getTime()) && orderDate >= cutoffDate;
         });
         
@@ -115,7 +115,7 @@ export default function AnalyticsDashboard() {
         // Группировка по дням
         const statsByDate: Record<string, DailyStats> = {};
         filtered.forEach((order: Order) => {
-          const date = (order.createdAt || order.createdDate || "").split("T")[0];
+          const date = ((order as any).createdAt || (order as any).createdDate || "").split("T")[0];
           if (date) {
             if (!statsByDate[date]) {
               statsByDate[date] = { date, revenue: 0, orders: 0 };
