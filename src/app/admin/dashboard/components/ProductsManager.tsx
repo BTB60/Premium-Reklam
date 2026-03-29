@@ -38,7 +38,6 @@ export default function ProductsManager() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formError, setFormError] = useState("");
 
-  // 🔥 Прямые state для формы — без синхронизации
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
@@ -101,9 +100,12 @@ export default function ProductsManager() {
     setEditingId(product.id);
     setName(product.name);
     setCategory(product.category || "");
-    setUnitPrice(product.unitPrice !== undefined ? String(product.unitPrice) : "0");
-    setWidth(product.width !== undefined ? String(product.width) : "");
-    setHeight(product.height !== undefined ? String(product.height) : "");
+    // 🔥 Гарантия: цена всегда строка
+    setUnitPrice(product.unitPrice !== undefined && product.unitPrice !== null 
+      ? String(product.unitPrice) 
+      : "0");
+    setWidth(product.width !== undefined && product.width !== null ? String(product.width) : "");
+    setHeight(product.height !== undefined && product.height !== null ? String(product.height) : "");
     setStatus(product.status || "active");
     setDescription(product.description || "");
     setImageUrl(product.imageUrl || "");
@@ -119,7 +121,10 @@ export default function ProductsManager() {
       return;
     }
 
-    const priceValue = parseFloat(unitPrice) || 0;
+    // 🔥 Парсим цену явно
+    const priceValue = parseFloat(unitPrice);
+    const finalPrice = isNaN(priceValue) ? 0 : priceValue;
+    
     const widthValue = width === "" ? undefined : parseFloat(width);
     const heightValue = height === "" ? undefined : parseFloat(height);
 
@@ -127,7 +132,7 @@ export default function ProductsManager() {
       name: name.trim(),
       description: description.trim(),
       category: category.trim() || "Banner",
-      unitPrice: priceValue,
+      unitPrice: finalPrice,
       width: widthValue,
       height: heightValue,
       status: status as any,
@@ -151,7 +156,24 @@ export default function ProductsManager() {
       });
 
       if (res.ok) {
-        await loadProducts();
+        const savedProduct = await res.json();
+        // 🔥 Обновляем состояние напрямую с сохранённой ценой
+        let updated: Product[];
+        if (editingId) {
+          updated = products.map(p => 
+            p.id === editingId ? { ...p, ...productData, updatedAt: new Date().toISOString() } : p
+          );
+        } else {
+          const newProduct: Product = {
+            ...productData,
+            id: savedProduct.id || Date.now(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          updated = [...products, newProduct];
+        }
+        setProducts(updated);
+        localStorage.setItem("decor_products", JSON.stringify(updated));
         setShowForm(false);
         setEditingId(null);
         resetForm();
@@ -161,7 +183,7 @@ export default function ProductsManager() {
     } catch (error) {
       console.error("[Products] Save error:", error);
       
-      // Фолбэк: localStorage
+      // 🔥 Фолбэк: localStorage с явной ценой
       const productToSave: Product = {
         id: editingId || Date.now(),
         ...productData,
