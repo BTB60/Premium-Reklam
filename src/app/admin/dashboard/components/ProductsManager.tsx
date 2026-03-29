@@ -100,7 +100,6 @@ export default function ProductsManager() {
     setEditingId(product.id);
     setName(product.name);
     setCategory(product.category || "");
-    // 🔥 Гарантия: цена всегда строка
     setUnitPrice(product.unitPrice !== undefined && product.unitPrice !== null 
       ? String(product.unitPrice) 
       : "0");
@@ -121,23 +120,30 @@ export default function ProductsManager() {
       return;
     }
 
-    // 🔥 Парсим цену явно
     const priceValue = parseFloat(unitPrice);
     const finalPrice = isNaN(priceValue) ? 0 : priceValue;
     
     const widthValue = width === "" ? undefined : parseFloat(width);
     const heightValue = height === "" ? undefined : parseFloat(height);
 
-    const productData = {
+    // 🔥 Явно формируем тело запроса
+    const requestBody = {
       name: name.trim(),
-      description: description.trim(),
+      description: description.trim() || "",
       category: category.trim() || "Banner",
-      unitPrice: finalPrice,
+      unitPrice: finalPrice,  // 🔥 Число, не строка
       width: widthValue,
       height: heightValue,
-      status: status as any,
-      imageUrl: imageUrl.trim(),
+      status: status,
+      imageUrl: imageUrl.trim() || "",
     };
+
+    // 🔥 ЛОГ: что отправляем
+    console.log("[Products] Sending to API:", {
+      method: editingId ? "PUT" : "POST",
+      url: editingId ? `${API_BASE}/products/${editingId}` : `${API_BASE}/products`,
+      body: requestBody
+    });
 
     try {
       const token = getToken();
@@ -152,41 +158,53 @@ export default function ProductsManager() {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(productData)
+        body: JSON.stringify(requestBody)
+      });
+
+      // 🔥 ЛОГ: ответ сервера
+      const responseText = await res.text();
+      console.log("[Products] API Response:", {
+        status: res.status,
+        body: responseText
       });
 
       if (res.ok) {
-        const savedProduct = await res.json();
-        // 🔥 Обновляем состояние напрямую с сохранённой ценой
+        const savedProduct = responseText ? JSON.parse(responseText) : requestBody;
+        
+        // 🔥 Обновляем состояние с сохранённой ценой
         let updated: Product[];
         if (editingId) {
           updated = products.map(p => 
-            p.id === editingId ? { ...p, ...productData, updatedAt: new Date().toISOString() } : p
+            p.id === editingId 
+              ? { ...p, ...requestBody, id: savedProduct.id || editingId, updatedAt: new Date().toISOString() } 
+              : p
           );
         } else {
           const newProduct: Product = {
-            ...productData,
+            ...requestBody,
             id: savedProduct.id || Date.now(),
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
           updated = [...products, newProduct];
         }
+        
         setProducts(updated);
         localStorage.setItem("decor_products", JSON.stringify(updated));
         setShowForm(false);
         setEditingId(null);
         resetForm();
+        setFormError("Yadda saxlandı");
       } else {
-        throw new Error("API error");
+        throw new Error(responseText || `HTTP ${res.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[Products] Save error:", error);
       
-      // 🔥 Фолбэк: localStorage с явной ценой
+      // 🔥 Фолбэк: localStorage
       const productToSave: Product = {
         id: editingId || Date.now(),
-        ...productData,
+        ...requestBody,
         createdAt: editingId 
           ? products.find(p => p.id === editingId)?.createdAt || new Date().toISOString()
           : new Date().toISOString(),
