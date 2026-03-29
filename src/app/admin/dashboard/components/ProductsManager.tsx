@@ -255,9 +255,9 @@ export default function ProductsManager() {
     active: products.filter(p => p.status === "active").length,
     inactive: products.filter(p => p.status === "inactive").length,
     draft: products.filter(p => p.status === "draft").length,
-    avgPrice: products.length > 0 
-      ? products.reduce((sum, p) => sum + p.unitPrice, 0) / products.length 
-      : 0,
+avgPrice: products.length > 0 
+  ? products.reduce((sum, p) => sum + (p.unitPrice || 0), 0) / products.length 
+  : 0,
   };
 
   if (loading) {
@@ -512,10 +512,9 @@ export default function ProductsManager() {
                     {product.width && product.height 
                       ? `${product.width} × ${product.height} m²` 
                       : "-"}
-                  </td>
-                  <td className="py-3 px-4 font-bold text-[#1F2937]">
-                    {product.unitPrice.toFixed(2)} AZN
-                  </td>
+<td className="py-3 px-4 font-bold text-[#1F2937]">
+  {(product.unitPrice || 0).toFixed(2)} AZN
+</td>
                   <td className="py-3 px-4">
 <StatusBadge status={product.status} />
                   </td>
