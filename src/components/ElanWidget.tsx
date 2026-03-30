@@ -32,7 +32,7 @@ export default function ElanWidget() {
   }, []);
 
   const getCurrentUser = () => {
-    if (typeof window === "undefined") return null;
+    if (typeof window === "undefined") return "anonymous";
     try {
       const stored = localStorage.getItem("decor_current_user");
       if (stored) {
@@ -44,39 +44,77 @@ export default function ElanWidget() {
   };
 
   const checkForNewAnnouncement = () => {
+    console.log("=== [ElanWidget] Checking for announcements ===");
+    
     try {
       const stored = localStorage.getItem("decor_announcements");
-      if (!stored) return;
+      console.log("[ElanWidget] Raw announcements:", stored?.slice(0, 200) + "...");
+      
+      if (!stored) {
+        console.log("[ElanWidget] No announcements found in localStorage");
+        return;
+      }
 
       const announcements: Announcement[] = JSON.parse(stored);
-      const active = announcements.filter(a => a.isActive);
+      console.log("[ElanWidget] Parsed announcements count:", announcements.length);
+      console.log("[ElanWidget] Announcements:", announcements.map(a => ({
+        id: a.id,
+        title: a.title,
+        isActive: a.isActive,
+        createdAt: a.createdAt
+      })));
       
-      if (active.length === 0) return;
+      const active = announcements.filter(a => a.isActive);
+      console.log("[ElanWidget] Active announcements:", active.length);
+      
+      if (active.length === 0) {
+        console.log("[ElanWidget] No active announcements");
+        return;
+      }
 
       // Берём самое новое активное объявление
       const latest = active.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )[0];
+      console.log("[ElanWidget] Latest announcement:", {
+        id: latest.id,
+        title: latest.title,
+        createdAt: latest.createdAt,
+        expiresAt: latest.expiresAt
+      });
 
       const userId = getCurrentUser();
-      const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem("decor_announcement_reads") || "[]");
+      console.log("[ElanWidget] Current userId:", userId);
+      
+      const readsRaw = localStorage.getItem("decor_announcement_reads");
+      console.log("[ElanWidget] Raw reads:", readsRaw?.slice(0, 200) + "...");
+      
+      const reads: AnnouncementRead[] = readsRaw ? JSON.parse(readsRaw) : [];
+      console.log("[ElanWidget] Parsed reads count:", reads.length);
       
       // Проверяем, читал ли пользователь это объявление
       const hasRead = reads.some(
         r => r.announcementId === latest.id && r.userId === userId
       );
+      console.log("[ElanWidget] Has read this announcement:", hasRead);
 
       // Проверяем срок действия
       const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
+      console.log("[ElanWidget] Is expired:", isExpired, "expiresAt:", latest.expiresAt);
 
       if (!hasRead && !isExpired) {
+        console.log("[ElanWidget] ✓ Showing announcement!");
         setAnnouncement(latest);
         setHasUnread(true);
         setShowElan(true);
+      } else {
+        console.log("[ElanWidget] ✗ Not showing: hasRead=", hasRead, "isExpired=", isExpired);
       }
     } catch (error) {
       console.error("[ElanWidget] Check error:", error);
     }
+    
+    console.log("=== [ElanWidget] End check ===");
   };
 
   const handleMarkAsRead = () => {
@@ -93,6 +131,7 @@ export default function ElanWidget() {
 
     reads.push(newRead);
     localStorage.setItem("decor_announcement_reads", JSON.stringify(reads));
+    console.log("[ElanWidget] Marked as read:", newRead);
 
     setShowElan(false);
     setHasUnread(false);
@@ -110,7 +149,6 @@ export default function ElanWidget() {
   };
 
   if (!hasUnread) {
-    // Показываем иконку без индикатора, если нет непрочитанных
     return (
       <button
         onClick={checkForNewAnnouncement}
@@ -124,7 +162,6 @@ export default function ElanWidget() {
 
   return (
     <>
-      {/* Кнопка с красным индикатором */}
       <button
         onClick={() => setShowElan(true)}
         className="relative p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -134,7 +171,6 @@ export default function ElanWidget() {
         <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
       </button>
 
-      {/* Модальное окно объявления */}
       {showElan && announcement && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <Card className={`max-w-lg w-full overflow-hidden border-2 ${
