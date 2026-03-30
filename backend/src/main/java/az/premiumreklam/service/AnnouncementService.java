@@ -6,6 +6,7 @@ import az.premiumreklam.repository.AnnouncementRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -27,13 +28,23 @@ public class AnnouncementService {
                 .orElseThrow(() -> new RuntimeException("Elan tapılmadı"));
     }
 
+    // 🔥 Helper: безопасное преобразование строки в enum (case-insensitive)
+    private Announcement.Priority parsePriority(String priority) {
+        if (priority == null || priority.isEmpty()) return Announcement.Priority.NORMAL;
+        try {
+            return Announcement.Priority.valueOf(priority.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Announcement.Priority.NORMAL; // fallback
+        }
+    }
+
     @Transactional
     public Announcement create(AnnouncementRequest request) {
         Announcement announcement = Announcement.builder()
                 .title(request.getTitle())
                 .message(request.getMessage())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
-                .priority(Announcement.Priority.valueOf(request.getPriority() != null ? request.getPriority() : "NORMAL"))
+                .priority(parsePriority(request.getPriority()))
                 .expiresAt(request.getExpiresAt())
                 .createdBy("Admin")
                 .build();
@@ -46,7 +57,7 @@ public class AnnouncementService {
         if (request.getTitle() != null) announcement.setTitle(request.getTitle());
         if (request.getMessage() != null) announcement.setMessage(request.getMessage());
         if (request.getIsActive() != null) announcement.setIsActive(request.getIsActive());
-        if (request.getPriority() != null) announcement.setPriority(Announcement.Priority.valueOf(request.getPriority()));
+        if (request.getPriority() != null) announcement.setPriority(parsePriority(request.getPriority()));
         if (request.getExpiresAt() != null) announcement.setExpiresAt(request.getExpiresAt());
         return announcementRepository.save(announcement);
     }
