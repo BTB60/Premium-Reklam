@@ -121,9 +121,18 @@ export default function ElanManager() {
     setAnnouncements(updated);
     localStorage.setItem("decor_announcements", JSON.stringify(updated));
     
+    // 🔥 ЛОГ СОХРАНЕНИЯ ДЛЯ ОТЛАДКИ
+    console.log("✅ [ElanManager] Saved to localStorage:", {
+      key: "decor_announcements",
+      count: updated.length,
+      latest: updated[updated.length - 1]?.title,
+      timestamp: new Date().toISOString()
+    });
+    
     // При создании нового объявления сбрасываем прочтения у всех пользователей
     if (!editingId) {
       localStorage.removeItem("decor_announcement_reads");
+      console.log("✅ [ElanManager] Cleared announcement reads for new announcement");
     }
 
     setShowForm(false);
@@ -138,6 +147,9 @@ export default function ElanManager() {
     const updated = announcements.filter(a => a.id !== id);
     setAnnouncements(updated);
     localStorage.setItem("decor_announcements", JSON.stringify(updated));
+    
+    console.log("✅ [ElanManager] Deleted announcement, updated localStorage");
+    
     alert("Elan silindi");
   };
 
@@ -147,6 +159,8 @@ export default function ElanManager() {
     );
     setAnnouncements(updated);
     localStorage.setItem("decor_announcements", JSON.stringify(updated));
+    
+    console.log("✅ [ElanManager] Toggled active status, updated localStorage");
   };
 
   const handlePreview = (announcement: Announcement) => {
