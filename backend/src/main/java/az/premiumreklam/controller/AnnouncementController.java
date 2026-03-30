@@ -1,13 +1,15 @@
 package az.premiumreklam.controller;
 
 import az.premiumreklam.dto.announcement.AnnouncementRequest;
-import az.premiumreklam.entity.Announcement;
+import az.premiumreklam.dto.announcement.AnnouncementResponse;
 import az.premiumreklam.service.AnnouncementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/announcements")
@@ -17,36 +19,40 @@ public class AnnouncementController {
     private final AnnouncementService announcementService;
 
     @GetMapping
-    public List<Announcement> getAll() {
-        return announcementService.getAll();
+    public List<AnnouncementResponse> getAll() {
+        return announcementService.getAll().stream()
+            .map(AnnouncementResponse::fromEntity)
+            .collect(Collectors.toList());
     }
 
     @GetMapping("/active")
-    public List<Announcement> getActive() {
-        return announcementService.getActive();
+    public List<AnnouncementResponse> getActive() {
+        return announcementService.getActive().stream()
+            .map(AnnouncementResponse::fromEntity)
+            .collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public Announcement getById(@PathVariable Long id) {
-        return announcementService.getById(id);
+    public AnnouncementResponse getById(@PathVariable Long id) {
+        return AnnouncementResponse.fromEntity(announcementService.getById(id));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public Announcement create(@RequestBody AnnouncementRequest request) {
-        return announcementService.create(request);
+    public AnnouncementResponse create(@RequestBody AnnouncementRequest request) {
+        return AnnouncementResponse.fromEntity(announcementService.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Announcement update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
-        return announcementService.update(id, request);
+    public AnnouncementResponse update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
+        return AnnouncementResponse.fromEntity(announcementService.update(id, request));
     }
 
     @PatchMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public Announcement patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
-        return announcementService.update(id, request);
+    public AnnouncementResponse patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
+        return AnnouncementResponse.fromEntity(announcementService.update(id, request));
     }
 
     @DeleteMapping("/{id}")

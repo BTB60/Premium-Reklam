@@ -22,23 +22,38 @@ interface AnnouncementRead {
   readAt: string;
 }
 
+const API_ENDPOINT = "/api/announcements/active";
+const STORAGE_KEY_ANNOUNCEMENTS = "decor_announcements";
+const STORAGE_KEY_READS = "decor_announcement_reads";
+const STORAGE_KEY_LAST_FETCH = "decor_announcements_last_fetch";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export default function ElanWidget() {
   const [showElan, setShowElan] = useState(false);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [hasUnread, setHasUnread] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     checkForNewAnnouncement();
 
-    // 🔥 Слушаем изменения localStorage (когда админ создаёт объявление в другой вкладке)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "decor_announcements" || e.key === "decor_announcement_reads") {
+      if (e.key === STORAGE_KEY_ANNOUNCEMENTS || e.key === STORAGE_KEY_READS) {
         checkForNewAnnouncement();
       }
     };
 
+    const handleFocus = () => {
+      checkForNewAnnouncement();
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("focus", handleFocus);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const getCurrentUser = () => {
@@ -53,46 +68,99 @@ export default function ElanWidget() {
     return "anonymous";
   };
 
-  const checkForNewAnnouncement = () => {
-    const stored = localStorage.getItem("decor_announcements");
-    if (!stored) return;
+  const isCacheValid = () => {
+    const lastFetch = localStorage.getItem(STORAGE_KEY_LAST_FETCH);
+    if (!lastFetch) return false;
+    return Date.now() - parseInt(lastFetch) < CACHE_TTL_MS;
+  };
 
+  const fetchFromAPI = async (): Promise<Announcement[] | null> => {
     try {
-      const announcements: Announcement[] = JSON.parse(stored);
-      const active = announcements.filter(a => a.isActive);
-      if (active.length === 0) return;
-
-      // Берём самое новое активное объявление
-      const latest = active.sort((a, b) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
-
-      const userId = getCurrentUser();
-      const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem("decor_announcement_reads") || "[]");
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       
-      // Проверяем, читал ли пользователь это объявление
-      const hasRead = reads.some(
-        r => r.announcementId === latest.id && r.userId === userId
-      );
-
-      // Проверяем срок действия
-      const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
-
-      if (!hasRead && !isExpired) {
-        setAnnouncement(latest);
-        setHasUnread(true);
-        setShowElan(true);
+      const response = await fetch(API_ENDPOINT, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` }),
+        },
+        cache: "no-store",
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          return null;
+        }
+        throw new Error(`HTTP ${response.status}`);
       }
-    } catch (e) {
-      console.error("[ElanWidget] Parse error:", e);
+      
+      const data: Announcement[] = await response.json();
+      localStorage.setItem(STORAGE_KEY_ANNOUNCEMENTS, JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY_LAST_FETCH, Date.now().toString());
+      return data;
+    } catch (error) {
+      console.warn("[ElanWidget] API fetch failed, using localStorage fallback:", error);
+      return null;
     }
+  };
+
+  const checkForNewAnnouncement = async () => {
+    setIsLoading(true);
+    
+    let announcements: Announcement[] | null = null;
+    
+    if (!isCacheValid()) {
+      announcements = await fetchFromAPI();
+    }
+    
+    if (!announcements) {
+      const stored = localStorage.getItem(STORAGE_KEY_ANNOUNCEMENTS);
+      if (stored) {
+        try {
+          announcements = JSON.parse(stored);
+        } catch (e) {
+          console.error("[ElanWidget] Parse error:", e);
+        }
+      }
+    }
+    
+    if (!announcements || announcements.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    const active = announcements.filter(a => a.isActive);
+    if (active.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    const latest = active.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+
+    const userId = getCurrentUser();
+    const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
+    
+    const hasRead = reads.some(
+      r => r.announcementId === latest.id && r.userId === userId
+    );
+
+    const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
+
+    if (!hasRead && !isExpired) {
+      setAnnouncement(latest);
+      setHasUnread(true);
+      setShowElan(true);
+    }
+    
+    setIsLoading(false);
   };
 
   const handleMarkAsRead = () => {
     if (!announcement) return;
 
     const userId = getCurrentUser();
-    const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem("decor_announcement_reads") || "[]");
+    const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
     
     const newRead: AnnouncementRead = {
       announcementId: announcement.id,
@@ -100,8 +168,10 @@ export default function ElanWidget() {
       readAt: new Date().toISOString(),
     };
 
-    reads.push(newRead);
-    localStorage.setItem("decor_announcement_reads", JSON.stringify(reads));
+    if (!reads.some(r => r.announcementId === announcement.id && r.userId === userId)) {
+      reads.push(newRead);
+      localStorage.setItem(STORAGE_KEY_READS, JSON.stringify(reads));
+    }
 
     setShowElan(false);
     setHasUnread(false);
@@ -118,13 +188,21 @@ export default function ElanWidget() {
     return <Megaphone className="w-6 h-6 text-white" />;
   };
 
+  if (isLoading) {
+    return (
+      <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" disabled>
+        <RefreshCw className="w-5 h-5 text-gray-400 animate-spin" />
+      </button>
+    );
+  }
+
   if (!hasUnread) {
     return (
       <div className="flex items-center gap-1">
         <button
           onClick={checkForNewAnnouncement}
           className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          title="Проверить объявления"
+          title="Elanları yoxla"
         >
           <Megaphone className="w-5 h-5 text-gray-600" />
         </button>
