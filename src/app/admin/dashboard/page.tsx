@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import DashboardLayout from "./components/DashboardLayout";
 
-// 🔥 ДОБАВЛЕНО: "shops" в тип ActiveTab
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
+// 🔥 ДОБАВЛЕНО: "elan" в тип ActiveTab
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
 
 interface SubadminSession {
   subadminId: string;
@@ -99,7 +99,7 @@ export default function DashboardPage() {
     router.push("/admin/login");
   };
 
-  // 🔥 ФИКС: оборачиваем setActiveTab в функцию нужного типа
+  // 🔥 Обёртка для совместимости типов
   const handleTabChange = (tab: ActiveTab) => {
     setActiveTab(tab);
   };
@@ -119,7 +119,7 @@ export default function DashboardPage() {
       user={user}
       subadminSession={subadminSession}
       activeTab={activeTab}
-      onTabChange={handleTabChange}  // 🔥 ИСПРАВЛЕНО: используем обёрнутую функцию
+      onTabChange={handleTabChange}
       onLogout={handleLogout}
     />
   );
