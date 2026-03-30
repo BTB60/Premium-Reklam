@@ -2,13 +2,17 @@ package az.premiumreklam.controller;
 
 import az.premiumreklam.dto.announcement.AnnouncementRequest;
 import az.premiumreklam.dto.announcement.AnnouncementResponse;
+import az.premiumreklam.service.AnnouncementReadService;
 import az.premiumreklam.service.AnnouncementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -17,6 +21,7 @@ import java.util.stream.Collectors;
 public class AnnouncementController {
 
     private final AnnouncementService announcementService;
+    private final AnnouncementReadService announcementReadService;
 
     @GetMapping
     public List<AnnouncementResponse> getAll() {
@@ -60,5 +65,46 @@ public class AnnouncementController {
     public ResponseEntity<?> delete(@PathVariable Long id) {
         announcementService.delete(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/read")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> markAsRead(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        // Извлекаем UUID из username (предполагаем, что username содержит UUID)
+        // Или используем кастомный UserDetails, если есть
+        try {
+            UUID userId = UUID.fromString(userDetails.getUsername());
+            announcementReadService.markAsRead(userId, id);
+            return ResponseEntity.ok().build();
+        } catch (IllegalArgumentException e) {
+            // Fallback: ищем пользователя по username в UserService
+            return ResponseEntity.badRequest().body("Invalid user ID format");
+        }
+    }
+
+    @GetMapping("/{id}/read-status")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Boolean> getReadStatus(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
+        
+        try {
+            UUID userId = UUID.fromString(userDetails.getUsername());
+            boolean hasRead = announcementReadService.hasRead(userId, id);
+            return ResponseEntity.ok(hasRead);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

@@ -22,7 +22,9 @@ interface AnnouncementRead {
   readAt: string;
 }
 
-const API_ENDPOINT = "/api/announcements/active";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : 'https://premium-reklam-backend.onrender.com/api';
 const STORAGE_KEY_ANNOUNCEMENTS = "decor_announcements";
 const STORAGE_KEY_READS = "decor_announcement_reads";
 const STORAGE_KEY_LAST_FETCH = "decor_announcements_last_fetch";
@@ -57,15 +59,20 @@ export default function ElanWidget() {
   }, []);
 
   const getCurrentUser = () => {
-    if (typeof window === "undefined") return "anonymous";
+    if (typeof window === "undefined") return null;
     try {
       const stored = localStorage.getItem("decor_current_user");
       if (stored) {
         const parsed = JSON.parse(stored);
-        return parsed?.username || parsed?.id || "anonymous";
+        return parsed?.id || parsed?.username || null;
       }
     } catch {}
-    return "anonymous";
+    return null;
+  };
+
+  const getAuthToken = () => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("token");
   };
 
   const isCacheValid = () => {
@@ -76,9 +83,9 @@ export default function ElanWidget() {
 
   const fetchFromAPI = async (): Promise<Announcement[] | null> => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const token = getAuthToken();
       
-      const response = await fetch(API_ENDPOINT, {
+      const response = await fetch(`${API_BASE}/announcements/active`, {
         headers: {
           "Content-Type": "application/json",
           ...(token && { "Authorization": `Bearer ${token}` }),
@@ -100,6 +107,48 @@ export default function ElanWidget() {
     } catch (error) {
       console.warn("[ElanWidget] API fetch failed, using localStorage fallback:", error);
       return null;
+    }
+  };
+
+  const checkReadStatusAPI = async (announcementId: number): Promise<boolean> => {
+    try {
+      const token = getAuthToken();
+      const userId = getCurrentUser();
+      
+      if (!token || !userId) return false;
+      
+      const response = await fetch(`${API_BASE}/announcements/${announcementId}/read-status`, {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        return await response.json();
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const markAsReadAPI = async (announcementId: number): Promise<boolean> => {
+    try {
+      const token = getAuthToken();
+      if (!token) return false;
+      
+      const response = await fetch(`${API_BASE}/announcements/${announcementId}/read`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      
+      return response.ok;
+    } catch {
+      return false;
     }
   };
 
@@ -139,11 +188,20 @@ export default function ElanWidget() {
     )[0];
 
     const userId = getCurrentUser();
-    const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
+    const token = getAuthToken();
     
-    const hasRead = reads.some(
-      r => r.announcementId === latest.id && r.userId === userId
-    );
+    let hasRead = false;
+    
+    // 🔥 Приоритет: проверяем через API, если есть токен
+    if (token && userId) {
+      hasRead = await checkReadStatusAPI(latest.id);
+    }
+    
+    // 🔥 Fallback: проверяем localStorage
+    if (!hasRead) {
+      const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
+      hasRead = reads.some(r => r.announcementId === latest.id && r.userId === userId);
+    }
 
     const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
 
@@ -156,20 +214,31 @@ export default function ElanWidget() {
     setIsLoading(false);
   };
 
-  const handleMarkAsRead = () => {
+  const handleMarkAsRead = async () => {
     if (!announcement) return;
 
     const userId = getCurrentUser();
+    const token = getAuthToken();
+    
+    // 🔥 Отправляем на сервер, если есть авторизация
+    if (token && userId) {
+      const success = await markAsReadAPI(announcement.id);
+      if (success) {
+        setShowElan(false);
+        setHasUnread(false);
+        return;
+      }
+    }
+    
+    // 🔥 Fallback: localStorage
     const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
     
-    const newRead: AnnouncementRead = {
-      announcementId: announcement.id,
-      userId,
-      readAt: new Date().toISOString(),
-    };
-
     if (!reads.some(r => r.announcementId === announcement.id && r.userId === userId)) {
-      reads.push(newRead);
+      reads.push({
+        announcementId: announcement.id,
+        userId: userId || "anonymous",
+        readAt: new Date().toISOString(),
+      });
       localStorage.setItem(STORAGE_KEY_READS, JSON.stringify(reads));
     }
 
