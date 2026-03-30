@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,10 +13,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
@@ -28,8 +31,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // 🔥 Пропускаем /api/announcements/** без проверки токена
-        String path = request.getRequestURI();
+        final String path = request.getRequestURI();
+        
+        // 🔥 Пропускаем /api/announcements/** без валидации токена
+        // Авторизация (если нужна) будет на уровне контроллера через @PreAuthorize
         if (path != null && path.startsWith("/api/announcements")) {
             filterChain.doFilter(request, response);
             return;
@@ -45,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
+        
         try {
             username = jwtService.extractUsername(jwt);
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -54,11 +60,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails, null, userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    log.debug("Authenticated user: {}", username);
                 }
             }
         } catch (Exception e) {
-            // Токен невалиден — продолжаем без аутентификации
-            logger.warn("JWT validation failed: " + e.getMessage());
+            log.warn("JWT validation failed for path {}: {}", path, e.getMessage());
+            // Не блокируем запрос — продолжаем без аутентификации
         }
 
         filterChain.doFilter(request, response);

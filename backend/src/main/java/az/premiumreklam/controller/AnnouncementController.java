@@ -1,53 +1,61 @@
 package az.premiumreklam.controller;
 
+import az.premiumreklam.dto.announcement.AnnouncementRequest;
+import az.premiumreklam.entity.Announcement;
+import az.premiumreklam.service.AnnouncementService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/announcements")
+@RequiredArgsConstructor
 public class AnnouncementController {
 
-    // 🔥 Тестовый эндпоинт — если этот работает, значит контроллер регистрируется
-    @GetMapping("/test")
-    public ResponseEntity<Map<String, String>> test() {
-        return ResponseEntity.ok(Map.of("status", "ok", "controller", "registered"));
-    }
+    private final AnnouncementService announcementService;
 
-    // 🔥 Заглушка для /active — возвращает пустой список, но без ошибок
-    @GetMapping("/active")
-    public ResponseEntity<List<?>> getActive() {
-        return ResponseEntity.ok(List.of());
-    }
-
+    // 🔥 GET-методы БЕЗ @PreAuthorize — доступны анонимно
     @GetMapping
-    public ResponseEntity<List<?>> getAll() {
-        return ResponseEntity.ok(List.of());
+    public List<Announcement> getAll() {
+        return announcementService.getAll();
+    }
+
+    @GetMapping("/active")
+    public List<Announcement> getActive() {
+        return announcementService.getActive();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Long>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("id", id));
+    public Announcement getById(@PathVariable Long id) {
+        return announcementService.getById(id);
     }
 
+    // 🔥 Мутации — только для ADMIN
     @PostMapping
-    public ResponseEntity<Map<String, String>> create(@RequestBody(required = false) Map<String, Object> body) {
-        return ResponseEntity.ok(Map.of("status", "created"));
+    @PreAuthorize("hasRole('ADMIN')")
+    public Announcement create(@RequestBody AnnouncementRequest request) {
+        return announcementService.create(request);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Map<String, String>> update(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
-        return ResponseEntity.ok(Map.of("status", "updated", "id", String.valueOf(id)));
+    @PreAuthorize("hasRole('ADMIN')")
+    public Announcement update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
+        return announcementService.update(id, request);
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Map<String, String>> patch(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
-        return ResponseEntity.ok(Map.of("status", "patched", "id", String.valueOf(id)));
+    @PreAuthorize("hasRole('ADMIN')")
+    public Announcement patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
+        return announcementService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("status", "deleted", "id", String.valueOf(id)));
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        announcementService.delete(id);
+        return ResponseEntity.ok().build();
     }
 }
