@@ -31,15 +31,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String path = request.getRequestURI();
-        
-        // 🔥 Пропускаем /api/announcements/** без валидации токена
-        // Авторизация (если нужна) будет на уровне контроллера через @PreAuthorize
-        if (path != null && path.startsWith("/api/announcements")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String username;
@@ -64,8 +55,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            log.warn("JWT validation failed for path {}: {}", path, e.getMessage());
-            // Не блокируем запрос — продолжаем без аутентификации
+            // Логируем, но не блокируем запрос — пусть дальше решит бизнес-логика
+            log.warn("JWT validation failed: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
