@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Megaphone, Plus, Edit, Trash2, Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { Megaphone, Plus, Save, X, AlertCircle, CheckCircle } from "lucide-react";
 
 interface Announcement {
   id: number;
@@ -15,6 +15,7 @@ interface Announcement {
   expiresAt?: string;
 }
 
+// 🔥 Жёсткий URL бэкенда — без переменных
 const API_BASE = "https://premium-reklam-backend.onrender.com/api";
 
 export default function ElanManager() {
@@ -31,6 +32,7 @@ export default function ElanManager() {
     setLoading(true);
     setError(null);
     try {
+      // 🔥 Запрос БЕЗ токена — бэкенд разрешает анонимный доступ
       const res = await fetch(`${API_BASE}/announcements`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -51,13 +53,15 @@ export default function ElanManager() {
       return;
     }
     try {
+      // 🔥 Запрос БЕЗ токена — бэкенд разрешает анонимный доступ
       const res = await fetch(`${API_BASE}/announcements`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // 🔥 Не отправляем Authorization header
         body: JSON.stringify({
           title: formData.title.trim(),
           message: formData.message.trim(),
-          priority: formData.priority.toUpperCase(),
+          priority: formData.priority.toUpperCase(), // "normal" → "NORMAL" для Java enum
           isActive: formData.isActive,
           expiresAt: formData.expiresAt || null
         })
