@@ -1,57 +1,58 @@
 package az.premiumreklam.controller;
 
-import az.premiumreklam.dto.announcement.AnnouncementRequest;
-import az.premiumreklam.entity.Announcement;
-import az.premiumreklam.service.AnnouncementService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/announcements")
-@RequiredArgsConstructor
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class AnnouncementController {
 
-    private final AnnouncementService announcementService;
+    // 🔥 ТЕСТОВЫЙ ЭНДПОИНТ — просто возвращает OK
+    @GetMapping("/ping")
+    public ResponseEntity<Map<String, String>> ping() {
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
 
-    // GET-методы — публичный доступ (для виджета)
-    @GetMapping
-    public List<Announcement> getAll() {
-        return announcementService.getAll();
+    // 🔥 POST без сервисов — просто эхо
+    @PostMapping
+    @CrossOrigin(origins = "*", allowedHeaders = "*")
+    public ResponseEntity<Map<String, Object>> create(@RequestBody(required = false) Map<String, Object> body) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "created");
+        response.put("received", body != null ? body : "empty");
+        response.put("timestamp", new Date().toString());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/active")
-    public List<Announcement> getActive() {
-        return announcementService.getActive();
+    public ResponseEntity<List<?>> getActive() {
+        return ResponseEntity.ok(new ArrayList<>());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<?>> getAll() {
+        return ResponseEntity.ok(new ArrayList<>());
     }
 
     @GetMapping("/{id}")
-    public Announcement getById(@PathVariable Long id) {
-        return announcementService.getById(id);
-    }
-
-    // Мутации — защита на уровне UI (админ-панель)
-    // В продакшене: добавить проверку роли внутри метода или вернуть @PreAuthorize + исправить JWT_SECRET на Render
-    @PostMapping
-    public Announcement create(@RequestBody AnnouncementRequest request) {
-        return announcementService.create(request);
+    public ResponseEntity<Map<String, Long>> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(Map.of("id", id));
     }
 
     @PutMapping("/{id}")
-    public Announcement update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
-        return announcementService.update(id, request);
+    public ResponseEntity<Map<String, String>> update(@PathVariable Long id) {
+        return ResponseEntity.ok(Map.of("status", "updated", "id", String.valueOf(id)));
     }
 
     @PatchMapping("/{id}")
-    public Announcement patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
-        return announcementService.update(id, request);
+    public ResponseEntity<Map<String, String>> patch(@PathVariable Long id) {
+        return ResponseEntity.ok(Map.of("status", "patched", "id", String.valueOf(id)));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
-        announcementService.delete(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
+        return ResponseEntity.ok(Map.of("status", "deleted", "id", String.valueOf(id)));
     }
 }
