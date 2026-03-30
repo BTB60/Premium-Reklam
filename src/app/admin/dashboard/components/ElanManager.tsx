@@ -43,17 +43,17 @@ export default function ElanManager() {
     loadAnnouncements();
   }, []);
 
-  const getToken = () => {
-    if (typeof window === "undefined") return null;
+const getToken = () => {
+  if (typeof window === "undefined") return null;
+  try {
     const stored = localStorage.getItem("decor_current_user");
-    if (!stored) return null;
-    try {
+    if (stored) {
       const parsed = JSON.parse(stored);
       return parsed?.token || null;
-    } catch {
-      return null;
     }
-  };
+  } catch {}
+  return null;
+};
 
   // 🔥 ЖЁСТКОЕ чтение ТОЛЬКО с бэкенда
   const loadAnnouncements = async () => {
