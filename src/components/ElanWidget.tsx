@@ -28,7 +28,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 const STORAGE_KEY_ANNOUNCEMENTS = "decor_announcements";
 const STORAGE_KEY_READS = "decor_announcement_reads";
 const STORAGE_KEY_LAST_FETCH = "decor_announcements_last_fetch";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+// 🔥 Уменьшили TTL с 5 мин до 30 сек для быстрой кросс-браузерной синхронизации
+const CACHE_TTL_MS = 30 * 1000;
+
+// 🔥 BroadcastChannel для мгновенной синхронизации внутри одного браузера
+const broadcastChannel = typeof window !== "undefined" ? new BroadcastChannel("announcements") : null;
 
 export default function ElanWidget() {
   const [showElan, setShowElan] = useState(false);
@@ -38,6 +42,14 @@ export default function ElanWidget() {
 
   useEffect(() => {
     checkForNewAnnouncement();
+
+    // 🔥 Слушаем BroadcastChannel (мгновенно, внутри одного браузера)
+    const handleBroadcast = (event: MessageEvent) => {
+      if (event.data?.action === "refresh") {
+        checkForNewAnnouncement();
+      }
+    };
+    broadcastChannel?.addEventListener("message", handleBroadcast);
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY_ANNOUNCEMENTS || e.key === STORAGE_KEY_READS) {
@@ -53,6 +65,7 @@ export default function ElanWidget() {
     window.addEventListener("focus", handleFocus);
     
     return () => {
+      broadcastChannel?.removeEventListener("message", handleBroadcast);
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleFocus);
     };
@@ -157,7 +170,11 @@ export default function ElanWidget() {
     
     let announcements: Announcement[] | null = null;
     
-    if (!isCacheValid()) {
+    // 🔥 При получении сигнала от BroadcastChannel — всегда идём в API
+    const lastFetch = localStorage.getItem(STORAGE_KEY_LAST_FETCH);
+    const forceRefresh = !lastFetch;
+    
+    if (forceRefresh || !isCacheValid()) {
       announcements = await fetchFromAPI();
     }
     

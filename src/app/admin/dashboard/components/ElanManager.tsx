@@ -27,6 +27,9 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
 
+// 🔥 BroadcastChannel для мгновенной синхронизации внутри одного браузера
+const broadcastChannel = typeof window !== "undefined" ? new BroadcastChannel("announcements") : null;
+
 export default function ElanManager() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,7 @@ export default function ElanManager() {
 
   useEffect(() => {
     loadAnnouncements();
+    return () => { broadcastChannel?.close(); };
   }, []);
 
   const getToken = () => {
@@ -58,6 +62,12 @@ export default function ElanManager() {
     } catch {
       return null;
     }
+  };
+
+  // 🔥 Инвалидация кэша + рассылка сигнала всем вкладкам
+  const invalidateAnnouncementsCache = () => {
+    localStorage.removeItem("decor_announcements_last_fetch");
+    broadcastChannel?.postMessage({ action: "refresh" });
   };
 
   const loadAnnouncements = async () => {
@@ -75,8 +85,8 @@ export default function ElanManager() {
         const list = Array.isArray(data) ? data : data?.announcements || [];
         setAnnouncements(list);
         localStorage.setItem("decor_announcements", JSON.stringify(list));
+        // 🔥 Не обновляем last_fetch — пусть виджет заберёт свежие данные сразу
       } else {
-        // 🔥 Фолбэк при 404/500
         console.warn("[Elan] API returned", res.status, "- using localStorage fallback");
         loadFromLocalStorage();
       }
@@ -171,6 +181,8 @@ export default function ElanManager() {
 
       if (res.ok) {
         await loadAnnouncements();
+        // 🔥 Ключевое: инвалидируем кэш и оповещаем все вкладки
+        invalidateAnnouncementsCache();
         setShowForm(false);
         setEditingId(null);
         resetForm();
@@ -180,7 +192,7 @@ export default function ElanManager() {
     } catch (err: any) {
       console.error("[Elan] Save error:", err);
       
-      // 🔥 Фолбэк: localStorage
+      // Фолбэк: localStorage
       let updated: Announcement[];
       if (editingId) {
         updated = announcements.map(a => a.id === editingId ? announcement : a);
@@ -194,6 +206,9 @@ export default function ElanManager() {
       if (!editingId) {
         localStorage.removeItem("decor_announcement_reads");
       }
+
+      // 🔥 Даже при фолбэке — инвалидируем кэш для виджета
+      invalidateAnnouncementsCache();
 
       setShowForm(false);
       setEditingId(null);
@@ -214,6 +229,7 @@ export default function ElanManager() {
       
       if (res.ok) {
         await loadAnnouncements();
+        invalidateAnnouncementsCache();
       } else {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -224,6 +240,7 @@ export default function ElanManager() {
       const updated = announcements.filter(a => a.id !== id);
       setAnnouncements(updated);
       localStorage.setItem("decor_announcements", JSON.stringify(updated));
+      invalidateAnnouncementsCache();
     }
   };
 
@@ -244,6 +261,7 @@ export default function ElanManager() {
       
       if (res.ok) {
         await loadAnnouncements();
+        invalidateAnnouncementsCache();
       } else {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -256,6 +274,7 @@ export default function ElanManager() {
       );
       setAnnouncements(updated);
       localStorage.setItem("decor_announcements", JSON.stringify(updated));
+      invalidateAnnouncementsCache();
     }
   };
 
