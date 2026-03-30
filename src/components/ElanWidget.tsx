@@ -16,57 +16,26 @@ interface Announcement {
   expiresAt?: string;
 }
 
-interface AnnouncementRead {
-  announcementId: number;
-  userId: string;
-  readAt: string;
-}
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : 'https://premium-reklam-backend.onrender.com/api';
-const STORAGE_KEY_ANNOUNCEMENTS = "decor_announcements";
-const STORAGE_KEY_READS = "decor_announcement_reads";
-const STORAGE_KEY_LAST_FETCH = "decor_announcements_last_fetch";
-// 🔥 Уменьшили TTL с 5 мин до 30 сек для быстрой кросс-браузерной синхронизации
-const CACHE_TTL_MS = 30 * 1000;
-
-// 🔥 BroadcastChannel для мгновенной синхронизации внутри одного браузера
-const broadcastChannel = typeof window !== "undefined" ? new BroadcastChannel("announcements") : null;
 
 export default function ElanWidget() {
   const [showElan, setShowElan] = useState(false);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [hasUnread, setHasUnread] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     checkForNewAnnouncement();
 
-    // 🔥 Слушаем BroadcastChannel (мгновенно, внутри одного браузера)
-    const handleBroadcast = (event: MessageEvent) => {
-      if (event.data?.action === "refresh") {
-        checkForNewAnnouncement();
-      }
-    };
-    broadcastChannel?.addEventListener("message", handleBroadcast);
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY_ANNOUNCEMENTS || e.key === STORAGE_KEY_READS) {
-        checkForNewAnnouncement();
-      }
-    };
-
     const handleFocus = () => {
       checkForNewAnnouncement();
     };
-
-    window.addEventListener("storage", handleStorageChange);
     window.addEventListener("focus", handleFocus);
     
     return () => {
-      broadcastChannel?.removeEventListener("message", handleBroadcast);
-      window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("focus", handleFocus);
     };
   }, []);
@@ -88,48 +57,38 @@ export default function ElanWidget() {
     return localStorage.getItem("token");
   };
 
-  const isCacheValid = () => {
-    const lastFetch = localStorage.getItem(STORAGE_KEY_LAST_FETCH);
-    if (!lastFetch) return false;
-    return Date.now() - parseInt(lastFetch) < CACHE_TTL_MS;
-  };
-
-  const fetchFromAPI = async (): Promise<Announcement[] | null> => {
-    try {
-      const token = getAuthToken();
-      
-      const response = await fetch(`${API_BASE}/announcements/active`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { "Authorization": `Bearer ${token}` }),
-        },
-        cache: "no-store",
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401 || response.status === 403) {
-          return null;
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data: Announcement[] = await response.json();
-      localStorage.setItem(STORAGE_KEY_ANNOUNCEMENTS, JSON.stringify(data));
-      localStorage.setItem(STORAGE_KEY_LAST_FETCH, Date.now().toString());
-      return data;
-    } catch (error) {
-      console.warn("[ElanWidget] API fetch failed, using localStorage fallback:", error);
+  // 🔥 ЖЁСТКОЕ чтение ТОЛЬКО с бэкенда. Нет записи? — ошибка.
+  const fetchActiveAnnouncements = async (): Promise<Announcement[] | null> => {
+    setApiError(null);
+    
+    const token = getAuthToken();
+    
+    const response = await fetch(`${API_BASE}/announcements/active`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` }),
+      },
+      cache: "no-store",
+    });
+    
+    if (!response.ok) {
+      const msg = `API xətası: ${response.status}`;
+      setApiError(msg);
+      console.error("[ElanWidget] API error:", msg);
       return null;
     }
+    
+    const data: Announcement[] = await response.json();
+    return data;
   };
 
   const checkReadStatusAPI = async (announcementId: number): Promise<boolean> => {
+    const token = getAuthToken();
+    const userId = getCurrentUser();
+    
+    if (!token || !userId) return false;
+    
     try {
-      const token = getAuthToken();
-      const userId = getCurrentUser();
-      
-      if (!token || !userId) return false;
-      
       const response = await fetch(`${API_BASE}/announcements/${announcementId}/read-status`, {
         headers: {
           "Content-Type": "application/json",
@@ -147,10 +106,10 @@ export default function ElanWidget() {
   };
 
   const markAsReadAPI = async (announcementId: number): Promise<boolean> => {
+    const token = getAuthToken();
+    if (!token) return false;
+    
     try {
-      const token = getAuthToken();
-      if (!token) return false;
-      
       const response = await fetch(`${API_BASE}/announcements/${announcementId}/read`, {
         method: "POST",
         headers: {
@@ -168,28 +127,10 @@ export default function ElanWidget() {
   const checkForNewAnnouncement = async () => {
     setIsLoading(true);
     
-    let announcements: Announcement[] | null = null;
+    const announcements = await fetchActiveAnnouncements();
     
-    // 🔥 При получении сигнала от BroadcastChannel — всегда идём в API
-    const lastFetch = localStorage.getItem(STORAGE_KEY_LAST_FETCH);
-    const forceRefresh = !lastFetch;
-    
-    if (forceRefresh || !isCacheValid()) {
-      announcements = await fetchFromAPI();
-    }
-    
+    // 🔥 Если бэкенд не вернул данные — показываем ошибку, НЕ лезем в localStorage
     if (!announcements) {
-      const stored = localStorage.getItem(STORAGE_KEY_ANNOUNCEMENTS);
-      if (stored) {
-        try {
-          announcements = JSON.parse(stored);
-        } catch (e) {
-          console.error("[ElanWidget] Parse error:", e);
-        }
-      }
-    }
-    
-    if (!announcements || announcements.length === 0) {
       setIsLoading(false);
       return;
     }
@@ -209,15 +150,8 @@ export default function ElanWidget() {
     
     let hasRead = false;
     
-    // 🔥 Приоритет: проверяем через API, если есть токен
     if (token && userId) {
       hasRead = await checkReadStatusAPI(latest.id);
-    }
-    
-    // 🔥 Fallback: проверяем localStorage
-    if (!hasRead) {
-      const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
-      hasRead = reads.some(r => r.announcementId === latest.id && r.userId === userId);
     }
 
     const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
@@ -237,30 +171,14 @@ export default function ElanWidget() {
     const userId = getCurrentUser();
     const token = getAuthToken();
     
-    // 🔥 Отправляем на сервер, если есть авторизация
     if (token && userId) {
-      const success = await markAsReadAPI(announcement.id);
-      if (success) {
-        setShowElan(false);
-        setHasUnread(false);
-        return;
-      }
-    }
-    
-    // 🔥 Fallback: localStorage
-    const reads: AnnouncementRead[] = JSON.parse(localStorage.getItem(STORAGE_KEY_READS) || "[]");
-    
-    if (!reads.some(r => r.announcementId === announcement.id && r.userId === userId)) {
-      reads.push({
-        announcementId: announcement.id,
-        userId: userId || "anonymous",
-        readAt: new Date().toISOString(),
-      });
-      localStorage.setItem(STORAGE_KEY_READS, JSON.stringify(reads));
+      await markAsReadAPI(announcement.id);
     }
 
     setShowElan(false);
     setHasUnread(false);
+    // 🔥 После прочтения — сразу перезапрашиваем с бэкенда
+    await checkForNewAnnouncement();
   };
 
   const getPriorityColor = (priority: string) => {
@@ -278,6 +196,14 @@ export default function ElanWidget() {
     return (
       <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" disabled>
         <RefreshCw className="w-5 h-5 text-gray-400 animate-spin" />
+      </button>
+    );
+  }
+
+  if (apiError) {
+    return (
+      <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title={apiError}>
+        <AlertCircle className="w-5 h-5 text-red-500" />
       </button>
     );
   }

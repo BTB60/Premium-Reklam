@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Megaphone, Plus, Edit, Trash2, Save, X, Eye, EyeOff, AlertCircle, CheckCircle, Calendar } from "lucide-react";
+import { Megaphone, Plus, Edit, Trash2, Save, X, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 
 interface Announcement {
   id: number;
@@ -17,23 +17,15 @@ interface Announcement {
   createdBy: string;
 }
 
-interface AnnouncementRead {
-  announcementId: number;
-  userId: string;
-  readAt: string;
-}
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
-
-// 🔥 BroadcastChannel для мгновенной синхронизации внутри одного браузера
-const broadcastChannel = typeof window !== "undefined" ? new BroadcastChannel("announcements") : null;
 
 export default function ElanManager() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
@@ -49,7 +41,6 @@ export default function ElanManager() {
 
   useEffect(() => {
     loadAnnouncements();
-    return () => { broadcastChannel?.close(); };
   }, []);
 
   const getToken = () => {
@@ -64,50 +55,26 @@ export default function ElanManager() {
     }
   };
 
-  // 🔥 Инвалидация кэша + рассылка сигнала всем вкладкам
-  const invalidateAnnouncementsCache = () => {
-    localStorage.removeItem("decor_announcements_last_fetch");
-    broadcastChannel?.postMessage({ action: "refresh" });
-  };
-
+  // 🔥 ЖЁСТКОЕ чтение ТОЛЬКО с бэкенда
   const loadAnnouncements = async () => {
     setLoading(true);
     setError(null);
     
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/announcements`, {
-        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data?.announcements || [];
-        setAnnouncements(list);
-        localStorage.setItem("decor_announcements", JSON.stringify(list));
-        // 🔥 Не обновляем last_fetch — пусть виджет заберёт свежие данные сразу
-      } else {
-        console.warn("[Elan] API returned", res.status, "- using localStorage fallback");
-        loadFromLocalStorage();
-      }
-    } catch (err: any) {
-      console.error("[Elan] Load error:", err);
-      setError("API xətası - lokal məlumatlar göstərilir");
-      loadFromLocalStorage();
-    } finally {
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/announcements`, {
+      headers: token ? { "Authorization": `Bearer ${token}` } : {}
+    });
+    
+    if (!res.ok) {
+      setError(`Server xətası: ${res.status}`);
       setLoading(false);
+      return;
     }
-  };
-
-  const loadFromLocalStorage = () => {
-    try {
-      const stored = localStorage.getItem("decor_announcements");
-      if (stored) {
-        setAnnouncements(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error("[Elan] localStorage parse error:", e);
-    }
+    
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : data?.announcements || [];
+    setAnnouncements(list);
+    setLoading(false);
   };
 
   const resetForm = () => {
@@ -125,6 +92,8 @@ export default function ElanManager() {
     resetForm();
     setShowForm(true);
     setShowPreview(false);
+    setError(null);
+    setSuccess(null);
   };
 
   const handleEdit = (announcement: Announcement) => {
@@ -138,144 +107,104 @@ export default function ElanManager() {
     });
     setShowForm(true);
     setShowPreview(false);
+    setError(null);
+    setSuccess(null);
   };
 
+  // 🔥 ЖЁСТКАЯ запись ТОЛЬКО на бэкенд. Ответ только от сервера.
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccess(null);
 
     if (!formData.title?.trim() || !formData.message?.trim()) {
       setError("Başlıq və mətn tələb olunur");
       return;
     }
 
-    const announcement: Announcement = {
-      id: editingId || Date.now(),
+    const payload = {
       title: formData.title!.trim(),
       message: formData.message!.trim(),
       isActive: formData.isActive ?? true,
-      priority: formData.priority as any || "normal",
+      priority: formData.priority || "normal",
       expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : undefined,
-      createdAt: editingId 
-        ? announcements.find(a => a.id === editingId)?.createdAt || new Date().toISOString()
-        : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: "Admin",
     };
 
-    try {
-      const token = getToken();
-      const method = editingId ? "PUT" : "POST";
-      const url = editingId 
-        ? `${API_BASE}/announcements/${editingId}` 
-        : `${API_BASE}/announcements`;
+    const token = getToken();
+    const method = editingId ? "PUT" : "POST";
+    const url = editingId 
+      ? `${API_BASE}/announcements/${editingId}` 
+      : `${API_BASE}/announcements`;
 
+    try {
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify(announcement)
+        body: JSON.stringify(payload)
       });
 
-      if (res.ok) {
-        await loadAnnouncements();
-        // 🔥 Ключевое: инвалидируем кэш и оповещаем все вкладки
-        invalidateAnnouncementsCache();
-        setShowForm(false);
-        setEditingId(null);
-        resetForm();
-      } else {
-        throw new Error(`HTTP ${res.status}`);
-      }
-    } catch (err: any) {
-      console.error("[Elan] Save error:", err);
-      
-      // Фолбэк: localStorage
-      let updated: Announcement[];
-      if (editingId) {
-        updated = announcements.map(a => a.id === editingId ? announcement : a);
-      } else {
-        updated = [...announcements, announcement];
-      }
-      
-      setAnnouncements(updated);
-      localStorage.setItem("decor_announcements", JSON.stringify(updated));
-      
-      if (!editingId) {
-        localStorage.removeItem("decor_announcement_reads");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || `HTTP ${res.status}`);
       }
 
-      // 🔥 Даже при фолбэке — инвалидируем кэш для виджета
-      invalidateAnnouncementsCache();
-
+      // 🔥 Ответ от глобалки — "Qeyd olundu"
+      setSuccess("Qeyd olundu");
+      await loadAnnouncements();
       setShowForm(false);
       setEditingId(null);
       resetForm();
-      setError("Yadda saxlandı (lokal)");
+      
+      setTimeout(() => setSuccess(null), 3000);
+      
+    } catch (err: any) {
+      console.error("[Elan] Save error:", err);
+      setError(err.message || "Serverdə xəta baş verdi");
     }
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Elanı silmək istədiyinizə əminsiniz?")) return;
     
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/announcements/${id}`, {
-        method: "DELETE",
-        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-      });
-      
-      if (res.ok) {
-        await loadAnnouncements();
-        invalidateAnnouncementsCache();
-      } else {
-        throw new Error(`HTTP ${res.status}`);
-      }
-    } catch (err: any) {
-      console.error("[Elan] Delete error:", err);
-      
-      // Фолбэк
-      const updated = announcements.filter(a => a.id !== id);
-      setAnnouncements(updated);
-      localStorage.setItem("decor_announcements", JSON.stringify(updated));
-      invalidateAnnouncementsCache();
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/announcements/${id}`, {
+      method: "DELETE",
+      headers: token ? { "Authorization": `Bearer ${token}` } : {}
+    });
+    
+    if (!res.ok) {
+      setError(`Silinmədi: ${res.status}`);
+      return;
     }
+    
+    setSuccess("Silindi");
+    await loadAnnouncements();
+    setTimeout(() => setSuccess(null), 3000);
   };
 
   const toggleActive = async (id: number) => {
     const announcement = announcements.find(a => a.id === id);
     if (!announcement) return;
     
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/announcements/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ isActive: !announcement.isActive })
-      });
-      
-      if (res.ok) {
-        await loadAnnouncements();
-        invalidateAnnouncementsCache();
-      } else {
-        throw new Error(`HTTP ${res.status}`);
-      }
-    } catch (err: any) {
-      console.error("[Elan] Toggle error:", err);
-      
-      // Фолбэк
-      const updated = announcements.map(a => 
-        a.id === id ? { ...a, isActive: !a.isActive, updatedAt: new Date().toISOString() } : a
-      );
-      setAnnouncements(updated);
-      localStorage.setItem("decor_announcements", JSON.stringify(updated));
-      invalidateAnnouncementsCache();
+    const token = getToken();
+    const res = await fetch(`${API_BASE}/announcements/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ isActive: !announcement.isActive })
+    });
+    
+    if (!res.ok) {
+      setError(`Status dəyişmədi: ${res.status}`);
+      return;
     }
+    
+    await loadAnnouncements();
   };
 
   const handlePreview = (announcement: Announcement) => {
@@ -304,7 +233,7 @@ export default function ElanManager() {
 
   const activeCount = announcements.filter(a => a.isActive).length;
 
-  if (loading) {
+  if (loading && announcements.length === 0) {
     return (
       <Card className="p-12 text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D90429] mx-auto" />
@@ -325,9 +254,16 @@ export default function ElanManager() {
       </div>
 
       {error && (
-        <Card className="p-4 mb-4 bg-amber-50 border border-amber-200 text-amber-700 text-sm flex items-center gap-2">
+        <Card className="p-4 mb-4 bg-red-50 border border-red-200 text-red-700 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4" />
           {error}
+        </Card>
+      )}
+
+      {success && (
+        <Card className="p-4 mb-4 bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          {success}
         </Card>
       )}
 
@@ -344,12 +280,9 @@ export default function ElanManager() {
           <p className="text-2xl font-bold text-green-700">{activeCount}</p>
         </Card>
         <Card className="p-4 bg-blue-50">
-          <p className="text-blue-600 text-sm">Oxunma</p>
+          <p className="text-blue-600 text-sm">Prioritet</p>
           <p className="text-2xl font-bold text-blue-700">
-            {announcements.reduce((sum, a) => {
-              const reads = JSON.parse(localStorage.getItem("decor_announcement_reads") || "[]");
-              return sum + reads.filter((r: AnnouncementRead) => r.announcementId === a.id).length;
-            }, 0)}
+            {announcements.filter(a => a.priority === "urgent").length} təcili
           </p>
         </Card>
         <Card className="p-4 bg-amber-50">
