@@ -15,6 +15,15 @@ public class AnnouncementService {
 
     private final AnnouncementRepository announcementRepository;
 
+    // 🔥 Безопасный парсинг приоритета (любой регистр)
+    private Announcement.Priority parsePriority(String input) {
+        if (input == null || input.isEmpty()) return Announcement.Priority.NORMAL;
+        for (Announcement.Priority p : Announcement.Priority.values()) {
+            if (p.name().equalsIgnoreCase(input)) return p;
+        }
+        return Announcement.Priority.NORMAL;
+    }
+
     public List<Announcement> getAll() {
         return announcementRepository.findAllByOrderByCreatedAtDesc();
     }
@@ -26,16 +35,6 @@ public class AnnouncementService {
     public Announcement getById(Long id) {
         return announcementRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Elan tapılmadı"));
-    }
-
-    // 🔥 Helper: безопасное преобразование строки в enum (case-insensitive)
-    private Announcement.Priority parsePriority(String priority) {
-        if (priority == null || priority.isEmpty()) return Announcement.Priority.NORMAL;
-        try {
-            return Announcement.Priority.valueOf(priority.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return Announcement.Priority.NORMAL; // fallback
-        }
     }
 
     @Transactional

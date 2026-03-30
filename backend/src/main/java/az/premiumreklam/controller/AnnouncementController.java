@@ -1,50 +1,55 @@
 package az.premiumreklam.controller;
 
+import az.premiumreklam.dto.announcement.AnnouncementRequest;
+import az.premiumreklam.entity.Announcement;
+import az.premiumreklam.service.AnnouncementService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/announcements")
+@RequiredArgsConstructor
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class AnnouncementController {
 
-    @GetMapping("/ping")
-    public ResponseEntity<String> ping() {
-        return ResponseEntity.ok("{\"status\":\"ok\"}");
-    }
+    private final AnnouncementService announcementService;
 
-    @PostMapping
-    public ResponseEntity<String> create(@RequestBody(required = false) String body) {
-        return ResponseEntity.ok("{\"status\":\"created\"}");
+    @GetMapping
+    public List<Announcement> getAll() {
+        return announcementService.getAll();
     }
 
     @GetMapping("/active")
-    public ResponseEntity<String> getActive() {
-        return ResponseEntity.ok("[]");
-    }
-
-    @GetMapping
-    public ResponseEntity<String> getAll() {
-        return ResponseEntity.ok("[]");
+    public List<Announcement> getActive() {
+        return announcementService.getActive();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<String> getById(@PathVariable Long id) {
-        return ResponseEntity.ok("{\"id\":" + id + "}");
+    public Announcement getById(@PathVariable Long id) {
+        return announcementService.getById(id);
+    }
+
+    @PostMapping
+    public Announcement create(@RequestBody AnnouncementRequest request) {
+        return announcementService.create(request);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<String> update(@PathVariable Long id) {
-        return ResponseEntity.ok("{\"status\":\"updated\"}");
+    public Announcement update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
+        return announcementService.update(id, request);
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<String> patch(@PathVariable Long id) {
-        return ResponseEntity.ok("{\"status\":\"patched\"}");
+    public Announcement patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
+        return announcementService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        return ResponseEntity.ok("{\"status\":\"deleted\"}");
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        announcementService.delete(id);
+        return ResponseEntity.ok().build();
     }
 }
