@@ -9,50 +9,43 @@ import java.util.*;
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class AnnouncementController {
 
-    // 🔥 ТЕСТОВЫЙ ЭНДПОИНТ — просто возвращает OK
-    @GetMapping("/ping")
-    public ResponseEntity<Map<String, String>> ping() {
-        return ResponseEntity.ok(Map.of("status", "ok"));
+    @GetMapping(value = "/ping", produces = "application/json")
+    public String ping() {
+        return "{\"status\":\"ok\"}";
     }
 
-    // 🔥 POST без сервисов — просто эхо
-    @PostMapping
-    @CrossOrigin(origins = "*", allowedHeaders = "*")
-    public ResponseEntity<Map<String, Object>> create(@RequestBody(required = false) Map<String, Object> body) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("status", "created");
-        response.put("received", body != null ? body : "empty");
-        response.put("timestamp", new Date().toString());
-        return ResponseEntity.ok(response);
+    @PostMapping(value = "", produces = "application/json", consumes = "application/json")
+    public String create(@RequestBody(required = false) String body) {
+        return "{\"status\":\"created\",\"received\":" + (body != null ? body : "null") + "}";
     }
 
-    @GetMapping("/active")
-    public ResponseEntity<List<?>> getActive() {
-        return ResponseEntity.ok(new ArrayList<>());
+    @GetMapping(value = "/active", produces = "application/json")
+    public String getActive() {
+        return "[]";
     }
 
-    @GetMapping
-    public ResponseEntity<List<?>> getAll() {
-        return ResponseEntity.ok(new ArrayList<>());
+    @GetMapping(value = "", produces = "application/json")
+    public String getAll() {
+        return "[]";
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Long>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("id", id));
+    @GetMapping(value = "/{id}", produces = "application/json")
+    public String getById(@PathVariable Long id) {
+        return "{\"id\":" + id + "}";
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Map<String, String>> update(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("status", "updated", "id", String.valueOf(id)));
+    @PutMapping(value = "/{id}", produces = "application/json")
+    public String update(@PathVariable Long id) {
+        return "{\"status\":\"updated\",\"id\":" + id + "}";
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<Map<String, String>> patch(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("status", "patched", "id", String.valueOf(id)));
+    @PatchMapping(value = "/{id}", produces = "application/json")
+    public String patch(@PathVariable Long id) {
+        return "{\"status\":\"patched\",\"id\":" + id + "}";
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, String>> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of("status", "deleted", "id", String.valueOf(id)));
+    @DeleteMapping(value = "/{id}", produces = "application/json")
+    public String delete(@PathVariable Long id) {
+        return "{\"status\":\"deleted\",\"id\":" + id + "}";
     }
 }

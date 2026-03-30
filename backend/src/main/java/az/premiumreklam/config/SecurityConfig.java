@@ -25,7 +25,9 @@ public class SecurityConfig {
             .httpBasic(basic -> basic.disable())
             .formLogin(form -> form.disable())
             .logout(logout -> logout.disable())
-            .anonymous(anonymous -> anonymous.disable());
+            .anonymous(anonymous -> anonymous.disable())
+            .securityContext(context -> context.disable())
+            .requestCache(cache -> cache.disable());
         return http.build();
     }
 }
