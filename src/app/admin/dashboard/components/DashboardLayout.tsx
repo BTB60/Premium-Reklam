@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/Button";
 import StatsCards from "./StatsCards";
 import UsersTable from "./UsersTable";
 import OrdersTable from "./OrdersTable";
-import ElanManager from "./ElanManager";
 import NotificationsList from "./NotificationsList";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import ProductsManager from "./ProductsManager";
@@ -15,13 +14,17 @@ import InventoryManager from "./InventoryManager";
 import WorkerTasksManager from "./WorkerTasksManager";
 import ShopsManager from "./ShopsManager";
 import SupportManager from "./SupportManager";
+import ElanManager from "./ElanManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
-  TrendingUp, Award
+  TrendingUp, Award, Megaphone
 } from "lucide-react";
+
+// 🔥 ТИПЫ
+type PermissionLevel = "none" | "view" | "edit";
 
 type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
 
@@ -161,12 +164,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <ShopsManager />
               </motion.div>
             )}
-{activeTab === "elan" && (
-  <motion.div key="elan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-    <ElanManager />
-  </motion.div>
-)}
-
+            {activeTab === "elan" && (
+              <motion.div key="elan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <ElanManager />
+              </motion.div>
+            )}
             {activeTab === "notifications" && (
               <motion.div key="notifications" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <NotificationsList />
