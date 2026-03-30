@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { motion, AnimatePresence } from "framer-motion";
+import ElanWidget from "@/components/ElanWidget"; // 🔥 ДОБАВЛЕНО
 import { 
   LogOut, 
   Package, 
@@ -81,12 +82,10 @@ export default function DashboardPage() {
         orderApi.getMyOrders(),
         productApi.getAll(),
       ]);
-      // Handle new API response format
       const ordersData = ordersResponse as any;
       const orders = ordersData.orders || [];
       setUserOrders(orders);
       
-      // Calculate summary from orders
       const today = new Date().toISOString().split('T')[0];
       const monthStart = today.substring(0, 7) + '-01';
       
@@ -136,7 +135,6 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
-  // Handle debt payment
   const handlePayDebt = (orderId: number) => {
     setPaymentOrderId(orderId);
     setPaymentAmount("");
@@ -166,7 +164,7 @@ export default function DashboardPage() {
       await orderApi.addPayment(paymentOrderId, amount, "CASH", "Müştəri ödənişi");
       alert("Ödəniş uğurla qeydə alındı!");
       setShowPaymentModal(false);
-      loadData(); // Refresh data
+      loadData();
     } catch (error: any) {
       alert(error.message || "Ödəniş xətası");
     } finally {
@@ -227,8 +225,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Stats are now calculated in loadData and stored in orderSummary
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center">
@@ -254,9 +250,12 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* 🔥 ДОБАВЛЕНО: ElanWidget */}
+            <ElanWidget />
+            
             <Button variant="ghost" size="sm" onClick={handleRefresh} icon={<RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />}>
-                <span className="sr-only">Yenile</span>
-              </Button>
+              <span className="sr-only">Yenile</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout} icon={<LogOut className="w-4 h-4" />}>
               Çıxış
             </Button>
@@ -655,7 +654,6 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <StatusBadge status={order.status?.toLowerCase() || "pending"} />
-                        {/* Payment Status Badge */}
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
                           order.payment_status === "PAID" ? "bg-green-100 text-green-700" :
                           order.payment_status === "PARTIAL" ? "bg-orange-100 text-orange-700" :
@@ -705,7 +703,6 @@ export default function DashboardPage() {
                           <p className="text-xs text-[#6B7280]">Qalan</p>
                           <p className="text-lg font-bold text-red-600">{(order.remaining_amount || order.remainingAmount || 0).toFixed(2)} AZN</p>
                         </div>
-                        {/* Pay Button */}
                         {(order.payment_status !== "PAID" && order.payment_status !== "CANCELLED" && Number(order.remaining_amount || order.remainingAmount || 0) > 0) && (
                           <button
                             onClick={() => handlePayDebt(order.id)}
@@ -794,7 +791,6 @@ export default function DashboardPage() {
                       />
                     </div>
 
-                    {/* Quick amounts */}
                     <div className="grid grid-cols-3 gap-2">
                       {[10, 20, 50].map((amt) => {
                         const order = userOrders.find((o: any) => o.id === paymentOrderId);
