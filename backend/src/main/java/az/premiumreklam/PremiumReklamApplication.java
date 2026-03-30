@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 public class PremiumReklamApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PremiumReklamApplication.class, args);
+        SpringApplication.run(PremiumReklamApplication.class, args);// FORCE_REBUILD_20260330
     }
 
     @Bean
