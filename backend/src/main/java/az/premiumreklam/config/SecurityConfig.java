@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.config;
+package az.premiumreklam.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +15,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        // Этот лог должен появиться в консоли Render при старте, если конфиг работает
-        System.out.println(">>> [SecurityConfig] Applying permitAll filter chain for ALL requests <<<");
+        System.out.println(">>> [SecurityConfig] LOADED: Applying permitAll for ALL requests <<<");
         
         http
             .securityMatcher("/**")
