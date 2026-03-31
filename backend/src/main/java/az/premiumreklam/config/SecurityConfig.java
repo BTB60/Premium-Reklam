@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.config;
+﻿-package az.premiumreklam.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,21 +11,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 @Order(1)
 public class SecurityConfig {
-
     @Bean
-    @Order(1)
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/**").permitAll()
-                .requestMatchers("/**").permitAll()
-                .anyRequest().permitAll()
-            )
+            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
             .csrf(csrf -> csrf.disable())
-            .httpBasic(basic -> basic.disable())
             .formLogin(form -> form.disable())
-            .logout(logout -> logout.disable())
-            .anonymous(anonymous -> anonymous.disable());
+            .httpBasic(basic -> basic.disable());
         return http.build();
     }
 }
