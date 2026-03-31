@@ -37,4 +37,6 @@ cors:
 logging:
   level:
     az.premiumreklam: ${LOG_LEVEL:INFO}
-    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.web.filter: DEBUG
