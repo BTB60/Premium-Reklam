@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: premium-reklam-api
+    runtime: docker
+    repo: https://github.com/BTB60/backandpremiumreklam
+    branch: main
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: DATABASE_URL
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true

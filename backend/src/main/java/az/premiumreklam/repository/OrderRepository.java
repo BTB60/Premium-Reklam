@@ -1,0 +1,18 @@
+﻿package az.premiumreklam.repository;
+
+import az.premiumreklam.entity.Order;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface OrderRepository extends JpaRepository<Order, UUID> {
+    @Override
+    @EntityGraph(attributePaths = {"user", "items", "items.product"})
+    List<Order> findAll();
+    
+    List<Order> findByUserId(UUID userId);
+}

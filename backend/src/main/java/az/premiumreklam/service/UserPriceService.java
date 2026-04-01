@@ -1,0 +1,99 @@
+package az.premiumreklam.service;
+
+import az.premiumreklam.dto.product.UserPriceRequest;
+import az.premiumreklam.entity.Product;
+import az.premiumreklam.entity.User;
+import az.premiumreklam.entity.UserPrice;
+import az.premiumreklam.repository.ProductRepository;
+import az.premiumreklam.repository.UserPriceRepository;
+import az.premiumreklam.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class UserPriceService {
+
+    private final UserPriceRepository userPriceRepository;
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+
+    public List<UserPrice> getUserPrices(UUID userId) {
+        return userPriceRepository.findByUserIdAndIsActiveTrue(userId);
+    }
+
+    public List<UserPrice> getProductPrices(UUID productId) {
+        return userPriceRepository.findByProductId(productId);
+    }
+
+    public BigDecimal getPriceForUser(UUID userId, UUID productId) {
+        // Check for custom price first
+        Optional<UserPrice> customPrice = userPriceRepository
+                .findByUserIdAndProductIdAndIsActiveTrue(userId, productId);
+        
+        if (customPrice.isPresent()) {
+            UserPrice up = customPrice.get();
+            // If discount is set, calculate discounted price
+            if (up.getDiscountPercent() != null && up.getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+                Product product = up.getProduct();
+                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                        up.getDiscountPercent().divide(BigDecimal.valueOf(100)));
+                return product.getSalePrice().multiply(discountMultiplier);
+            }
+            return up.getCustomPrice();
+        }
+        
+        // Return default product price
+        return productRepository.findById(productId)
+                .map(Product::getSalePrice)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    @Transactional
+    public UserPrice setUserPrice(UserPriceRequest request) {
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+        
+        Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new RuntimeException("Məhsul tapılmadı"));
+
+        // Check if price already exists
+        Optional<UserPrice> existing = userPriceRepository
+                .findByUserIdAndProductIdAndIsActiveTrue(request.getUserId(), request.getProductId());
+
+        if (existing.isPresent()) {
+            UserPrice up = existing.get();
+            up.setCustomPrice(request.getCustomPrice());
+            up.setDiscountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO);
+            return userPriceRepository.save(up);
+        }
+
+        UserPrice userPrice = UserPrice.builder()
+                .user(user)
+                .product(product)
+                .customPrice(request.getCustomPrice())
+                .discountPercent(request.getDiscountPercent() != null ? request.getDiscountPercent() : BigDecimal.ZERO)
+                .isActive(true)
+                .build();
+
+        return userPriceRepository.save(userPrice);
+    }
+
+    @Transactional
+    public void deleteUserPrice(UUID userId, UUID productId) {
+        Optional<UserPrice> existing = userPriceRepository
+                .findByUserIdAndProductIdAndIsActiveTrue(userId, productId);
+        
+        if (existing.isPresent()) {
+            UserPrice up = existing.get();
+            up.setIsActive(false);
+            userPriceRepository.save(up);
+        }
+    }
+}
