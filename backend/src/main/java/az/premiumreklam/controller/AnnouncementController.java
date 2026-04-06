@@ -13,7 +13,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/announcements")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", allowedHeaders = "*")
+// ❌ УДАЛЕНО: @CrossOrigin(origins = "*", allowedHeaders = "*")
+// ✅ Глобальный CorsConfig.java уже обрабатывает CORS для всего приложения
 public class AnnouncementController {
 
     private final AnnouncementService announcementService;
