@@ -1,4 +1,4 @@
-package az.premiumreklam.config;
+﻿package az.premiumreklam.config;
 
 import az.premiumreklam.repository.UserRepository;
 import az.premiumreklam.security.CustomUserDetailsService;
@@ -25,6 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final UserRepository userRepository;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public CustomUserDetailsService customUserDetailsService() {
@@ -50,30 +51,17 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configure(http))
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Публичные эндпоинты с явным указанием методов
-                .requestMatchers(HttpMethod.GET, "/api/announcements/ping").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/products").permitAll()
-                .requestMatchers("/api/products/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
-                // Все остальные /api/* требуют аутентификации
-                .requestMatchers("/api/**").authenticated()
-                // Всё остальное — публично
+                .requestMatchers("/api/**").permitAll()
                 .anyRequest().permitAll()
             )
             .httpBasic(basic -> basic.disable())
-            .formLogin(form -> form.disable())
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+            .formLogin(form -> form.disable());
         return http.build();
     }
 }
