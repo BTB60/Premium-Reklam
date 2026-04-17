@@ -1,93 +1,108 @@
 package az.premiumreklam.controller;
 
 import az.premiumreklam.dto.product.ProductRequest;
-import az.premiumreklam.dto.product.UserPriceRequest;
 import az.premiumreklam.entity.Product;
-import az.premiumreklam.entity.UserPrice;
 import az.premiumreklam.service.ProductService;
-import az.premiumreklam.service.UserPriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/products")
+@CrossOrigin(origins = {
+    "https://premium-reklam.vercel.app",
+    "https://premium-reklam.az",
+    "http://localhost:3000",
+    "*"
+})
 @RequiredArgsConstructor
 public class ProductController {
 
     private final ProductService productService;
-    private final UserPriceService userPriceService;
 
+    // ✅ GET /api/products — список всех товаров
     @GetMapping
-    public List<Product> getAll() {
-        return productService.getAll();
-    }
-
-    @GetMapping("/{id}")
-    public Product getById(@PathVariable UUID id) {
-        return productService.getById(id);
-    }
-
-    @GetMapping("/{id}/price")
-    public BigDecimal getPrice(@PathVariable UUID id, @RequestParam(required = false) UUID userId) {
-        if (userId != null) {
-            return userPriceService.getPriceForUser(userId, id);
+    public ResponseEntity<List<Product>> getAll() {
+        try {
+            List<Product> products = productService.getAll();
+            return ResponseEntity.ok(products);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         }
-        return productService.getById(id).getSalePrice();
     }
 
+    // ✅ GET /api/products/{id} — товар по ID (UUID)
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> getById(@PathVariable String id) {
+        try {
+            // Конвертируем String → UUID
+            UUID uuid = UUID.fromString(id);
+            Product product = productService.getById(uuid);
+            return ResponseEntity.ok(product);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    // ✅ POST /api/products — создать товар (использует ProductRequest DTO)
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public Product create(@RequestBody ProductRequest request) {
-        return productService.create(request);
+    public ResponseEntity<Product> create(@RequestBody ProductRequest request) {
+        try {
+            Product created = productService.create(request);
+            return ResponseEntity.status(201).body(created);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
+    // ✅ PUT /api/products/{id} — обновить товар
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public Product update(@PathVariable UUID id, @RequestBody ProductRequest request) {
-        return productService.update(id, request);
+    public ResponseEntity<Product> update(@PathVariable String id, @RequestBody ProductRequest request) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            Product updated = productService.update(uuid, request);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
+    // ✅ DELETE /api/products/{id} — удалить товар (мягкое удаление)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> delete(@PathVariable UUID id) {
-        productService.delete(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> delete(@PathVariable String id) {
+        try {
+            UUID uuid = UUID.fromString(id);
+            productService.delete(uuid);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    // User Price Management
-    @GetMapping("/user-prices/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public List<UserPrice> getUserPrices(@PathVariable UUID userId) {
-        return userPriceService.getUserPrices(userId);
-    }
-
-    @GetMapping("/user-prices/{userId}/product/{productId}")
-    public BigDecimal getUserProductPrice(@PathVariable UUID userId, @PathVariable UUID productId) {
-        return userPriceService.getPriceForUser(userId, productId);
-    }
-
-    @PostMapping("/user-prices")
-    @PreAuthorize("hasRole('ADMIN')")
-    public UserPrice setUserPrice(@RequestBody UserPriceRequest request) {
-        return userPriceService.setUserPrice(request);
-    }
-
-    @DeleteMapping("/user-prices/{userId}/product/{productId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> deleteUserPrice(@PathVariable UUID userId, @PathVariable UUID productId) {
-        userPriceService.deleteUserPrice(userId, productId);
-        return ResponseEntity.ok().build();
-    }
-
+    // ✅ GET /api/products/categories — список категорий
     @GetMapping("/categories")
-    public List<String> getCategories() {
-        return productService.getCategories();
+    public ResponseEntity<List<String>> getCategories() {
+        try {
+            List<String> categories = productService.getCategories();
+            return ResponseEntity.ok(categories);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
