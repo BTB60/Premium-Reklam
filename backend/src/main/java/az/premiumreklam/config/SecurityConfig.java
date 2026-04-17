@@ -6,6 +6,7 @@ import az.premiumreklam.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -57,14 +58,16 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/api/announcements/ping",
-                    "/api/auth/**",
-                    "/api/products",        // ✅ ДОБАВЛЕНО: точный путь для GET/POST списка
-                    "/api/products/**",     // ✅ Оставлено: для /api/products/{id}
-                    "/actuator/health"
-                ).permitAll()
+                // Публичные эндпоинты с явным указанием методов
+                .requestMatchers(HttpMethod.GET, "/api/announcements/ping").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/products").permitAll()
+                .requestMatchers("/api/products/**").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
+                // Все остальные /api/* требуют аутентификации
                 .requestMatchers("/api/**").authenticated()
+                // Всё остальное — публично
                 .anyRequest().permitAll()
             )
             .httpBasic(basic -> basic.disable())
