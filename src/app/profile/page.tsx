@@ -20,7 +20,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { auth, db, type User } from "@/lib/db";
+// ✅ ИСПРАВЛЕНО: убран несуществующий 'db', оставлен 'auth'
+import { auth, type User } from "@/lib/db";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -52,16 +53,18 @@ export default function ProfilePage() {
     if (!user) return;
     setSaving(true);
     
-    // Update user in database using db helper
+    // ✅ ИСПРАВЛЕНО: db.updateUser → auth.updateUser
     const updatedUser: User = {
       ...user,
       fullName: formData.fullName,
       phone: formData.phone,
       email: formData.email || undefined,
     };
-    db.updateUser(updatedUser);
+    
+    // Обновляем пользователя через auth модуль
+    auth.updateUser(updatedUser);
+    
     setUser(updatedUser);
-
     setSaving(false);
   };
 
