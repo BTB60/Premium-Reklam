@@ -1,3 +1,11 @@
+// src/lib/authApi/products.ts
+import { Product } from './types';
+import { saveWithFallback } from './storage';
+import { mockProducts, normalizeProduct } from './storage';
+import { BASE_URL } from './config';
+
+// ✅ Экспортируемый объект с методами API
+export const productApi = {
   async create(product: Partial<Product>): Promise<Product> {
     // ✅ Маппинг полей фронтенд → бэкенд (строго под ProductRequest)
     const backendPayload = {
@@ -42,3 +50,9 @@
       }));
     });
   },
+
+  // ✅ Заглушка для getAll (добавьте реализацию при необходимости)
+  async getAll(): Promise<Product[]> {
+    return saveWithFallback('/products', null, () => mockProducts.getAll().map(normalizeProduct));
+  }
+};
