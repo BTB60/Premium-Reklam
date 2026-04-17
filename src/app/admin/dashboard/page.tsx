@@ -1,3 +1,4 @@
+// src/app/admin/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import DashboardLayout from "./components/DashboardLayout";
 
-// 🔥 ДОБАВЛЕНО: "elan" в тип ActiveTab
 type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings";
 
 interface SubadminSession {
@@ -23,6 +23,18 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
   const [loading, setLoading] = useState(true);
 
+  // ✅ Слушатель навигации через CustomEvent (от AdminNotificationBell и других компонентов)
+  useEffect(() => {
+    const handleNavigate = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.tab) {
+        setActiveTab(customEvent.detail.tab as ActiveTab);
+      }
+    };
+    window.addEventListener("admin-navigate", handleNavigate as EventListener);
+    return () => window.removeEventListener("admin-navigate", handleNavigate as EventListener);
+  }, []);
+
   useEffect(() => {
     try {
       const sessionType = typeof window !== "undefined" ? localStorage.getItem("premium_session_type") : null;
@@ -33,6 +45,7 @@ export default function DashboardPage() {
       console.log("[Dashboard] adminSession:", adminSession);
       console.log("[Dashboard] subadminSession:", subadminSessionStored);
 
+      // === SUBADMIN SESSION ===
       if (sessionType === "subadmin" && subadminSessionStored) {
         try {
           const parsed = JSON.parse(subadminSessionStored) as SubadminSession;
@@ -54,12 +67,15 @@ export default function DashboardPage() {
         }
       }
       
+      // === ADMIN SESSION ===
       if (sessionType === "admin" || !sessionType) {
         if (adminSession) {
           try {
             const parsed = JSON.parse(adminSession);
             console.log("[Dashboard] Parsed admin session:", parsed);
-            if (parsed?.token && parsed?.role) {
+            
+            // ✅ ИСПРАВЛЕНО: проверяем только role, token не обязателен (для Mock DB)
+            if (parsed?.role) {
               if (parsed.role === "ADMIN") {
                 console.log("[Dashboard] Loading as ADMIN:", parsed.fullName);
                 setUser(parsed);
@@ -68,12 +84,16 @@ export default function DashboardPage() {
               } else {
                 console.warn("[Dashboard] Admin session has wrong role:", parsed.role);
               }
+            } else {
+              console.warn("[Dashboard] Admin session missing role field");
             }
           } catch (e) {
             console.error("[Dashboard] Admin parse error:", e);
             localStorage.removeItem("decor_current_user");
             localStorage.removeItem("premium_session_type");
           }
+        } else {
+          console.warn("[Dashboard] No adminSession in localStorage");
         }
       }
 
@@ -99,7 +119,6 @@ export default function DashboardPage() {
     router.push("/admin/login");
   };
 
-  // 🔥 Обёртка для совместимости типов
   const handleTabChange = (tab: ActiveTab) => {
     setActiveTab(tab);
   };

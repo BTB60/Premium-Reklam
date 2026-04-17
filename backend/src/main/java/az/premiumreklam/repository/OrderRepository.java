@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.repository;
+package az.premiumreklam.repository;
 
 import az.premiumreklam.entity.Order;
 import org.springframework.data.jpa.repository.EntityGraph;

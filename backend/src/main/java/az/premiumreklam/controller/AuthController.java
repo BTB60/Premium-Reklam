@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -49,25 +50,27 @@ public class AuthController {
         return Map.of("message", "Şifrə uğurla dəyişdirildi");
     }
 
-    // 🔥 ВХОД ДЛЯ SUBADMIN (публичный эндпоинт)
     @PostMapping("/subadmin/login")
     public ResponseEntity<?> subadminLogin(@RequestBody SubadminLoginRequest request) {
-        return subadminService.authenticate(request.getLogin(), request.getPassword())
-            .map(subadmin -> {
-                subadminService.updateLastLogin(subadmin.getId());
-                String token = jwtService.generateToken(subadmin.getLogin(), "SUBADMIN", subadmin.getPermissions());
-                return ResponseEntity.ok(SubadminLoginResponse.builder()
-                    .token(token)
-                    .subadminId(subadmin.getId())
-                    .login(subadmin.getLogin())
-                    .role("SUBADMIN")
-                    .permissions(subadmin.getPermissions())
-                    .build());
-            })
-            .orElse(ResponseEntity.status(401).body(Map.of("error", "Invalid credentials")));
+        Optional<Subadmin> result = subadminService.authenticate(request.getLogin(), request.getPassword());
+        
+        if (result.isPresent()) {
+            Subadmin subadmin = result.get();
+            subadminService.updateLastLogin(subadmin.getId());
+            String token = jwtService.generateToken(subadmin.getLogin(), "SUBADMIN", subadmin.getPermissions());
+            SubadminLoginResponse response = SubadminLoginResponse.builder()
+                .token(token)
+                .subadminId(subadmin.getId())
+                .login(subadmin.getLogin())
+                .role("SUBADMIN")
+                .permissions(subadmin.getPermissions())
+                .build();
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
+        }
     }
 
-    // 🔥 CRUD ДЛЯ SUBADMIN (только для ADMIN)
     @GetMapping("/subadmins")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<Subadmin>> getAllSubadmins() {

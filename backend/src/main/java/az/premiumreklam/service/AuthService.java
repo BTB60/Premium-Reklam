@@ -9,10 +9,12 @@ import az.premiumreklam.security.CustomUserDetailsService;
 import az.premiumreklam.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -45,9 +47,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String token = jwtService.generateToken(
-                customUserDetailsService.loadUserByUsername(user.getUsername())
-        );
+        String token = jwtService.generateToken(user.getUsername());
 
         return AuthResponse.fromUser(user, token);
     }
@@ -66,9 +66,7 @@ public class AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        String token = jwtService.generateToken(
-                customUserDetailsService.loadUserByUsername(user.getUsername())
-        );
+        String token = jwtService.generateToken(user.getUsername());
 
         return AuthResponse.fromUser(user, token);
     }
@@ -77,14 +75,11 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Bu email ilə istifadəçi tapılmadı"));
 
-        // Generate reset token (valid for 1 hour)
-        String resetToken = jwtService.generateResetToken(user);
+        String resetToken = UUID.randomUUID().toString();
         user.setResetToken(resetToken);
         user.setResetTokenExpiry(LocalDateTime.now().plusHours(1));
         userRepository.save(user);
 
-        // In production, send email here
-        // For now, log the token
         System.out.println("Password reset token for " + email + ": " + resetToken);
     }
 

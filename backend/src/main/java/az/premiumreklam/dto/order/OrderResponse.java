@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.dto.order;
+package az.premiumreklam.dto.order;
 
 import az.premiumreklam.entity.Order;
 import az.premiumreklam.entity.OrderItem;
@@ -87,7 +87,7 @@ public class OrderResponse {
         }
 
         if (order.getItems() != null) {
-            builder.items(order.getItems().stream()
+            List<OrderItemResponse> itemResponses = order.getItems().stream()
                     .map(item -> OrderItemResponse.builder()
                             .id(item.getId())
                             .productId(item.getProduct() != null ? item.getProduct().getId() : null)
@@ -101,7 +101,8 @@ public class OrderResponse {
                             .lineTotal(item.getLineTotal())
                             .note(item.getNote())
                             .build())
-                    .collect(Collectors.toList()));
+                    .collect(Collectors.toList());
+            builder.items(itemResponses);
         }
 
         return builder.build();

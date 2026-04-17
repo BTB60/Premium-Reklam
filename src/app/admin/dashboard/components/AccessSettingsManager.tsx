@@ -5,8 +5,9 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { 
   Shield, Plus, Save, Trash2, Edit, FileSpreadsheet, 
-  Key, CheckCircle, X, Eye, Pencil
+  Key, CheckCircle, X, Eye, Pencil, Loader2
 } from "lucide-react";
+import { authApi } from "@/lib/authApi";
 
 type PermissionLevel = "none" | "view" | "edit";
 
@@ -25,81 +26,47 @@ interface SubadminPermissions {
 interface Subadmin {
   id: string;
   login: string;
-  password: string;
+  password?: string;
   permissions: SubadminPermissions;
   createdAt: string;
   lastLogin?: string;
 }
 
-interface ActivityLog {
-  id: string;
-  subadminId: string;
-  subadminLogin: string;
-  action: string;
-  feature: string;
-  timestamp: string;
-  details?: string;
-}
+const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "http://localhost:8080/api";
 
-const SUBADMINS_KEY = "premium_subadmins";
-const ACTIVITY_LOGS_KEY = "premium_activity_logs";
-
-const FEATURES = [
-  { key: "users" as keyof SubadminPermissions, label: "İstifadəçilər" },
-  { key: "orders" as keyof SubadminPermissions, label: "Sifarişlər" },
-  { key: "finance" as keyof SubadminPermissions, label: "Maliyyə" },
-  { key: "products" as keyof SubadminPermissions, label: "Məhsullar" },
-  { key: "inventory" as keyof SubadminPermissions, label: "Anbar" },
-  { key: "tasks" as keyof SubadminPermissions, label: "Tapşırıqlar" },
-  { key: "support" as keyof SubadminPermissions, label: "Dəstək" },
-  { key: "analytics" as keyof SubadminPermissions, label: "Analytics" },
-  { key: "settings" as keyof SubadminPermissions, label: "Sistem Ayarları" },
+const FEATURES: { key: keyof SubadminPermissions; label: string }[] = [
+  { key: "users", label: "İstifadəçilər" },
+  { key: "orders", label: "Sifarişlər" },
+  { key: "finance", label: "Maliyyə" },
+  { key: "products", label: "Məhsullar" },
+  { key: "inventory", label: "Anbar" },
+  { key: "tasks", label: "Tapşırıqlar" },
+  { key: "support", label: "Dəstək" },
+  { key: "analytics", label: "Analytics" },
+  { key: "settings", label: "Sistem Ayarları" },
 ];
 
-function getSubadmins(): Subadmin[] {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(SUBADMINS_KEY);
-  return stored ? JSON.parse(stored) : [];
-}
-
-function saveSubadmins(list: Subadmin[]) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(SUBADMINS_KEY, JSON.stringify(list));
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem("decor_current_user");
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return parsed?.token || null;
+  } catch {
+    return null;
   }
-}
-
-function getActivityLogs(): ActivityLog[] {
-  if (typeof window === "undefined") return [];
-  const stored = localStorage.getItem(ACTIVITY_LOGS_KEY);
-  return stored ? JSON.parse(stored) : [];
-}
-
-function saveActivityLogs(list: ActivityLog[]) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem(ACTIVITY_LOGS_KEY, JSON.stringify(list));
-  }
-}
-
-function logActivity(subadminId: string, subadminLogin: string, action: string, feature: string, details?: string) {
-  const logs = getActivityLogs();
-  logs.unshift({
-    id: crypto.randomUUID(),
-    subadminId,
-    subadminLogin,
-    action,
-    feature,
-    timestamp: new Date().toISOString(),
-    details,
-  });
-  saveActivityLogs(logs);
 }
 
 export default function AccessSettingsManager() {
   const [subadmins, setSubadmins] = useState<Subadmin[]>([]);
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [exportLoading, setExportLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lang, setLang] = useState<"az" | "en">("az");
 
   const [formData, setFormData] = useState<{
@@ -110,116 +77,124 @@ export default function AccessSettingsManager() {
     login: "",
     password: "",
     permissions: {
-      users: "none",
-      orders: "none",
-      finance: "none",
-      products: "none",
-      inventory: "none",
-      tasks: "none",
-      support: "none",
-      analytics: "none",
-      settings: "none",
+      users: "none", orders: "none", finance: "none", products: "none",
+      inventory: "none", tasks: "none", support: "none", analytics: "none", settings: "none",
     },
   });
 
   useEffect(() => {
     loadSubadmins();
-    loadLogs();
   }, []);
 
-  const loadSubadmins = () => {
-    const list = getSubadmins();
-    setSubadmins(list);
+  const loadSubadmins = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/auth/subadmins`, {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Failed to load subadmins");
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : [];
+      setSubadmins(list);
+    } catch (err: any) {
+      console.error("[Subadmins] Load error:", err);
+      setError("Subadminlər yüklənə bilmədi");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const loadLogs = () => {
-    const list = getActivityLogs();
-    setLogs(list);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.login || !formData.password) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const token = getToken();
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId 
+        ? `${API_BASE}/auth/subadmins/${editingId}` 
+        : `${API_BASE}/auth/subadmins`;
 
-    const list = getSubadmins();
-
-    if (editingId) {
-      const idx = list.findIndex((s) => s.id === editingId);
-      if (idx !== -1) {
-        list[idx] = { ...list[idx], ...formData };
-        logActivity(editingId, formData.login, "updated", "access_settings");
-      }
-    } else {
-      const newSub: Subadmin = {
-        id: crypto.randomUUID(),
-        ...formData,
-        createdAt: new Date().toISOString(),
+      const payload = {
+        login: formData.login,
+        ...(editingId ? {} : { password: formData.password }),
+        permissions: formData.permissions,
       };
-      list.push(newSub);
-      logActivity(newSub.id, formData.login, "created", "access_settings");
-    }
 
-    saveSubadmins(list);
-    setSubadmins(list);
-    setShowForm(false);
-    setEditingId(null);
-    setFormData({
-      login: "",
-      password: "",
-      permissions: {
-        users: "none",
-        orders: "none",
-        finance: "none",
-        products: "none",
-        inventory: "none",
-        tasks: "none",
-        support: "none",
-        analytics: "none",
-        settings: "none",
-      },
-    });
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to save subadmin");
+      
+      await loadSubadmins();
+      setShowForm(false);
+      setEditingId(null);
+      resetForm();
+    } catch (err: any) {
+      console.error("[Subadmins] Save error:", err);
+      setError("Yadda saxlama uğursuz oldu");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id: string, login: string) => {
+  const handleDelete = async (id: string, login: string) => {
     if (!confirm("Bu subadmini silmək istədiyinizə əminsiniz?")) return;
-
-    const list = getSubadmins().filter((s) => s.id !== id);
-    saveSubadmins(list);
-    setSubadmins(list);
-    logActivity(id, login, "deleted", "access_settings");
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/auth/subadmins/${id}`, {
+        method: "DELETE",
+        headers: token ? { "Authorization": `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      await loadSubadmins();
+    } catch (err: any) {
+      console.error("[Subadmins] Delete error:", err);
+      setError("Silinə bilmədi");
+    }
   };
 
   const handleEdit = (subadmin: Subadmin) => {
     setEditingId(subadmin.id);
     setFormData({
       login: subadmin.login,
-      password: subadmin.password,
+      password: "",
       permissions: subadmin.permissions,
     });
     setShowForm(true);
   };
 
-  const handleExport = () => {
-    setExportLoading(true);
+  const resetForm = () => {
+    setFormData({
+      login: "",
+      password: "",
+      permissions: {
+        users: "none", orders: "none", finance: "none", products: "none",
+        inventory: "none", tasks: "none", support: "none", analytics: "none", settings: "none",
+      },
+    });
+  };
 
+  const handleExport = () => {
     const headers = [
-      "ID",
-      "Login",
-      "Created",
-      "Last Login",
+      "ID", "Login", "Created", "Last Login",
       ...FEATURES.map((f) => `${f.key}:view`),
       ...FEATURES.map((f) => `${f.key}:edit`),
     ];
-
     const rows = subadmins.map((s) => [
-      s.id,
-      s.login,
-      s.createdAt,
-      s.lastLogin || "",
+      s.id, s.login, s.createdAt, s.lastLogin || "",
       ...FEATURES.map((f) => (s.permissions[f.key] !== "none" ? "1" : "0")),
       ...FEATURES.map((f) => (s.permissions[f.key] === "edit" ? "1" : "0")),
     ]);
-
     const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -228,9 +203,6 @@ export default function AccessSettingsManager() {
     a.download = `subadmins_export_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-
-    setExportLoading(false);
-    logActivity("system", "admin", "exported", "access_settings", `${subadmins.length} rows`);
   };
 
   const PermissionToggle = ({
@@ -266,6 +238,14 @@ export default function AccessSettingsManager() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <Card className="p-12 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D90429] mx-auto" />
+      </Card>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -282,13 +262,19 @@ export default function AccessSettingsManager() {
           >
             {lang.toUpperCase()}
           </Button>
-          <Button onClick={() => setShowForm(!showForm)} icon={<Plus className="w-4 h-4" />}>
+          <Button onClick={() => { setShowForm(true); resetForm(); }} icon={<Plus className="w-4 h-4" />}>
             Yeni Subadmin
           </Button>
         </div>
       </div>
 
-      {/* Форма создания/редактирования */}
+      {error && (
+        <Card className="p-4 mb-6 bg-red-50 border border-red-200 text-red-700">
+          {error}
+          <button onClick={() => setError(null)} className="ml-4 underline">Bağla</button>
+        </Card>
+      )}
+
       {showForm && (
         <Card className="p-6 mb-6 border-2 border-[#D90429]">
           <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
@@ -308,13 +294,15 @@ export default function AccessSettingsManager() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Parol</label>
+                <label className="block text-sm font-medium text-[#6B7280] mb-1">
+                  {editingId ? "Yeni parol (boş saxla - dəyişməz)" : "Parol"}
+                </label>
                 <input
                   type="text"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                  required
+                  required={!editingId}
                 />
               </div>
             </div>
@@ -323,10 +311,7 @@ export default function AccessSettingsManager() {
               <label className="block text-sm font-medium text-[#6B7280] mb-2">İcazələr</label>
               <div className="grid md:grid-cols-2 gap-4">
                 {FEATURES.map((f) => (
-                  <div
-                    key={f.key}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                  >
+                  <div key={f.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <span className="text-sm font-medium text-[#1F2937]">{f.label}</span>
                     <PermissionToggle
                       value={formData.permissions[f.key]}
@@ -343,30 +328,12 @@ export default function AccessSettingsManager() {
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" icon={<Save className="w-4 h-4" />}>
+              <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>
                 Yadda saxla
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                  setFormData({
-                    login: "",
-                    password: "",
-                    permissions: {
-                      users: "none",
-                      orders: "none",
-                      finance: "none",
-                      products: "none",
-                      inventory: "none",
-                      tasks: "none",
-                      support: "none",
-                      analytics: "none",
-                      settings: "none",
-                    },
-                  });
-                }}
+                onClick={() => { setShowForm(false); setEditingId(null); resetForm(); }}
                 icon={<X className="w-4 h-4" />}
               >
                 Ləğv et
@@ -376,20 +343,13 @@ export default function AccessSettingsManager() {
         </Card>
       )}
 
-      {/* Список subadmin-ов */}
       <Card className="p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-bold text-[#1F2937] flex items-center gap-2">
             <Shield className="w-5 h-5" />
             Subadmin Siyahısı
           </h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleExport}
-            loading={exportLoading}
-            icon={<FileSpreadsheet className="w-4 h-4" />}
-          >
+          <Button variant="ghost" size="sm" onClick={handleExport} icon={<FileSpreadsheet className="w-4 h-4" />}>
             Excel-ə Export
           </Button>
         </div>
@@ -418,9 +378,7 @@ export default function AccessSettingsManager() {
                       {new Date(s.createdAt).toLocaleDateString("az-AZ")}
                     </td>
                     <td className="py-3 px-4 text-[#6B7280]">
-                      {s.lastLogin
-                        ? new Date(s.lastLogin).toLocaleDateString("az-AZ")
-                        : "-"}
+                      {s.lastLogin ? new Date(s.lastLogin).toLocaleDateString("az-AZ") : "-"}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap gap-1">
@@ -440,18 +398,10 @@ export default function AccessSettingsManager() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex gap-1">
-                        <button
-                          onClick={() => handleEdit(s)}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded"
-                          title="Redaktə"
-                        >
+                        <button onClick={() => handleEdit(s)} className="p-2 text-blue-500 hover:bg-blue-50 rounded" title="Redaktə">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(s.id, s.login)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
-                          title="Sil"
-                        >
+                        <button onClick={() => handleDelete(s.id, s.login)} className="p-2 text-red-500 hover:bg-red-50 rounded" title="Sil">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -460,36 +410,6 @@ export default function AccessSettingsManager() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </Card>
-
-      {/* Логи активности */}
-      <Card className="p-6">
-        <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          Fəaliyyət Loqları
-        </h3>
-        {logs.length === 0 ? (
-          <p className="text-[#6B7280] text-center py-8">Loq yoxdur</p>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {logs.map((log) => (
-              <div
-                key={log.id}
-                className="text-sm p-3 bg-gray-50 rounded flex items-center justify-between"
-              >
-                <div>
-                  <span className="font-medium text-[#1F2937]">{log.subadminLogin}</span>
-                  <span className="text-[#6B7280] ml-2">{log.action}</span>
-                  <span className="text-[#6B7280] ml-2">[{log.feature}]</span>
-                  {log.details && <span className="text-[#9CA3AF] ml-2">({log.details})</span>}
-                </div>
-                <span className="text-[#9CA3AF] text-xs">
-                  {new Date(log.timestamp).toLocaleString("az-AZ")}
-                </span>
-              </div>
-            ))}
           </div>
         )}
       </Card>

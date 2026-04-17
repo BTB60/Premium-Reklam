@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.service;
+package az.premiumreklam.service;
 
 import az.premiumreklam.dto.order.OrderItemRequest;
 import az.premiumreklam.dto.order.OrderRequest;
@@ -9,9 +9,9 @@ import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.ProductRepository;
 import az.premiumreklam.repository.UserRepository;
 import az.premiumreklam.repository.UserPriceRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -30,7 +30,7 @@ public class OrderService {
     @Transactional
     public Order createOrder(OrderRequest request, String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Ä°stifadÉ™Ã§i tapÄ±lmadÄ±"));
+                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
 
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
@@ -56,10 +56,8 @@ public class OrderService {
                 }
 
                 BigDecimal quantity = defaultBigDecimal(itemRequest.getQuantity(), BigDecimal.ONE);
-                // Check for user-specific price first, then product's salePrice, fallback to request price
                 BigDecimal unitPrice = BigDecimal.ZERO;
                 if (product != null) {
-                    // Check if user has custom price for this product
                     var userPriceOpt = userPriceRepository.findByUserIdAndProductIdAndIsActiveTrue(user.getId(), product.getId());
                     if (userPriceOpt.isPresent()) {
                         unitPrice = userPriceOpt.get().getCustomPrice();
@@ -132,13 +130,13 @@ public class OrderService {
 
     public List<Order> getOrdersByUsername(String username) {
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Ä°stifadÉ™Ã§i tapÄ±lmadÄ±"));
+                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
         return orderRepository.findByUserId(user.getId());
     }
 
     public Order getOrderById(UUID id) {
         return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("SifariÅŸ tapÄ±lmadÄ±"));
+                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
     }
 
     @Transactional

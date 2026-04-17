@@ -1,919 +1,323 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  send,
+  markAsRead,
+  type SupportMessage,
+} from "@/lib/db/messages";
+import { type User as AppUser } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { 
-  Search, Download, Plus, Edit, Trash2, Send, Reply, 
-  AlertCircle, CheckCircle, Clock, Filter, MessageSquare,
-  User, Calendar, Tag, X
+import {
+  Search, Send, Paperclip, X, ArrowLeft, Headphones,
+  Video, Wifi,
 } from "lucide-react";
 
-interface SupportTicket {
-  id: number;
+interface ConversationSummary {
   userId: string;
   userFullName: string;
   userUsername: string;
   userPhone?: string;
-  subject: string;
-  message: string;
-  status: "open" | "in_progress" | "resolved" | "closed";
-  priority: "low" | "medium" | "high" | "urgent";
-  category: "technical" | "billing" | "order" | "account" | "other";
-  createdAt: string;
-  updatedAt?: string;
-  resolvedAt?: string;
-  assignedTo?: string;
-  assignedToName?: string;
-  messages: SupportMessage[];
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  status: "aktiv" | "həll olundu";
 }
 
-interface SupportMessage {
-  id: number;
-  ticketId: number;
-  sender: "user" | "admin";
-  senderName: string;
-  message: string;
-  createdAt: string;
-  attachments?: string[];
-}
-
-interface User {
-  id: string;
-  fullName: string;
-  username: string;
-  phone?: string;
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
+const ADMIN_ID = "admin-1";
+const ADMIN_ROLE: "ADMIN" = "ADMIN";
 
 export default function SupportManager() {
-  const [tickets, setTickets] = useState<SupportTicket[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<ConversationSummary | null>(null);
+  const [chatMessages, setChatMessages] = useState<SupportMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [attachment, setAttachment] = useState<SupportMessage["attachment"] | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "aktiv" | "həll olundu">("all");
+  const [sending, setSending] = useState(false);
+  const [pollCounter, setPollCounter] = useState(0);
   
-  const [showForm, setShowForm] = useState(false);
-  const [showReply, setShowReply] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  const [replyMessage, setReplyMessage] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [formData, setFormData] = useState<Partial<SupportTicket>>({
-    userId: "",
-    subject: "",
-    message: "",
-    status: "open",
-    priority: "medium",
-    category: "other",
-    assignedTo: "",
-  });
+  // ✅ Ref для доступа к ID открытого чата внутри интервала без зависимостей
+  const selectedUserIdRef = useRef<string | null>(null);
 
+  // Синхронизация Ref с состоянием
   useEffect(() => {
-    loadTickets();
-    loadUsers();
-  }, []);
+    selectedUserIdRef.current = selectedConversation?.userId || null;
+  }, [selectedConversation]);
 
-  const getToken = () => {
-    if (typeof window === "undefined") return null;
-    const stored = localStorage.getItem("decor_current_user");
-    if (!stored) return null;
-    try {
-      const parsed = JSON.parse(stored);
-      return parsed?.token || null;
-    } catch {
-      return null;
-    }
-  };
+  // 🔥 ЖЕСТКИЙ ПОЛЛИНГ: 500мс, независим от React-цикла, никогда не сбрасывается
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      if (typeof window === "undefined") return;
+      
+      setPollCounter(c => c + 1);
+      
+      try {
+        const raw = localStorage.getItem("decor_support_messages") || "[]";
+        const allMessages: SupportMessage[] = JSON.parse(raw);
+        
+        // 1. Обновляем список чатов
+        const grouped = new Map<string, SupportMessage[]>();
+        allMessages.forEach(msg => {
+          const convId = msg.conversationId;
+          if (!grouped.has(convId)) grouped.set(convId, []);
+          grouped.get(convId)!.push(msg);
+        });
 
-  const loadTickets = async () => {
-    try {
-      const token = getToken();
-      const stored = localStorage.getItem("decor_support_tickets");
-      if (stored) {
-        setTickets(JSON.parse(stored));
+        const usersRaw = localStorage.getItem("decor_users");
+        const users: AppUser[] = usersRaw ? JSON.parse(usersRaw) : [];
+
+        const summaries: ConversationSummary[] = [];
+        grouped.forEach((messages, userId) => {
+          if (messages.every(m => m.senderRole === "ADMIN")) return;
+          
+          const user = users.find(u => u.id === userId);
+          const sorted = [...messages].sort((a, b) => 
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          const lastMsg = sorted[sorted.length - 1];
+          const unreadCount = sorted.filter(m => m.senderRole !== "ADMIN" && !m.read).length;
+          const storedStatus = localStorage.getItem(`support_status_${userId}`) as "aktiv" | "həll olundu" || "aktiv";
+
+          summaries.push({
+            userId,
+            userFullName: user?.fullName || "Naməlum İstifadəçi",
+            userUsername: user?.username || "unknown",
+            userPhone: user?.phone,
+            lastMessage: lastMsg?.attachment 
+              ? `📎 ${lastMsg.attachment.type === "image" ? "Şəkil" : "Video"}` 
+              : (lastMsg?.content?.slice(0, 50) || ""),
+            lastMessageAt: lastMsg?.createdAt || new Date().toISOString(),
+            unreadCount,
+            status: storedStatus,
+          });
+        });
+
+        summaries.sort((a, b) => {
+          if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+          if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+          return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+        });
+
+        setConversations(summaries);
+
+        // 2. Если чат открыт, обновляем сообщения внутри него
+        const activeId = selectedUserIdRef.current;
+        if (activeId) {
+          const chatMsgs = allMessages
+            .filter(m => m.conversationId === activeId)
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          
+          setChatMessages(chatMsgs);
+
+          // Авто-пометка прочитанными
+          chatMsgs.forEach(msg => {
+            if (!msg.read && msg.senderRole !== "ADMIN") {
+              // Вызываем markAsRead напрямую, но аккуратно, чтобы не триггерить лишний рендер
+              if (typeof window !== "undefined") {
+                const stored = localStorage.getItem("decor_support_messages");
+                if (stored) {
+                  const parsed: SupportMessage[] = JSON.parse(stored);
+                  const target = parsed.find(p => p.id === msg.id);
+                  if (target && !target.read) {
+                    target.read = true;
+                    localStorage.setItem("decor_support_messages", JSON.stringify(parsed));
+                  }
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.error("[SupportManager] 500ms poll error:", err);
       }
-    } catch (error) {
-      console.error("[Support] Load error:", error);
-    } finally {
-      setLoading(false);
-    }
+    }, 500); // ✅ Ровно 500 мс
+
+    return () => clearInterval(intervalId);
+  }, []); // ✅ ПУСТОЙ МАССИВ: запускается 1 раз и работает вечно
+
+  // Автоскролл
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  // ===== ОБРАБОТЧИКИ =====
+  const handleSelectConversation = (conv: ConversationSummary) => setSelectedConversation(conv);
+  const handleBackToList = () => { setSelectedConversation(null); setChatMessages([]); setNewMessage(""); setAttachment(null); };
+
+  const handleStatusChange = (userId: string, newStatus: "aktiv" | "həll olundu") => {
+    localStorage.setItem(`support_status_${userId}`, newStatus);
+    setConversations(prev => prev.map(c => c.userId === userId ? { ...c, status: newStatus } : c));
   };
 
-  const loadUsers = async () => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { alert("Fayl ölçüsü 4MB-dan çox olmamalıdır"); return; }
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) { alert("Yalnız şəkil və ya video fayllar qəbul edilir"); return; }
     try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/users`, {
-        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data?.users || [];
-        setUsers(list);
-      }
-    } catch (error) {
-      console.error("[Support] Load users error:", error);
-    }
+      setAttachment({ type: file.type.startsWith("image/") ? "image" : "video", url: base64, size: file.size, name: file.name, mimeType: file.type });
+    } catch (err) { console.error("File error:", err); alert("Fayl yüklənərkən xəta baş verdi"); }
+    finally { if (fileInputRef.current) fileInputRef.current.value = ""; }
   };
 
-  const resetForm = () => {
-    setFormData({
-      userId: "",
-      subject: "",
-      message: "",
-      status: "open",
-      priority: "medium",
-      category: "other",
-      assignedTo: "",
-    });
-  };
-
-  const handleNewTicket = () => {
-    setSelectedTicket(null);
-    resetForm();
-    setShowForm(true);
-    setShowReply(false);
-  };
-
-  const handleViewTicket = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
-    setShowForm(false);
-    setShowReply(false);
-  };
-
-  const handleEditTicket = (ticket: SupportTicket) => {
-    setSelectedTicket(ticket);
-    setFormData({
-      userId: ticket.userId,
-      subject: ticket.subject,
-      message: ticket.message,
-      status: ticket.status,
-      priority: ticket.priority,
-      category: ticket.category,
-      assignedTo: ticket.assignedTo,
-    });
-    setShowForm(true);
-    setShowReply(false);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.subject?.trim() || !formData.message?.trim()) {
-      alert("Mövzu və mesaj tələb olunur");
-      return;
-    }
-    if (!formData.userId) {
-      alert("İstifadəçi seçilməyib");
-      return;
-    }
-
+  const handleSendMessage = async () => {
+    if (!selectedConversation || (!newMessage.trim() && !attachment)) return;
+    setSending(true);
     try {
-      const token = getToken();
-      const method = selectedTicket ? "PUT" : "POST";
-      const url = selectedTicket 
-        ? `${API_BASE}/support/${selectedTicket.id}` 
-        : `${API_BASE}/support`;
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (res.ok) {
-        await loadTickets();
-        setShowForm(false);
-        setSelectedTicket(null);
-        resetForm();
-      } else {
-        throw new Error("API error");
-      }
-    } catch (error) {
-      console.error("[Support] Save error:", error);
-      
-      const selectedUser = users.find(u => u.id === formData.userId);
-      const newTicket: SupportTicket = {
-        id: selectedTicket?.id || Date.now(),
-        userId: formData.userId!,
-        userFullName: selectedUser?.fullName || "",
-        userUsername: selectedUser?.username || "",
-        userPhone: selectedUser?.phone,
-        subject: formData.subject!,
-        message: formData.message!,
-        status: formData.status as any || "open",
-        priority: formData.priority as any || "medium",
-        category: formData.category as any || "other",
-        assignedTo: formData.assignedTo,
-        assignedToName: formData.assignedTo ? users.find(u => u.id === formData.assignedTo)?.fullName : undefined,
-        createdAt: selectedTicket?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        messages: selectedTicket?.messages || [{
-          id: 1,
-          ticketId: selectedTicket?.id || Date.now(),
-          sender: "user",
-          senderName: selectedUser?.fullName || "Naməlum",
-          message: formData.message!,
-          createdAt: new Date().toISOString(),
-        }],
-      };
-
-      let updated: SupportTicket[];
-      if (selectedTicket) {
-        updated = tickets.map(t => t.id === selectedTicket.id ? newTicket : t);
-      } else {
-        updated = [...tickets, newTicket];
-      }
-      
-      setTickets(updated);
-      localStorage.setItem("decor_support_tickets", JSON.stringify(updated));
-      
-      setShowForm(false);
-      setSelectedTicket(null);
-      resetForm();
-      alert("Yadda saxlandı");
-    }
+      await send(ADMIN_ID, ADMIN_ROLE, selectedConversation.userId, newMessage.trim(), attachment || undefined);
+      setNewMessage(""); setAttachment(null);
+      // Мгновенное обновление после отправки
+      const raw = localStorage.getItem("decor_support_messages") || "[]";
+      const msgs: SupportMessage[] = JSON.parse(raw).filter(m => m.conversationId === selectedConversation.userId);
+      setChatMessages(msgs.sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+    } catch (err) { console.error("Send error:", err); alert("Mesaj göndərilərkən xəta baş verdi"); }
+    finally { setSending(false); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Müraciəti silmək istədiyinizə əminsiniz?")) return;
-    
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/support/${id}`, {
-        method: "DELETE",
-        headers: token ? { "Authorization": `Bearer ${token}` } : {}
-      });
-      
-      if (res.ok) {
-        await loadTickets();
-      } else {
-        throw new Error("API error");
-      }
-    } catch (error) {
-      const updated = tickets.filter(t => t.id !== id);
-      setTickets(updated);
-      localStorage.setItem("decor_support_tickets", JSON.stringify(updated));
-    }
-  };
+  const handleKeyPress = (e: React.KeyboardEvent) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } };
+  const removeAttachment = () => setAttachment(null);
+  const formatFileSize = (b: number) => b < 1024 ? b + " B" : b < 1048576 ? (b/1024).toFixed(1) + " KB" : (b/1048576).toFixed(1) + " MB";
+  const formatTime = (iso: string) => new Date(iso).toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" });
 
-  const updateTicketStatus = async (ticketId: number, status: string) => {
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/support/${ticketId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ 
-          status,
-          resolvedAt: status === "resolved" ? new Date().toISOString() : undefined
-        })
-      });
-      
-      if (res.ok) {
-        await loadTickets();
-      } else {
-        const updated = tickets.map(t => 
-          t.id === ticketId 
-            ? { 
-                ...t, 
-                status: status as any,
-                resolvedAt: status === "resolved" ? new Date().toISOString() : undefined,
-                updatedAt: new Date().toISOString()
-              } 
-            : t
-        );
-        setTickets(updated);
-        localStorage.setItem("decor_support_tickets", JSON.stringify(updated));
-      }
-    } catch (error) {
-      console.error("[Support] Update error:", error);
-    }
-  };
-
-  const handleSendReply = async () => {
-    if (!selectedTicket || !replyMessage.trim()) return;
-    
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/support/${selectedTicket.id}/reply`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          message: replyMessage.trim(),
-          sender: "admin"
-        })
-      });
-      
-      if (res.ok) {
-        await loadTickets();
-        setReplyMessage("");
-        setShowReply(false);
-        const updated = tickets.find(t => t.id === selectedTicket.id);
-        if (updated) setSelectedTicket(updated);
-      } else {
-        throw new Error("API error");
-      }
-    } catch (error) {
-      console.error("[Support] Reply error:", error);
-      
-      const newMessage: SupportMessage = {
-        id: Date.now(),
-        ticketId: selectedTicket.id,
-        sender: "admin",
-        senderName: "Admin",
-        message: replyMessage.trim(),
-        createdAt: new Date().toISOString(),
-      };
-      
-      const updated = tickets.map(t => 
-        t.id === selectedTicket.id 
-          ? { ...t, messages: [...t.messages, newMessage], updatedAt: new Date().toISOString() } 
-          : t
-      );
-      
-      setTickets(updated);
-      localStorage.setItem("decor_support_tickets", JSON.stringify(updated));
-      
-      const localUpdated = updated.find(t => t.id === selectedTicket.id);
-      if (localUpdated) setSelectedTicket(localUpdated);
-      
-      setReplyMessage("");
-      setShowReply(false);
-      alert("Cavab göndərildi (lokal)");
-    }
-  };
-
-  const filteredTickets = tickets.filter(t => {
+  const filteredConversations = conversations.filter(c => {
     if (searchQuery) {
-      const matchesSearch = 
-        t.id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.userFullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.userUsername.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
+      const q = searchQuery.toLowerCase();
+      if (!c.userFullName.toLowerCase().includes(q) && !c.userUsername.toLowerCase().includes(q) && !c.userPhone?.toLowerCase().includes(q) && !c.lastMessage.toLowerCase().includes(q)) return false;
     }
-    if (statusFilter !== "all" && t.status !== statusFilter) return false;
-    if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
-    if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
-    return true;
+    return statusFilter === "all" || c.status === statusFilter;
   });
 
-  const stats = {
-    total: tickets.length,
-    open: tickets.filter(t => t.status === "open").length,
-    inProgress: tickets.filter(t => t.status === "in_progress").length,
-    resolved: tickets.filter(t => t.status === "resolved").length,
-    closed: tickets.filter(t => t.status === "closed").length,
-    urgent: tickets.filter(t => t.priority === "urgent" && t.status !== "resolved" && t.status !== "closed").length,
-  };
+  const stats = { total: conversations.length, aktiv: conversations.filter(c => c.status === "aktiv").length, həll: conversations.filter(c => c.status === "həll olundu").length, unread: conversations.reduce((s,c) => s+c.unreadCount, 0) };
 
-  const handleExport = () => {
-    const headers = ["ID", "Mövzu", "İstifadəçi", "Kateqoriya", "Prioritet", "Status", "Tarix"];
-    const rows = filteredTickets.map(t => [
-      t.id,
-      t.subject,
-      t.userFullName,
-      t.category,
-      t.priority,
-      t.status,
-      new Date(t.createdAt).toLocaleDateString("az-AZ")
-    ]);
-    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
-    const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `support_export_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      open: "Açıq",
-      in_progress: "İcra olunur",
-      resolved: "Həll olunub",
-      closed: "Bağlandı"
-    };
-    return labels[status] || status;
-  };
-
-  const getPriorityLabel = (priority: string) => {
-    const labels: Record<string, string> = {
-      low: "Aşağı",
-      medium: "Orta",
-      high: "Yüksək",
-      urgent: "Təcili"
-    };
-    return labels[priority] || priority;
-  };
-
-  const getCategoryLabel = (category: string) => {
-    const labels: Record<string, string> = {
-      technical: "Texniki",
-      billing: "Ödəniş",
-      order: "Sifariş",
-      account: "Hesab",
-      other: "Digər"
-    };
-    return labels[category] || category;
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      open: "bg-blue-100 text-blue-700",
-      in_progress: "bg-amber-100 text-amber-700",
-      resolved: "bg-green-100 text-green-700",
-      closed: "bg-gray-100 text-gray-700"
-    };
-    return colors[status] || "bg-gray-100 text-gray-700";
-  };
-
-  const getPriorityColor = (priority: string) => {
-    const colors: Record<string, string> = {
-      low: "bg-gray-100 text-gray-700",
-      medium: "bg-blue-100 text-blue-700",
-      high: "bg-orange-100 text-orange-700",
-      urgent: "bg-red-100 text-red-700"
-    };
-    return colors[priority] || "bg-gray-100 text-gray-700";
-  };
-
-  if (loading) {
+  // === Режим чата ===
+  if (selectedConversation) {
     return (
-      <Card className="p-12 text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D90429] mx-auto" />
+      <Card className="h-[calc(100vh-180px)] flex flex-col overflow-hidden">
+        <div className="p-4 border-b flex items-center justify-between bg-gray-50">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button variant="ghost" size="icon" onClick={handleBackToList} className="flex-shrink-0"><ArrowLeft className="w-5 h-5" /></Button>
+            <div className="min-w-0">
+              <p className="font-bold text-[#1F2937] truncate">{selectedConversation.userFullName}</p>
+              <p className="text-xs text-[#6B7280]">@{selectedConversation.userUsername}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400">Status:</span>
+            <select value={selectedConversation.status} onChange={(e) => handleStatusChange(selectedConversation.userId, e.target.value as any)} onClick={(e) => e.stopPropagation()} className={`text-xs px-3 py-1.5 rounded-full border font-medium ${selectedConversation.status === "aktiv" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+              <option value="aktiv">Aktiv</option>
+              <option value="həll olundu">Həll olundu</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-white">
+          <AnimatePresence>
+            {chatMessages.length === 0 ? (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4"><Headphones className="w-8 h-8 text-gray-400" /></div>
+                <p className="text-gray-500">Bu çatda hələ mesaj yoxdur</p>
+              </motion.div>
+            ) : chatMessages.map(msg => {
+              const isOwn = msg.senderRole === "ADMIN";
+              return (
+                <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] ${isOwn ? "order-2" : "order-1"}`}>
+                    {!isOwn && <div className="w-8 h-8 bg-[#D90429] rounded-full flex items-center justify-center mb-1"><span className="text-white text-xs font-bold">{selectedConversation.userFullName.charAt(0).toUpperCase()}</span></div>}
+                    <div className={`p-3 rounded-2xl ${isOwn ? "bg-[#D90429] text-white rounded-br-md" : "bg-gray-100 text-gray-800 rounded-bl-md"}`}>
+                      {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+                      {msg.attachment && <div className="mt-2">{msg.attachment.type === "image" ? <img src={msg.attachment.url} alt={msg.attachment.name} className="max-w-full rounded-lg" /> : <div className="bg-black/10 rounded-lg p-3 flex items-center gap-2"><Video className="w-5 h-5" /><span className="text-sm truncate">{msg.attachment.name}</span></div>}<p className={`text-[10px] mt-1 ${isOwn ? "text-white/60" : "text-gray-400"}`}>{formatFileSize(msg.attachment.size)}</p></div>}
+                      <p className={`text-[10px] mt-1 text-right ${isOwn ? "text-white/70" : "text-gray-400"}`}>{formatTime(msg.createdAt)}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="p-4 border-t bg-gray-50">
+          {attachment && <div className="mb-3 p-3 bg-white rounded-lg border flex items-start gap-3">{attachment.type === "image" ? <img src={attachment.url} className="w-16 h-16 object-cover rounded" /> : <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center"><Video className="w-6 h-6 text-gray-500" /></div>}<div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{attachment.name}</p><p className="text-xs text-gray-500">{formatFileSize(attachment.size)}</p></div><Button variant="ghost" size="sm" onClick={removeAttachment} className="text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></Button></div>}
+          <div className="flex items-end gap-2">
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*,video/*" className="hidden" />
+            <Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={sending} className="text-gray-500 hover:text-[#D90429]"><Paperclip className="w-5 h-5" /></Button>
+            <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Cavabınızı yazın..." className="flex-1 px-4 py-3 border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[#D90429]/20 min-h-[44px] max-h-32" rows={1} disabled={sending} />
+            <Button onClick={handleSendMessage} disabled={sending || (!newMessage.trim() && !attachment)} className="bg-[#D90429] hover:bg-[#C41E3A] text-white">{sending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4" />}</Button>
+          </div>
+        </div>
       </Card>
     );
   }
 
+  // === Режим списка ===
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <MessageSquare className="w-8 h-8 text-[#D90429]" />
-          <h1 className="text-2xl font-bold text-[#1F2937]">Dəstək</h1>
+          <Headphones className="w-8 h-8 text-[#D90429]" />
+          <h1 className="text-2xl font-bold text-[#1F2937]">Dəstək Mərkəzi</h1>
+          <span className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded-full border border-green-200 flex items-center gap-1">
+            <Wifi className="w-3 h-3 animate-pulse" /> Poll: 500ms | #{pollCounter}
+          </span>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={handleExport} variant="ghost" size="sm" icon={<Download className="w-4 h-4" />}>
-            Export
-          </Button>
-          <Button onClick={handleNewTicket} icon={<Plus className="w-4 h-4" />}>
-            Yeni müraciət
-          </Button>
-        </div>
+        <div className="text-sm text-[#6B7280]">Ümumi: <span className="font-bold">{stats.total}</span> • Aktiv: <span className="font-bold text-green-600">{stats.aktiv}</span> • Həll: <span className="font-bold text-gray-500">{stats.həll}</span> • Oxunmamış: <span className="font-bold text-red-600">{stats.unread}</span></div>
       </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <Card className="p-4">
-          <p className="text-[#6B7280] text-sm">Ümumi</p>
-          <p className="text-2xl font-bold text-[#1F2937]">{stats.total}</p>
-        </Card>
-        <Card className="p-4 bg-blue-50">
-          <p className="text-blue-600 text-sm flex items-center gap-1">
-            <Clock className="w-4 h-4" /> Açıq
-          </p>
-          <p className="text-2xl font-bold text-blue-700">{stats.open}</p>
-        </Card>
-        <Card className="p-4 bg-amber-50">
-          <p className="text-amber-600 text-sm">İcra olunur</p>
-          <p className="text-2xl font-bold text-amber-700">{stats.inProgress}</p>
-        </Card>
-        <Card className="p-4 bg-green-50">
-          <p className="text-green-600 text-sm flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" /> Həll olunub
-          </p>
-          <p className="text-2xl font-bold text-green-700">{stats.resolved}</p>
-        </Card>
-        <Card className="p-4 bg-red-50">
-          <p className="text-red-600 text-sm flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" /> Təcili
-          </p>
-          <p className="text-2xl font-bold text-red-700">{stats.urgent}</p>
-        </Card>
-      </div>
-
+      
       <Card className="p-4 mb-6">
-        <div className="grid md:grid-cols-5 gap-4">
-          <div className="relative md:col-span-2">
+        <div className="flex flex-wrap gap-4">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Axtar: mövzu, istifadəçi, mesaj..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
-            />
+            <input type="text" placeholder="Axtar: ad, istifadəçi adı, telefon..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]" />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
-          >
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#D90429]">
             <option value="all">Bütün statuslar</option>
-            <option value="open">Açıq</option>
-            <option value="in_progress">İcra olunur</option>
-            <option value="resolved">Həll olunub</option>
-            <option value="closed">Bağlandı</option>
-          </select>
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
-          >
-            <option value="all">Bütün prioritetlər</option>
-            <option value="low">Aşağı</option>
-            <option value="medium">Orta</option>
-            <option value="high">Yüksək</option>
-            <option value="urgent">Təcili</option>
-          </select>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
-          >
-            <option value="all">Bütün kateqoriyalar</option>
-            <option value="technical">Texniki</option>
-            <option value="billing">Ödəniş</option>
-            <option value="order">Sifariş</option>
-            <option value="account">Hesab</option>
-            <option value="other">Digər</option>
+            <option value="aktiv">Aktiv</option>
+            <option value="həll olundu">Həll olundu</option>
           </select>
         </div>
       </Card>
 
-      {showForm && (
-        <Card className="p-6 mb-6 border-2 border-[#D90429]">
-          <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
-            {selectedTicket ? <Edit className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            {selectedTicket ? "Müraciəti redaktə et" : "Yeni müraciət əlavə et"}
-          </h3>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">İstifadəçi *</label>
-                <select
-                  value={formData.userId || ""}
-                  onChange={(e) => setFormData({ ...formData, userId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                  required
-                  disabled={!!selectedTicket}
-                >
-                  <option value="">Seçin</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.fullName} (@{u.username})</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Mövzu *</label>
-                <input
-                  type="text"
-                  value={formData.subject || ""}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Kateqoriya</label>
-                <select
-                  value={formData.category || "other"}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                >
-                  <option value="technical">Texniki</option>
-                  <option value="billing">Ödəniş</option>
-                  <option value="order">Sifariş</option>
-                  <option value="account">Hesab</option>
-                  <option value="other">Digər</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Prioritet</label>
-                <select
-                  value={formData.priority || "medium"}
-                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                >
-                  <option value="low">Aşağı</option>
-                  <option value="medium">Orta</option>
-                  <option value="high">Yüksək</option>
-                  <option value="urgent">Təcili</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Status</label>
-                <select
-                  value={formData.status || "open"}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                >
-                  <option value="open">Açıq</option>
-                  <option value="in_progress">İcra olunur</option>
-                  <option value="resolved">Həll olunub</option>
-                  <option value="closed">Bağlandı</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Təyin et</label>
-                <select
-                  value={formData.assignedTo || ""}
-                  onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                >
-                  <option value="">Seçilməyib</option>
-                  {users.filter(u => u.username !== "admin").map(u => (
-                    <option key={u.id} value={u.id}>{u.fullName}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#6B7280] mb-1">Mesaj *</label>
-              <textarea
-                value={formData.message || ""}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                rows={4}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" icon={<Send className="w-4 h-4" />}>Yadda saxla</Button>
-              <Button
-                variant="ghost"
-                onClick={() => { setShowForm(false); setSelectedTicket(null); resetForm(); }}
-                icon={<X className="w-4 h-4" />}
-              >
-                Ləğv et
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {selectedTicket && !showForm && (
-        <Card className="p-6 mb-6 border-2 border-[#D90429]">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h3 className="font-bold text-[#1F2937] text-lg">{selectedTicket.subject}</h3>
-              <p className="text-sm text-[#6B7280] mt-1">
-                #{selectedTicket.id} • {selectedTicket.userFullName} (@{selectedTicket.userUsername})
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEditTicket(selectedTicket)}
-                icon={<Edit className="w-4 h-4" />}
-              >
-                Redaktə
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(selectedTicket.id)}
-                icon={<Trash2 className="w-4 h-4" />}
-                className="text-red-500"
-              >
-                Sil
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setSelectedTicket(null); setShowReply(false); }}
-                icon={<X className="w-4 h-4" />}
-              >
-                Bağla
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-4">
-            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
-              {getStatusLabel(selectedTicket.status)}
-            </span>
-            <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(selectedTicket.priority)}`}>
-              {getPriorityLabel(selectedTicket.priority)}
-            </span>
-            <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
-              {getCategoryLabel(selectedTicket.category)}
-            </span>
-            {selectedTicket.assignedToName && (
-              <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700 flex items-center gap-1">
-                <User className="w-3 h-3" /> {selectedTicket.assignedToName}
-              </span>
-            )}
-          </div>
-
-          <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
-            {selectedTicket.messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`p-4 rounded-lg ${
-                  msg.sender === "admin" 
-                    ? "bg-[#D90429]/10 border border-[#D90429]/20 ml-8" 
-                    : "bg-gray-50 border border-gray-200 mr-8"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-medium ${
-                    msg.sender === "admin" ? "text-[#D90429]" : "text-[#1F2937]"
-                  }`}>
-                    {msg.senderName}
-                  </span>
-                  <span className="text-xs text-[#6B7280] flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(msg.createdAt).toLocaleString("az-AZ")}
-                  </span>
+      <div className="space-y-3">
+        <AnimatePresence>
+          {filteredConversations.length === 0 ? (
+            <Card className="p-12 text-center text-[#6B7280]">Müraciət tapılmadı</Card>
+          ) : filteredConversations.map(conv => (
+            <motion.div key={conv.userId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <Card className={`p-4 cursor-pointer transition-all hover:shadow-md ${selectedConversation?.userId === conv.userId ? "ring-2 ring-[#D90429]" : ""}`} onClick={() => handleSelectConversation(conv)}>
+                <div className="flex items-start gap-4">
+                  {conv.unreadCount > 0 && <div className="relative flex-shrink-0"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" /><div className="absolute inset-0 w-3 h-3 bg-red-500 rounded-full animate-ping opacity-75" /></div>}
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#D90429] to-[#EF476F] rounded-full flex items-center justify-center flex-shrink-0"><span className="text-white font-bold text-lg">{conv.userFullName.charAt(0).toUpperCase()}</span></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-bold text-[#1F2937] truncate">{conv.userFullName}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${conv.status === "aktiv" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>{conv.status === "aktiv" ? "Aktiv" : "Həll"}</span>
+                    </div>
+                    <p className="text-xs text-[#6B7280]">@{conv.userUsername} {conv.userPhone && `• ${conv.userPhone}`}</p>
+                    <p className={`text-sm mt-1 truncate ${conv.unreadCount > 0 ? "font-medium text-[#1F2937]" : "text-[#6B7280]"}`}>{conv.lastMessage || "Mesaj yoxdur"}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xs text-[#6B7280]">{formatTime(conv.lastMessageAt)}</p>
+                    {conv.unreadCount > 0 && <span className="inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full mt-1">{conv.unreadCount > 9 ? "9+" : conv.unreadCount}</span>}
+                  </div>
                 </div>
-                <p className="text-sm text-[#6B7280] whitespace-pre-wrap">{msg.message}</p>
-              </div>
-            ))}
-          </div>
-
-          {showReply ? (
-            <div className="border-t pt-4">
-              <textarea
-                value={replyMessage}
-                onChange={(e) => setReplyMessage(e.target.value)}
-                placeholder="Cavabınızı yazın..."
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429] mb-2"
-              />
-              <div className="flex gap-2">
-                <Button onClick={handleSendReply} icon={<Send className="w-4 h-4" />}>
-                  Göndər
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => { setShowReply(false); setReplyMessage(""); }}
-                  icon={<X className="w-4 h-4" />}
-                >
-                  Ləğv et
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              onClick={() => setShowReply(true)}
-              variant="secondary"
-              icon={<Reply className="w-4 h-4" />}
-            >
-              Cavab ver
-            </Button>
-          )}
-        </Card>
-      )}
-
-      {!selectedTicket && !showForm && (
-        <Card className="overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">ID</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Mövzu</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">İstifadəçi</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Kateqoriya</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Prioritet</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Status</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Tarix</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Əməliyyat</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTickets.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-[#6B7280]">
-                    Müraciət tapılmadı
-                  </td>
-                </tr>
-              ) : (
-                filteredTickets.map((ticket) => (
-                  <tr 
-                    key={ticket.id} 
-                    className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleViewTicket(ticket)}
-                  >
-                    <td className="py-3 px-4 font-medium">#{ticket.id}</td>
-                    <td className="py-3 px-4">
-                      <p className="font-medium text-[#1F2937]">{ticket.subject}</p>
-                      <p className="text-xs text-[#6B7280] line-clamp-1">{ticket.message}</p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="text-sm font-medium">{ticket.userFullName}</p>
-                        <p className="text-xs text-[#6B7280]">@{ticket.userUsername}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
-                        {getCategoryLabel(ticket.category)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                        {getPriorityLabel(ticket.priority)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <select
-                        value={ticket.status}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          updateTicketStatus(ticket.id, e.target.value);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={`text-xs px-2 py-1 rounded border ${getStatusColor(ticket.status)}`}
-                      >
-                        <option value="open">Açıq</option>
-                        <option value="in_progress">İcra olunur</option>
-                        <option value="resolved">Həll olunub</option>
-                        <option value="closed">Bağlandı</option>
-                      </select>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-[#6B7280]">
-                        {new Date(ticket.createdAt).toLocaleDateString("az-AZ")}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleViewTicket(ticket)}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded"
-                          title="Bax"
-                        >
-                          <MessageSquare className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEditTicket(ticket)}
-                          className="p-2 text-amber-500 hover:bg-amber-50 rounded"
-                          title="Redaktə"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(ticket.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
-                          title="Sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </Card>
-      )}
-
-      {filteredTickets.length > 0 && !selectedTicket && !showForm && (
-        <Card className="mt-4 p-4 bg-[#1F2937] text-white">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <div>
-                <p className="text-white/60 text-xs">Göstərilən</p>
-                <p className="font-bold">{filteredTickets.length} ədəd</p>
-              </div>
-              <div>
-                <p className="text-white/60 text-xs">Açıq</p>
-                <p className="font-bold text-blue-400">{stats.open} ədəd</p>
-              </div>
-              <div>
-                <p className="text-white/60 text-xs">Həll olunub</p>
-                <p className="font-bold text-green-400">{stats.resolved} ədəd</p>
-              </div>
-              {stats.urgent > 0 && (
-                <div>
-                  <p className="text-white/60 text-xs">Təcili</p>
-                  <p className="font-bold text-red-400">{stats.urgent} ədəd</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </Card>
-      )}
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

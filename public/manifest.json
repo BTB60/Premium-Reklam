@@ -1,0 +1,9 @@
+{
+  "name": "Premium Reklam",
+  "short_name": "Premium",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#D90429",
+  "icons": []
+}

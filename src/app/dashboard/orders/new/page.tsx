@@ -1,475 +1,328 @@
+// src/app/dashboard/orders/new/page.tsx
 "use client";
 
-import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { productApi, orderApi } from "@/lib/authApi";
+import { auth, orders } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
-import { Card, ProductCard } from "@/components/ui/Card";
-import { Input, Select, TextArea } from "@/components/ui/Input";
-import { FileUpload } from "@/components/ui/FileUpload";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Trash2, 
-  Ruler,
-  CreditCard,
-  CheckCircle,
-  Package,
-  FileUp,
-  MessageSquare
-} from "lucide-react";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Card } from "@/components/ui/Card";
+import { motion } from "framer-motion";
+import { ArrowLeft, Plus, RefreshCw, CheckCircle, User, Phone, MapPin, Wallet, AlertTriangle } from "lucide-react";
 
-// Step Indicator
-function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
-  return (
-    <div className="flex items-center justify-center gap-2 mb-8">
-      {Array.from({ length: totalSteps }).map((_, index) => {
-        const step = index + 1;
-        const isActive = step === currentStep;
-        const isCompleted = step < currentStep;
-        
-        return (
-          <div key={step} className="flex items-center">
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
-                isActive
-                  ? "bg-[#D90429] text-white"
-                  : isCompleted
-                  ? "bg-[#16A34A] text-white"
-                  : "bg-gray-200 text-gray-500"
-              }`}
-            >
-              {isCompleted ? <CheckCircle className="w-5 h-5" /> : step}
-            </div>
-            {step < totalSteps && (
-              <div
-                className={`w-12 h-1 mx-2 rounded-full ${
-                  isCompleted ? "bg-[#16A34A]" : "bg-gray-200"
-                }`}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// Product Selection Step
-function ProductSelection({ onSelect, selected }: { onSelect: (product: any) => void; selected: any }) {
-  const products = [
-    { id: 1, name: "Premium Pərdə", description: "Yüksək keyfiyyətli parça", price: 45, category: "Pərdə" },
-    { id: 2, name: "Klasik Jalüz", description: "Aluminium jalüz sistem", price: 35, category: "Jalüz" },
-    { id: 3, name: "Wallpaper", description: "3D effektli divar kağızı", price: 25, category: "Wallpaper" },
-    { id: 4, name: "Lamba Aksesuar", description: "Modern dizayn", price: 85, category: "Aksesuar" },
-    { id: 5, name: "Parquet", description: "Taxta döşəmə", price: 65, category: "Döşəmə" },
-    { id: 6, name: "Plintus", description: "Boyaqlı plintus", price: 12, category: "Aksesuar" },
-  ];
-
-  const categories = ["Hamısı", "Pərdə", "Jalüz", "Wallpaper", "Döşəmə", "Aksesuar"];
-  const [activeCategory, setActiveCategory] = useState("Hamısı");
-
-  const filteredProducts = activeCategory === "Hamısı" 
-    ? products 
-    : products.filter(p => p.category === activeCategory);
-
-  return (
-    <div className="space-y-4">
-      {/* Category Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => setActiveCategory(category)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-              activeCategory === category
-                ? "bg-[#D90429] text-white"
-                : "bg-white text-[#6B7280] border border-[#E5E7EB]"
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* Products Grid */}
-      <div className="grid gap-3">
-        {filteredProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            name={product.name}
-            description={product.description}
-            price={product.price}
-            selected={selected?.id === product.id}
-            onSelect={() => onSelect(product)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Size Input Step
-function SizeInput({ sizes, onChange, onAdd, onRemove }: { 
-  sizes: { width: number; height: number }[]; 
-  onChange: (index: number, field: "width" | "height", value: number) => void;
-  onAdd: () => void;
-  onRemove: (index: number) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-[#1F2937] font-[Manrope]">Ölçülər</h3>
-        <Button variant="secondary" size="sm" onClick={onAdd} icon={<Plus className="w-4 h-4" />}>
-          Ölçü Əlavə Et
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        {sizes.map((size, index) => (
-          <Card key={index} className="relative">
-            <div className="flex items-center gap-2 mb-3">
-              <Ruler className="w-4 h-4 text-[#D90429]" />
-              <span className="font-medium text-[#1F2937]">Ölçü {index + 1}</span>
-              {sizes.length > 1 && (
-                <button
-                  onClick={() => onRemove(index)}
-                  className="ml-auto p-2 text-[#DC2626] hover:bg-[#DC2626]/10 rounded-lg transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm text-[#6B7280] mb-1 block">En (m)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={size.width || ""}
-                  onChange={(e) => onChange(index, "width", parseFloat(e.target.value) || 0)}
-                  className="w-full h-12 rounded-[14px] border border-[#E5E7EB] px-4 focus:outline-none focus:border-[#D90429]"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-[#6B7280] mb-1 block">Hündürlük (m)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={size.height || ""}
-                  onChange={(e) => onChange(index, "height", parseFloat(e.target.value) || 0)}
-                  className="w-full h-12 rounded-[14px] border border-[#E5E7EB] px-4 focus:outline-none focus:border-[#D90429]"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-[#E5E7EB]">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[#6B7280]">Sahə:</span>
-                <span className="font-semibold text-[#1F2937]">{(size.width * size.height).toFixed(2)} m²</span>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// File Upload & Notes Step
-function FileAndNotesStep({ 
-  files, 
-  onFilesChange, 
-  notes, 
-  onNotesChange 
-}: { 
-  files: File[]; 
-  onFilesChange: (files: File[]) => void;
-  notes: string;
-  onNotesChange: (notes: string) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      {/* File Upload */}
-      <Card>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
-            <FileUp className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-[#1F2937] font-[Manrope]">Fayllar</h3>
-            <p className="text-sm text-[#6B7280]">Dizayn, ölçü və ya digər fayllar</p>
-          </div>
-        </div>
-        <FileUpload 
-          onFilesSelected={onFilesChange}
-          maxFiles={5}
-          maxSize={50}
-          accept="image/*,.pdf,.ai,.psd,.cdr,.dwg,.dxf"
-        />
-      </Card>
-
-      {/* Notes */}
-      <Card>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-lg bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="font-bold text-[#1F2937] font-[Manrope]">Əlavə Qeydlər</h3>
-            <p className="text-sm text-[#6B7280]">Sifarişlə bağlı xüsusi istəkləriniz</p>
-          </div>
-        </div>
-        <TextArea
-          value={notes}
-          onChange={onNotesChange}
-          placeholder="Məsələn: Otaq şimal tərəfə baxır, günəş işığı çox düşür. Qalın və qaranlıq rəng seçilsin..."
-          rows={5}
-        />
-      </Card>
-
-      {/* Tips */}
-      <div className="bg-[#D90429]/5 rounded-xl p-4 border border-[#D90429]/20">
-        <p className="text-sm text-[#1F2937] font-medium mb-2">💡 Məsləhətlər:</p>
-        <ul className="text-sm text-[#6B7280] space-y-1">
-          <li>• Dizayn fayllarını AI, PSD, PDF formatında yükləyin</li>
-          <li>• Ölçü sxemlərini DWG və ya DXF formatında əlavə edin</li>
-          <li>• Referans şəkilləri JPG və ya PNG formatında yükləyin</li>
-          <li>• Xüsusi istəklərinizi ətraflı qeyd edin</li>
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-// Price Summary Step
-function PriceSummary({ product, sizes, totalArea, totalPrice, notes, files }: { 
-  product: any; 
-  sizes: any[]; 
-  totalArea: number;
-  totalPrice: number;
-  notes?: string;
-  files?: File[];
-}) {
-  return (
-    <div className="space-y-4">
-      <Card className="bg-gradient-to-br from-[#D90429] to-[#EF476F] text-white border-none">
-        <div className="text-center py-4">
-          <p className="text-white/80 text-sm mb-1">Ümumi Qiymət</p>
-          <p className="text-4xl font-bold font-[Manrope]">{totalPrice.toFixed(0)} AZN</p>
-        </div>
-      </Card>
-
-      <Card>
-        <h3 className="font-bold text-[#1F2937] font-[Manrope] mb-4">Sifariş Detalları</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between py-2 border-b border-[#E5E7EB]">
-            <span className="text-[#6B7280]">Məhsul</span>
-            <span className="font-medium text-[#1F2937]">{product?.name}</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b border-[#E5E7EB]">
-            <span className="text-[#6B7280]">Vahid Qiymət</span>
-            <span className="font-medium text-[#1F2937]">{product?.price} AZN/m²</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b border-[#E5E7EB]">
-            <span className="text-[#6B7280]">Ümumi Sahə</span>
-            <span className="font-medium text-[#1F2937]">{totalArea.toFixed(2)} m²</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b border-[#E5E7EB]">
-            <span className="text-[#6B7280]">Ölçü Sayı</span>
-            <span className="font-medium text-[#1F2937]">{sizes.length} ədəd</span>
-          </div>
-        </div>
-      </Card>
-
-      <Card>
-        <h3 className="font-bold text-[#1F2937] font-[Manrope] mb-4">Ödəniş Üsulu</h3>
-        <div className="space-y-3">
-          <label className="flex items-center gap-3 p-4 rounded-xl border-2 border-[#D90429] bg-[#D90429]/5 cursor-pointer">
-            <input type="radio" name="payment" defaultChecked className="w-5 h-5 accent-[#D90429]" />
-            <CreditCard className="w-5 h-5 text-[#D90429]" />
-            <div>
-              <p className="font-medium text-[#1F2937]">Nağd Ödəniş</p>
-              <p className="text-sm text-[#6B7280]">Quraşdırmadan sonra</p>
-            </div>
-          </label>
-          <label className="flex items-center gap-3 p-4 rounded-xl border border-[#E5E7EB] cursor-pointer">
-            <input type="radio" name="payment" className="w-5 h-5 accent-[#D90429]" />
-            <CreditCard className="w-5 h-5 text-[#6B7280]" />
-            <div>
-              <p className="font-medium text-[#1F2937]">Kartla Ödəniş</p>
-              <p className="text-sm text-[#6B7280]">Onlayn ödəniş</p>
-            </div>
-          </label>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-// Success Step
-function SuccessStep() {
-  return (
-    <div className="text-center py-8">
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        className="w-24 h-24 mx-auto mb-6 rounded-full bg-[#16A34A]/10 flex items-center justify-center"
-      >
-        <CheckCircle className="w-12 h-12 text-[#16A34A]" />
-      </motion.div>
-      <h2 className="text-2xl font-bold text-[#1F2937] mb-2 font-[Manrope]">
-        Sifarişiniz Alındı!
-      </h2>
-      <p className="text-[#6B7280] mb-6">
-        Sifarişiniz uğurla qeydə alındı. Tezliklə sizinlə əlaqə saxlanılacaq.
-      </p>
-      <div className="flex gap-3 justify-center">
-        <Button variant="secondary">Sifarişlərim</Button>
-        <Button>Yeni Sifariş</Button>
-      </div>
-    </div>
-  );
+interface UserData {
+  id: string;
+  fullName: string;
+  username: string;
+  phone?: string;
+  email?: string;
+  role: string;
 }
 
 export default function NewOrderPage() {
-  const [step, setStep] = useState(1);
+  const router = useRouter();
+  
+  // State: Загрузка и данные
+  const [products, setProducts] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [sizes, setSizes] = useState([{ width: 0, height: 0 }]);
-  const [files, setFiles] = useState<File[]>([]);
-  const [notes, setNotes] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserData | null>(null);
 
-  const totalSteps = 5;
+  // State: Форма заказа
+  const [width, setWidth] = useState("");
+  const [height, setHeight] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [note, setNote] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
 
-  const handleNext = () => {
-    if (step < totalSteps) setStep(step + 1);
+  // State: Бонусная система
+  const [availableBonus, setAvailableBonus] = useState(0);
+  const [useBonus, setUseBonus] = useState(false);
+
+  useEffect(() => {
+    // 1. Загрузка сессии и бонусов
+    const user = auth.getCurrentUser();
+    if (user) {
+      setCurrentUser(user);
+      
+      // ✅ ИСПРАВЛЕНИЕ: Выбор имени для автозаполнения
+      // Если fullName пустой или содержит "Administrator" (дефолт админа), берем username
+      const safeName = (user.fullName && user.fullName.trim() && !user.fullName.toLowerCase().includes("administrator")) 
+        ? user.fullName 
+        : user.username;
+      
+      setCustomerName(safeName || "");
+      setCustomerPhone(user.phone || "");
+      setAvailableBonus(auth.getAvailableBonus(user.id));
+    }
+    
+    // 2. Загрузка товаров
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+      const data = await productApi.getAll();
+      setProducts(data.filter((p: any) => p.isActive === true || p.status === "ACTIVE") || []);
+    } catch (error) {
+      console.error("Load products error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+  // Расчеты
+  const currentPrice = selectedProduct ? (selectedProduct.salePrice ?? selectedProduct.basePrice ?? 0) : 0;
+  const totalArea = (parseFloat(width) || 0) * (parseFloat(height) || 0) * (parseInt(quantity) || 1);
+  const baseTotal = totalArea * currentPrice;
+  
+  // Логика бонусов
+  const canUseBonus = availableBonus >= 10 && baseTotal > 0;
+  const maxApplicableBonus = Math.min(availableBonus, baseTotal);
+  const appliedBonus = useBonus ? maxApplicableBonus : 0;
+  const cashToPay = Math.max(0, baseTotal - appliedBonus);
+
+  const handleSubmit = async () => {
+    if (!selectedProduct) { alert("Məhsul seçilməyib"); return; }
+    if (!width || !height) { alert("Zəhmət olmasa Ölçüləri doldurun"); return; }
+    if (!currentUser) { alert("Sessiya tapılmadı. Zəhmət olmasa daxil olun."); router.push("/login"); return; }
+    if (!customerName.trim()) { alert("Müştərinin adı tələb olunur"); return; }
+
+    setSubmitting(true);
+    try {
+      const orderPayload = {
+        userId: currentUser.id,
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        customerAddress: customerAddress.trim(),
+        customerWhatsapp: customerPhone.trim(),
+        note,
+        discountPercent: 0,
+        paymentMethod: cashToPay > 0 ? "cash" : "bonus",
+        items: [{
+          productId: String(selectedProduct.id),
+          productName: selectedProduct.name,
+          unit: selectedProduct.unit,
+          quantity: parseInt(quantity) || 1,
+          width: parseFloat(width),
+          height: parseFloat(height),
+          unitPrice: currentPrice,
+          totalPrice: baseTotal,
+        }],
+        subtotal: baseTotal,
+        discountTotal: 0,
+        finalTotal: baseTotal,
+        totalAmount: baseTotal,
+        paidAmount: appliedBonus,
+        remainingAmount: cashToPay,
+        bonusUsed: appliedBonus,
+        paymentBreakdown: {
+          cash: cashToPay,
+          bonus: appliedBonus,
+          total: baseTotal,
+        },
+      };
+
+      await orderApi.create(orderPayload);
+
+      alert("Sifariş uğurla yaradıldı!");
+      router.push("/dashboard/orders");
+    } catch (error: any) {
+      console.error("Order create error:", error);
+      alert(error.message || "Sifariş yaradılmadı");
+    } finally {
+      setSubmitting(false);
+    }
   };
-
-  const handleAddSize = () => {
-    setSizes([...sizes, { width: 0, height: 0 }]);
-  };
-
-  const handleRemoveSize = (index: number) => {
-    setSizes(sizes.filter((_, i) => i !== index));
-  };
-
-  const handleSizeChange = (index: number, field: "width" | "height", value: number) => {
-    const newSizes = [...sizes];
-    newSizes[index][field] = value;
-    setSizes(newSizes);
-  };
-
-  const totalArea = sizes.reduce((acc, size) => acc + (size.width * size.height), 0);
-  const totalPrice = selectedProduct ? totalArea * selectedProduct.price : 0;
-
-  const stepTitles = ["", "Məhsul Seç", "Ölçü Əlavə Et", "Fayl & Qeyd", "Qiyməti Yoxla", "Tamamlandı"];
 
   return (
-    <main className="min-h-screen bg-[#F8F9FB] pb-24 md:pb-8">
-      <Header variant="decorator" userName="Əli Vəliyev" />
-      
-      <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Back Button */}
-        {step < 4 && (
-          <button
-            onClick={step === 1 ? () => window.history.back() : handleBack}
-            className="flex items-center gap-2 text-[#6B7280] hover:text-[#D90429] transition-colors mb-4"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span>Geri</span>
-          </button>
-        )}
-
-        {/* Title */}
-        {step < 4 && (
-          <h1 className="text-2xl font-bold text-[#1F2937] mb-2 font-[Manrope]">
-            {stepTitles[step]}
-          </h1>
-        )}
-
-        {/* Step Indicator */}
-        {step < 5 && <StepIndicator currentStep={step} totalSteps={4} />}
-
-        {/* Step Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {step === 1 && (
-              <ProductSelection 
-                onSelect={(product) => {
-                  setSelectedProduct(product);
-                  handleNext();
-                }} 
-                selected={selectedProduct} 
-              />
-            )}
-            
-            {step === 2 && (
-              <SizeInput
-                sizes={sizes}
-                onChange={handleSizeChange}
-                onAdd={handleAddSize}
-                onRemove={handleRemoveSize}
-              />
-            )}
-
-            {step === 3 && (
-              <FileAndNotesStep
-                files={files}
-                onFilesChange={setFiles}
-                notes={notes}
-                onNotesChange={setNotes}
-              />
-            )}
-            
-            {step === 4 && (
-              <PriceSummary
-                product={selectedProduct}
-                sizes={sizes}
-                totalArea={totalArea}
-                totalPrice={totalPrice}
-                notes={notes}
-                files={files}
-              />
-            )}
-            
-            {step === 5 && <SuccessStep />}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Navigation Buttons */}
-        {step < 5 && step > 1 && (
-          <div className="fixed bottom-20 left-0 right-0 px-4 md:relative md:bottom-0 md:px-0 md:mt-6">
-            <div className="max-w-lg mx-auto flex gap-3">
-              <Button variant="secondary" className="flex-1" onClick={handleBack}>
-                Geri
-              </Button>
-              <Button 
-                className="flex-1" 
-                onClick={step === 4 ? () => setStep(5) : handleNext}
-                disabled={step === 2 && sizes.some(s => s.width === 0 || s.height === 0)}
-              >
-                {step === 4 ? "Sifariş Et" : "Davam Et"}
-              </Button>
-            </div>
-          </div>
-        )}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="flex items-center gap-4 mb-6">
+        <button 
+          onClick={() => router.back()} 
+          className="p-2 hover:bg-white rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-5 h-5 text-[#6B7280]" />
+        </button>
+        <h1 className="text-2xl font-bold text-[#1F2937]">Yeni Sifariş</h1>
       </div>
 
-      <MobileNav variant="decorator" />
-    </main>
+      {loading ? (
+        <div className="flex justify-center py-20"><RefreshCw className="animate-spin text-[#D90429]" /></div>
+      ) : (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Левая колонка: Форма */}
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h2 className="text-lg font-bold mb-4">Məhsul və Ölçülər</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-[#6B7280] mb-2">Məhsul *</label>
+                  <select
+                    value={selectedProduct?.id || ""}
+                    onChange={(e) => {
+                      const prod = products.find((p) => p.id.toString() === e.target.value);
+                      setSelectedProduct(prod);
+                    }}
+                    className="w-full h-12 rounded-xl border border-[#E5E7EB] px-4 bg-white focus:outline-none focus:border-[#D90429]"
+                  >
+                    <option value="">Məhsul seçin...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({(p.salePrice ?? p.basePrice ?? 0).toFixed(2)} AZN/{p.unit})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm text-[#6B7280] mb-2">En (m)</label>
+                    <input type="number" step="0.01" value={width} onChange={(e) => setWidth(e.target.value)} className="w-full h-12 rounded-xl border border-[#E5E7EB] px-4" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[#6B7280] mb-2">Hündürlük (m)</label>
+                    <input type="number" step="0.01" value={height} onChange={(e) => setHeight(e.target.value)} className="w-full h-12 rounded-xl border border-[#E5E7EB] px-4" placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[#6B7280] mb-2">Ədəd</label>
+                    <input type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full h-12 rounded-xl border border-[#E5E7EB] px-4" />
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><User className="w-5 h-5 text-[#D90429]" /> Müştəri Məlumatları</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-[#6B7280] mb-2">Ad, Soyad *</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full h-12 rounded-xl border border-[#E5E7EB] pl-10 pr-4 focus:outline-none focus:border-[#D90429]" placeholder="Müştərinin adı" />
+                  </div>
+                  <p className="text-xs text-[#6B7280] mt-1">Profilinizdən doldurulub, dəyişə bilərsiniz</p>
+                </div>
+                <div>
+                  <label className="block text-sm text-[#6B7280] mb-2">Telefon</label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} className="w-full h-12 rounded-xl border border-[#E5E7EB] pl-10 pr-4 focus:outline-none focus:border-[#D90429]" placeholder="050..." />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-[#6B7280] mb-2">Ünvan (Çatdırılma)</label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="text" value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} className="w-full h-12 rounded-xl border border-[#E5E7EB] pl-10 pr-4 focus:outline-none focus:border-[#D90429]" placeholder="Bakı, Nəsimi rayonu..." />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-[#6B7280] mb-2">Qeyd</label>
+                  <textarea value={note} onChange={(e) => setNote(e.target.value)} className="w-full rounded-xl border border-[#E5E7EB] px-4 py-3 min-h-[100px]" placeholder="Əlavə qeydlər..." />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Правая колонка: Итого + Бонусы */}
+          <div>
+            <Card className="p-6 sticky top-24">
+              <h2 className="text-lg font-bold mb-4">Sifarişin Xülasəsi</h2>
+              
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Məhsul:</span>
+                  <span className="font-medium truncate ml-2 max-w-[60%]">{selectedProduct?.name || "-"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Sahə:</span>
+                  <span className="font-medium">{totalArea.toFixed(2)} m²</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B7280]">Qiymət:</span>
+                  <span className="font-medium">{currentPrice.toFixed(2)} AZN</span>
+                </div>
+                
+                {/* Бонусный блок */}
+                <div className={`mt-4 p-3 rounded-xl border transition-all ${useBonus ? "bg-blue-50 border-blue-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold flex items-center gap-2">
+                      <Wallet className={`w-4 h-4 ${availableBonus >= 10 ? "text-green-600" : "text-gray-400"}`} />
+                      Bonus Balans: {availableBonus.toFixed(2)} AZN
+                    </span>
+                    {canUseBonus && (
+                      <button
+                        type="button"
+                        onClick={() => setUseBonus(!useBonus)}
+                        className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+                          useBonus 
+                            ? "bg-blue-600 text-white hover:bg-blue-700" 
+                            : "bg-green-100 text-green-700 hover:bg-green-200"
+                        }`}
+                      >
+                        {useBonus ? "İstifadə edilir" : "İstifadə et"}
+                      </button>
+                    )}
+                  </div>
+                  
+                  {availableBonus < 10 && baseTotal > 0 && (
+                    <p className="text-xs text-orange-600 flex items-center gap-1 mt-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Minimum {(10).toFixed(2)} AZN bonus yığılmalıdır
+                    </p>
+                  )}
+                  
+                  {useBonus && canUseBonus && (
+                    <div className="mt-2 text-sm text-blue-700 font-medium">
+                      -{appliedBonus.toFixed(2)} AZN endirim tətbiq edildi
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-[#E5E7EB] space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6B7280]">Ümumi məbləğ:</span>
+                    <span className="font-medium">{baseTotal.toFixed(2)} AZN</span>
+                  </div>
+                  {appliedBonus > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Bonus ödənişi:</span>
+                      <span className="font-medium">-{appliedBonus.toFixed(2)} AZN</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                    <span className="text-lg font-bold text-[#1F2937]">Ödəniləcək:</span>
+                    <span className="text-2xl font-bold text-[#D90429]">{cashToPay.toFixed(2)} AZN</span>
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleSubmit} 
+                className={`w-full py-4 text-lg ${appliedBonus > 0 ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:shadow-lg hover:shadow-blue-500/30" : ""}`}
+                disabled={submitting || !selectedProduct || !width || !height || !customerName.trim()}
+                icon={submitting ? <RefreshCw className="animate-spin" /> : <CheckCircle />}
+              >
+                {submitting 
+                  ? "Göndərilir..." 
+                  : appliedBonus > 0 
+                    ? `Bonusla ${cashToPay.toFixed(2)} AZN ödə` 
+                    : `Sifarişi Təsdiqlə`
+                }
+              </Button>
+              {cashToPay === 0 && useBonus && (
+                <p className="text-center text-xs text-green-600 mt-2">✅ Tam məbləğ bonusla ödənilir</p>
+              )}
+            </Card>
+          </div>
+        </div>
+      )}
+    </motion.div>
   );
 }
+
+// EOF
