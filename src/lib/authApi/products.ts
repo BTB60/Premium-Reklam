@@ -1,7 +1,7 @@
 // src/lib/authApi/products.ts
 import { Product } from './types';
 import { saveWithFallback } from './storage';
-import { mockProducts, normalizeProduct } from '../db/products';
+import { mockProducts } from '../db/products';
 import { BASE_URL } from './config';
 
 export const productApi = {
@@ -31,16 +31,16 @@ export const productApi = {
     };
 
     return saveWithFallback('/products', backendPayload, (data) => {
-      return normalizeProduct(mockProducts.create({ 
+      return mockProducts.create({ 
         ...product, 
         id: undefined, 
         createdAt: undefined, 
         updatedAt: undefined 
-      }));
+      });
     });
   },
 
   async getAll(): Promise<Product[]> {
-    return saveWithFallback('/products', null, () => mockProducts.getAll().map(normalizeProduct));
+    return saveWithFallback('/products', null, () => mockProducts.getAll());
   }
 };
