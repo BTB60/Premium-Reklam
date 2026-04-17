@@ -51,7 +51,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
-            .cors(cors -> cors.configure(http)) // ✅ Явно включаем CORS из CorsConfig
+            .cors(cors -> cors.configure(http))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
@@ -60,7 +60,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/announcements/ping",
                     "/api/auth/**",
-                    "/api/products/**",
+                    "/api/products",        // ✅ ДОБАВЛЕНО: точный путь для GET/POST списка
+                    "/api/products/**",     // ✅ Оставлено: для /api/products/{id}
                     "/actuator/health"
                 ).permitAll()
                 .requestMatchers("/api/**").authenticated()
