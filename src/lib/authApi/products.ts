@@ -1,7 +1,7 @@
 // src/lib/authApi/products.ts
 import { Product } from './types';
 import { saveWithFallback } from './storage';
-import { mockProducts } from '../db/products';
+import { products as mockProducts } from '../db/products';
 import { BASE_URL } from './config';
 
 export const productApi = {
@@ -31,6 +31,7 @@ export const productApi = {
     };
 
     return saveWithFallback('/products', backendPayload, (data) => {
+      // Фоллбэк: products.create() возвращает Product
       return mockProducts.create({ 
         ...product, 
         id: undefined, 
