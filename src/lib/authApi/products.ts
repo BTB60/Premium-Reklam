@@ -1,6 +1,7 @@
 // src/lib/authApi/products.ts
 import { Product } from './types';
-import { saveWithFallback, mockProducts, normalizeProduct } from './storage';
+import { saveWithFallback } from './storage';
+import { mockProducts, normalizeProduct } from '../db/products';
 import { BASE_URL } from './config';
 
 export const productApi = {
