@@ -62,7 +62,6 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
     apple: "/icon.svg",
   },
-  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
@@ -79,9 +78,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="az" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-      </head>
       <body className="antialiased font-sans bg-white text-gray-900">
         <GoogleAnalytics />
         <FacebookPixel />

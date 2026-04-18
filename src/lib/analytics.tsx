@@ -52,12 +52,18 @@ export function FacebookPixel() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Check if already initialized
-    const existingScript = window.document.getElementById("fb-pixel-script");
-    if (existingScript || (window as any).fbq) return;
+    const win = window as any;
+
+    // No real pixel id in env — avoid loading a duplicate / placeholder bootstrap
+    if (!FB_PIXEL_ID || FB_PIXEL_ID === "000000000000000") return;
+
+    // GTM or another tag may already load fbevents.js; a second copy triggers Meta "conflicting versions"
+    const fbeventsAlready =
+      !!document.querySelector('script[src*="fbevents.js"]') ||
+      !!document.getElementById("fb-pixel-script");
+    if (fbeventsAlready || win.fbq) return;
 
     // Initialize fbq
-    const win = window as any;
     win.fbq = function fbqHandler(...args: any[]) {
       win.fbq.q = win.fbq.q || [];
       win.fbq.q.push(args);

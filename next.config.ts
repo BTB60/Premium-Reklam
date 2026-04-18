@@ -6,6 +6,16 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
 
+  async redirects() {
+    return [
+      {
+        source: "/manifest.json",
+        destination: "/manifest.webmanifest",
+        permanent: true,
+      },
+    ];
+  },
+
   experimental: {
     serverActions: {
       bodySizeLimit: "4mb",
