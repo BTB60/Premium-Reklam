@@ -23,14 +23,3 @@ export { workerTasks } from "./worker-tasks";
 
 // Storage helpers (internal, but exported if needed)
 export { getFromStorage, saveToStorage, removeFromStorage } from "./storage";
-
-// ✅ Утилита для звуковых уведомлений (если используется)
-export function playNotificationSound(): void {
-  if (typeof window !== "undefined") {
-    try {
-      const audio = new Audio("/notification.mp3");
-      audio.volume = 0.3;
-      audio.play().catch(() => {});
-    } catch {}
-  }
-}

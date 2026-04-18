@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
           </form>
 
           <div className="mt-6 text-center text-xs text-[#9CA3AF]">
-            Test: admin / admin123
+            
           </div>
         </Card>
       </div>

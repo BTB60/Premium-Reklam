@@ -804,4 +804,6 @@ export const orderApi = {
   },
 };
 
+export { announcementApi, type Announcement } from "./authApi/announcements";
+
 export default authApi;

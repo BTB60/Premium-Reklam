@@ -116,19 +116,7 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [newOrderAlert, setNewOrderAlert] = useState(0);
-
-// Helper to find user by order
-function findOrderUser(order: any, allUsers: any[]) {
-  if (!allUsers || allUsers.length === 0) return null;
-  const orderUserId = order.userId ?? order.user?.id ?? order.userId;
-  if (!orderUserId) return null;
-  return allUsers.find(u => {
-    if (u.id == orderUserId) return true;
-    if (String(u.id) === String(orderUserId)) return true;
-    return false;
-  }) || null;
-}
+  const [newOrderAlert, setNewOrderAlert] = useState(0);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
