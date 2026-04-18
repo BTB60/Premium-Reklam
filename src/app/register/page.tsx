@@ -1,12 +1,11 @@
-// src/app/register/page.tsx
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
-import { authApi } from "@/lib/authApi";
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
+import authApi from "@/lib/authApi";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -32,20 +31,13 @@ export default function RegisterPage() {
 
     try {
       const result = await authApi.register(form);
-      
-      // ✅ Явное сохранение сессии (дублирующая защита)
-      if (result && result.id) {
-        authApi.saveCurrentUser(result);
-      }
-      
-      const role = result?.role || "DECORATOR";
-      if (role === "ADMIN") {
-        router.push("/admin/dashboard");
+      authApi.saveCurrentUser(result);
+      if (result.role === "ADMIN") {
+        router.push("/admin");
       } else {
         router.push("/dashboard");
       }
     } catch (err: any) {
-      console.error("[RegisterPage] Error:", err);
       setError(err.message || "Qeydiyyat alınmadı");
     } finally {
       setLoading(false);
@@ -54,6 +46,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4 py-12">
+      {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#C41E3A]/5 to-transparent rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-[#D4AF37]/5 to-transparent rounded-full blur-3xl" />
@@ -65,7 +58,9 @@ export default function RegisterPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative"
       >
+        {/* Card */}
         <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+          {/* Header */}
           <div className="bg-gradient-to-r from-[#0A0A0A] to-[#1a1a1a] px-8 py-10 text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-[#C41E3A] to-[#9A1529] rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-red-500/30">
               <User className="w-8 h-8 text-white" />
@@ -74,7 +69,9 @@ export default function RegisterPage() {
             <p className="text-gray-400 text-sm">Premium Reklam hesabı yaradın</p>
           </div>
 
+          {/* Form */}
           <form onSubmit={handleRegister} className="p-8 space-y-5">
+            {/* Full Name */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
               <div className="relative">
@@ -90,6 +87,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Username */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">İstifadəçi adı</label>
               <div className="relative">
@@ -105,6 +103,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Email */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Email</label>
               <div className="relative">
@@ -121,6 +120,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Phone */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Telefon</label>
               <div className="relative">
@@ -135,6 +135,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Şifrə</label>
               <div className="relative">
@@ -159,6 +160,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            {/* Error Message */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -172,6 +174,7 @@ export default function RegisterPage() {
               </motion.div>
             )}
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -190,6 +193,7 @@ export default function RegisterPage() {
               )}
             </button>
 
+            {/* Login Link */}
             <div className="text-center pt-2">
               <p className="text-gray-500 text-sm">
                 Artıq hesabınız var?{" "}
@@ -201,6 +205,7 @@ export default function RegisterPage() {
           </form>
         </div>
 
+        {/* Footer */}
         <p className="text-center text-gray-400 text-xs mt-6">
           Qeydiyyatla razılaşıram{" "}
           <Link href="/terms" className="text-gray-500 hover:text-[#C41E3A] hover:underline">

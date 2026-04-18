@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Megaphone, X, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
-// ✅ Импортируем готовый API-клиент с корректной логикой BASE_URL
-import { announcementApi } from "@/lib/authApi";
 
 interface Announcement {
   id: number;
@@ -17,13 +15,7 @@ interface Announcement {
   expiresAt?: string;
 }
 
-// Вспомогательная функция для нормализации priority (бэкенд -> фронтенд)
-function normalizePriority(priority: string): "normal" | "important" | "urgent" {
-  const p = priority.toUpperCase();
-  if (p === "URGENT") return "urgent";
-  if (p === "IMPORTANT") return "important";
-  return "normal";
-}
+const API_BASE = "https://premium-reklam-backend.onrender.com/api";
 
 export default function ElanWidget() {
   const [showElan, setShowElan] = useState(false);
@@ -39,23 +31,22 @@ export default function ElanWidget() {
     return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
-  // ✅ Используем announcementApi вместо прямого fetch с хардкод-URL
+  // 🔥 Чтение ТОЛЬКО с бэкенда, БЕЗ токена
   const fetchActiveAnnouncements = async (): Promise<Announcement[] | null> => {
     setApiError(null);
     try {
-      // announcementApi уже добавляет токен (если есть) и правильный BASE_URL
-      const list = await announcementApi.getActive();
-      
-      // Нормализуем priority для совместимости с типами фронтенда
-      const normalized = list.map((a: any) => ({
-        ...a,
-        priority: normalizePriority(a.priority),
-      }));
-      
-      return normalized;
-    } catch (error: any) {
+      const response = await fetch(`${API_BASE}/announcements/active`, {
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        setApiError(`API xətası: ${response.status}`);
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
       console.error("[ElanWidget] Fetch error:", error);
-      setApiError(error?.message || "Bağlantı xətası");
+      setApiError("Bağlantı xətası");
       return null;
     }
   };
@@ -67,7 +58,7 @@ export default function ElanWidget() {
       setIsLoading(false);
       return;
     }
-    const active = announcements.filter((a: Announcement) => a.isActive);
+    const active = announcements.filter(a => a.isActive);
     if (active.length === 0) {
       setIsLoading(false);
       return;
@@ -76,6 +67,7 @@ export default function ElanWidget() {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )[0];
     const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
+    // 🔥 Упрощено: показываем, если активно и не истекло (без трекинга прочтений для этой задачи)
     if (!isExpired) {
       setAnnouncement(latest);
       setHasUnread(true);
@@ -85,6 +77,7 @@ export default function ElanWidget() {
   };
 
   const handleMarkAsRead = () => {
+    // 🔥 Просто закрываем — трекинг прочтений отключён для этой задачи
     setShowElan(false);
     setHasUnread(false);
   };
@@ -105,15 +98,7 @@ export default function ElanWidget() {
   }
 
   if (apiError) {
-    return (
-      <button 
-        className="p-2 hover:bg-gray-100 rounded-full" 
-        title={apiError}
-        onClick={() => { setApiError(null); checkForNewAnnouncement(); }}
-      >
-        <AlertCircle className="w-5 h-5 text-red-500" />
-      </button>
-    );
+    return <button className="p-2 hover:bg-gray-100 rounded-full" title={apiError}><AlertCircle className="w-5 h-5 text-red-500" /></button>;
   }
 
   if (!hasUnread) {

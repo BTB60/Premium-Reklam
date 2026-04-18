@@ -22,14 +22,12 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  auth, 
-  orders, 
-  notifications, 
   getUserMonthlyStats, 
   calculateDiscount, 
   getDiscountMessage,
   type User 
 } from "@/lib/db";
+import { authApi, orderApi, type UserData } from "@/lib/authApi";
 
 interface SizeItem {
   id: string;
@@ -57,7 +55,7 @@ const PRODUCTS = [
 
 export default function NewOrderPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
@@ -76,26 +74,39 @@ export default function NewOrderPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "debt">("cash");
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
+  const [priorOrderTotal, setPriorOrderTotal] = useState(0);
 
   useEffect(() => {
-    const currentUser = auth.getCurrentUser();
+    const currentUser = authApi.getCurrentUser();
     if (!currentUser) {
       router.push("/login");
       return;
     }
     setUser(currentUser);
     setCustomerPhone(currentUser.phone || "");
-    
-    // Load monthly stats and calculate discount
-    const stats = getUserMonthlyStats(currentUser);
-    const discount = calculateDiscount(stats.totalSpent);
-    setMonthlyStats({
-      totalSpent: stats.totalSpent,
-      discountTier: discount.tier,
-      discountRate: discount.rate
-    });
-    
-    setLoading(false);
+
+    void (async () => {
+      try {
+        const summary = await orderApi.getMySummary();
+        const totalSpent = Number(summary.totalAmount || 0);
+        setPriorOrderTotal(totalSpent);
+        const discount = calculateDiscount(totalSpent);
+        setMonthlyStats({
+          totalSpent,
+          discountTier: discount.tier,
+          discountRate: discount.rate,
+        });
+      } catch {
+        setPriorOrderTotal(0);
+        setMonthlyStats({
+          totalSpent: 0,
+          discountTier: "none",
+          discountRate: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
   const calculateArea = (width: number, height: number) => {
@@ -143,8 +154,8 @@ export default function NewOrderPage() {
     totalBase: sizes.reduce((sum, s) => sum + s.basePrice, 0),
   };
   
-  // Calculate discount rate based on LIFETIME total spending
-  const lifetimeTotal = (user?.totalSales || 0) + baseTotals.totalBase;
+  // Calculate discount rate based on LIFETIME total spending (backend orders + current cart)
+  const lifetimeTotal = priorOrderTotal + baseTotals.totalBase;
   const loyaltyDiscount = calculateDiscount(lifetimeTotal);
   const discountRate = loyaltyDiscount.rate; // 0, 0.05, or 0.10
   
@@ -167,85 +178,47 @@ export default function NewOrderPage() {
     discountTier: loyaltyDiscount.tier
   };
 
-  const canUseDebt = user && (user.level >= 100 || user.role === "ADMIN");
+  const canUseDebt = Boolean(user && user.role === "ADMIN");
 
   const handleSubmit = async () => {
     if (!user) return;
     
     setSubmitting(true);
     
-    // Create order
-    const orderItems = sizes.map(size => ({
-      id: Date.now().toString() + Math.random(),
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      width: size.width,
-      height: size.height,
-      area: size.area,
-      quantity: 1,
-      unitPrice: selectedProduct.unitPrice,
-      totalPrice: size.finalPrice
-    }));
+    try {
+      const orderItems = sizes.map((size) => ({
+        productName: selectedProduct.name,
+        unit: "M2",
+        width: size.width,
+        height: size.height,
+        area: size.area,
+        quantity: 1,
+        unitPrice: selectedProduct.unitPrice,
+        lineTotal: size.basePrice * (1 - totals.discountRate),
+      }));
 
-    orders.create({
-      userId: user.id,
-      items: orderItems,
-      status: "pending",
-      paymentStatus: paymentMethod === "cash" ? "pending" : "pending",
-      paymentMethod: paymentMethod,
-      subtotal: totals.totalBase,
-      discountTotal: totals.totalDiscount,
-      finalTotal: totals.finalAmount,
-      note: note || undefined
-    });
+      await orderApi.create({
+        userId: user.userId,
+        customerName: user.fullName,
+        customerPhone: customerPhone || undefined,
+        customerWhatsapp: customerPhone || undefined,
+        items: orderItems,
+        paymentMethod: paymentMethod.toUpperCase(),
+        isCredit: paymentMethod === "debt",
+        note: note || undefined,
+        subtotal: totals.totalBase,
+        discountAmount: totals.totalDiscount,
+        totalAmount: totals.finalAmount,
+        paidAmount: 0,
+      });
 
-    // Update user stats and monthly stats
-    const allUsers = auth.getAllUsers();
-    const userIndex = allUsers.findIndex(u => u.id === user.id);
-    if (userIndex !== -1) {
-      allUsers[userIndex].totalOrders += 1;
-      allUsers[userIndex].totalSales += totals.finalAmount;
-      
-      // Update monthly stats
-      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-      let monthlyStat = allUsers[userIndex].monthlyStats.find(s => s.month === currentMonth);
-      if (!monthlyStat) {
-        monthlyStat = {
-          month: currentMonth,
-          totalSpent: 0,
-          orderCount: 0,
-          discountTier: "none"
-        };
-        allUsers[userIndex].monthlyStats.push(monthlyStat);
-      }
-      monthlyStat.totalSpent += totals.finalAmount;
-      monthlyStat.orderCount += 1;
-      
-      // Recalculate discount tier
-      const newDiscount = calculateDiscount(monthlyStat.totalSpent);
-      monthlyStat.discountTier = newDiscount.tier;
-      
-      localStorage.setItem("decor_users", JSON.stringify(allUsers));
+      router.push("/dashboard?orderSuccess=true");
+    } catch (error: any) {
+      console.error("[Orders/New] Create order error:", error);
+      alert(error?.message || "Sifariş yaradılmadı");
+    } finally {
+      setSubmitting(false);
     }
-
-    // Create notification for admin
-    notifications.create({
-      userId: "admin",
-      title: "Yeni sifariş",
-      message: `${user.fullName} yeni sifariş yaratdı (${totals.finalAmount.toFixed(2)} AZN)`,
-      type: "order_status"
-    });
-
-    // Create notification for user
-    notifications.create({
-      userId: user.id,
-      title: "Sifariş qəbul edildi",
-      message: `Sifarişiniz #${Date.now().toString().slice(-6)} nömrəsi ilə qeydə alındı`,
-      type: "order_status"
-    });
-
-    setSubmitting(false);
-    router.push("/dashboard?orderSuccess=true");
   };
 
   if (loading) {
@@ -349,9 +322,7 @@ export default function NewOrderPage() {
                   <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
                     <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                     <p className="text-sm text-amber-700">
-                      ⚠️ Borc sistemi Level 100+ və ya Admin təsdiqi üçün aktivdir. 
-                      Hazırda Level {user.level}. Borc istifadəsi üçün daha {100 - user.level} level qalib.
-                      Və ya admin tərəfindən təsdiq olunmalıdır.
+                      ⚠️ Borc sistemi yalnız admin üçün aktivdir.
                     </p>
                   </div>
                 )}
@@ -482,7 +453,7 @@ export default function NewOrderPage() {
                     {getDiscountMessage(totals.discountTier)}
                   </p>
                   <p className="text-xs text-[#6B7280]">
-                    Ümumi xərcləmə: {(user?.totalSales || 0).toFixed(2)} AZN • Bu sifarişlə: {totals.lifetimeTotal.toFixed(2)} AZN
+                    Ümumi xərcləmə: {(Number((user as any)?.totalSales || 0)).toFixed(2)} AZN • Bu sifarişlə: {totals.lifetimeTotal.toFixed(2)} AZN
                   </p>
                   {totals.discountRate > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1">

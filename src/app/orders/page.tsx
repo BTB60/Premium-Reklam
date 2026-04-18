@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { auth, orders, type User, type Order } from "@/lib/db";
-import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
+import { authApi, orderApi, type UserData, type Order } from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -24,7 +23,7 @@ import Link from "next/link";
 
 export default function OrdersHistoryPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,32 +31,45 @@ export default function OrdersHistoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = auth.getCurrentUser();
+    const currentUser = authApi.getCurrentUser();
     if (!currentUser) {
       router.push("/login");
       return;
     }
     setUser(currentUser);
-    const ordersList = orders.getByUserId(currentUser.id);
-    setUserOrders(ordersList);
-    setFilteredOrders(ordersList);
-    setLoading(false);
+
+    orderApi
+      .getMyOrders()
+      .then((data) => {
+        const list = data.orders || [];
+        setUserOrders(list);
+        setFilteredOrders(list);
+      })
+      .catch((error) => {
+        console.error("[OrdersHistory] Load orders error:", error);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [router]);
 
   useEffect(() => {
     let filtered = userOrders;
     
-    // Search filter
     if (searchQuery) {
-      filtered = filtered.filter(o => 
-        o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.items.some(i => i.productName.toLowerCase().includes(searchQuery.toLowerCase()))
-      );
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((o) => {
+        const idMatch = String(o.id).toLowerCase().includes(query);
+        const numberMatch = (o.orderNumber || "").toLowerCase().includes(query);
+        const itemsMatch = (o.items || []).some((i) =>
+          (i.productName || "").toLowerCase().includes(query)
+        );
+        return idMatch || numberMatch || itemsMatch;
+      });
     }
     
-    // Status filter
     if (statusFilter !== "all") {
-      filtered = filtered.filter(o => o.status === statusFilter);
+      filtered = filtered.filter((o) => o.status === statusFilter);
     }
     
     setFilteredOrders(filtered);

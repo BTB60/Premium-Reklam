@@ -6,7 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { auth, orders, type User, type Order } from "@/lib/db";
+import { authApi, orderApi, type UserData, type Order } from "@/lib/authApi";
 import { getOrderTotal } from "@/lib/orderHelpers";
 import { motion } from "framer-motion";
 import {
@@ -56,19 +56,30 @@ function getNextLevel(currentLevel: number): number | null {
 
 export default function LevelPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = auth.getCurrentUser();
+    const currentUser = authApi.getCurrentUser();
     if (!currentUser) {
       router.push("/login");
       return;
     }
     setUser(currentUser);
-    setUserOrders(orders.getByUserId(currentUser.id));
-    setLoading(false);
+
+    orderApi
+      .getMyOrders()
+      .then((data) => {
+        setUserOrders(data.orders || []);
+      })
+      .catch((error) => {
+        console.error("[Level] load orders error:", error);
+        setUserOrders([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [router]);
 
   if (loading) {
@@ -180,7 +191,7 @@ export default function LevelPage() {
             </Card>
             <Card className="p-4 text-center">
               <Gift className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-[#1F2937]">{user.bonusPoints}</p>
+              <p className="text-2xl font-bold text-[#1F2937]">{(user as any).bonusPoints || 0}</p>
               <p className="text-xs text-[#6B7280]">Bonus Xal</p>
             </Card>
           </div>

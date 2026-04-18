@@ -7,27 +7,28 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { 
-  User as UserIcon, 
-  Phone, 
-  Building2, 
-  Mail, 
-  Award, 
-  TrendingUp, 
+import {
+  User as UserIcon,
+  Phone,
+  Mail,
+  Award,
+  TrendingUp,
   Package,
   ArrowLeft,
-  Save
+  Save,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-// ✅ ИСПРАВЛЕНО: убран несуществующий 'db', оставлен 'auth'
-import { auth, type User } from "@/lib/db";
+import authApi, { orderApi, type UserData } from "@/lib/authApi";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [orderCount, setOrderCount] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -35,37 +36,90 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const currentUser = auth.getCurrentUser();
-    if (!currentUser) {
+    const current = authApi.getCurrentUser();
+    if (!current) {
       router.push("/login");
       return;
     }
-    setUser(currentUser);
+    setSession(current);
     setFormData({
-      fullName: currentUser.fullName,
-      phone: currentUser.phone || "",
-      email: currentUser.email || "",
+      fullName: current.fullName || "",
+      phone: current.phone || "",
+      email: current.email || "",
     });
-    setLoading(false);
+
+    void (async () => {
+      try {
+        const profile = await authApi.getMyProfile();
+        setFormData({
+          fullName: profile.fullName || "",
+          phone: profile.phone || "",
+          email: profile.email || "",
+        });
+        const merged: UserData = {
+          ...current,
+          userId: profile.userId,
+          fullName: profile.fullName,
+          phone: profile.phone || undefined,
+          email: profile.email || undefined,
+          role: profile.role,
+        };
+        authApi.saveCurrentUser(merged);
+        setSession(merged);
+        setLoadError(null);
+      } catch (e: any) {
+        console.warn("[Profile] Server sync skipped:", e?.message || e);
+        const msg = String(e?.message || "");
+        setLoadError(
+          msg.includes("401") || msg.includes("Token") || msg.includes("tələb olunur") || msg.includes("keçərsiz")
+            ? "Sessiya yenilənməlidir — yenidən daxil olun."
+            : null
+        );
+      }
+
+      try {
+        const summary = await orderApi.getMySummary();
+        setOrderCount(summary.totalOrders || 0);
+        setTotalSpent(summary.totalAmount || 0);
+      } catch {
+        setOrderCount(0);
+        setTotalSpent(0);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!session) return;
     setSaving(true);
-    
-    // ✅ ИСПРАВЛЕНО: db.updateUser → auth.updateUser
-    const updatedUser: User = {
-      ...user,
-      fullName: formData.fullName,
-      phone: formData.phone,
-      email: formData.email || undefined,
-    };
-    
-    // Обновляем пользователя через auth модуль
-    auth.updateUser(updatedUser);
-    
-    setUser(updatedUser);
-    setSaving(false);
+    try {
+      const updated = await authApi.updateMyProfile({
+        fullName: formData.fullName,
+        phone: formData.phone,
+        email: formData.email,
+      });
+      const next: UserData = {
+        ...session,
+        userId: updated.userId,
+        fullName: updated.fullName,
+        phone: updated.phone || undefined,
+        email: updated.email || undefined,
+        role: updated.role,
+      };
+      authApi.saveCurrentUser(next);
+      setSession(next);
+      setFormData({
+        fullName: updated.fullName || "",
+        phone: updated.phone || "",
+        email: updated.email || "",
+      });
+    } catch (error: any) {
+      console.error("[Profile] Save error:", error);
+      alert(error?.message || "Profil yenilənmədi");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -76,15 +130,16 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) return null;
+  if (!session) return null;
+
+  const level = Math.min(99, 1 + Math.floor(orderCount / 3));
 
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
-      
+
       <main className="pt-20 pb-24 lg:pb-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -98,8 +153,13 @@ export default function ProfilePage() {
             <h1 className="text-2xl font-bold text-[#1F2937]">Profilim</h1>
           </motion.div>
 
+          {loadError && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              {loadError}
+            </div>
+          )}
+
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Profile Info */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -134,8 +194,8 @@ export default function ProfilePage() {
                     icon={<Mail className="w-5 h-5" />}
                   />
 
-                  <Button 
-                    onClick={handleSave}
+                  <Button
+                    onClick={() => void handleSave()}
                     loading={saving}
                     icon={<Save className="w-5 h-5" />}
                     className="w-full"
@@ -146,7 +206,6 @@ export default function ProfilePage() {
               </Card>
             </motion.div>
 
-            {/* Stats Sidebar */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -157,8 +216,8 @@ export default function ProfilePage() {
                 <div className="w-20 h-20 bg-[#D90429]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Award className="w-10 h-10 text-[#D90429]" />
                 </div>
-                <p className="text-3xl font-bold text-[#1F2937]">{user.level}</p>
-                <p className="text-[#6B7280]">Səviyyə</p>
+                <p className="text-3xl font-bold text-[#1F2937]">{level}</p>
+                <p className="text-[#6B7280]">Səviyyə (təxmini)</p>
               </Card>
 
               <Card className="p-6">
@@ -166,20 +225,20 @@ export default function ProfilePage() {
                   <Package className="w-5 h-5 text-[#D90429]" />
                   <span className="text-[#6B7280]">Ümumi sifariş</span>
                 </div>
-                <p className="text-2xl font-bold text-[#1F2937]">{user.totalOrders}</p>
+                <p className="text-2xl font-bold text-[#1F2937]">{orderCount}</p>
               </Card>
 
               <Card className="p-6">
                 <div className="flex items-center gap-3 mb-3">
                   <TrendingUp className="w-5 h-5 text-[#D90429]" />
-                  <span className="text-[#6B7280]">Ümumi satış</span>
+                  <span className="text-[#6B7280]">Ümumi məbləğ (sifarişlər)</span>
                 </div>
-                <p className="text-2xl font-bold text-[#1F2937]">{user.totalSales.toFixed(0)} AZN</p>
+                <p className="text-2xl font-bold text-[#1F2937]">{totalSpent.toFixed(0)} AZN</p>
               </Card>
 
               <Card className="p-6">
                 <p className="text-sm text-[#6B7280] mb-1">İstifadəçi ID</p>
-                <p className="text-xs text-[#9CA3AF] font-mono break-all">{user.id}</p>
+                <p className="text-xs text-[#9CA3AF] font-mono break-all">{String(session.userId)}</p>
               </Card>
             </motion.div>
           </div>

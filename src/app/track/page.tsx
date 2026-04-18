@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { orders, type Order } from "@/lib/db";
+import { orderApi, type Order } from "@/lib/authApi";
 import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { 
   Search, 
@@ -27,7 +27,7 @@ export default function TrackOrderPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleTrack = () => {
+  const handleTrack = async () => {
     if (!orderId.trim()) {
       setError("Sifariş kodunu daxil edin");
       return;
@@ -35,23 +35,29 @@ export default function TrackOrderPage() {
 
     setLoading(true);
     setError("");
+    try {
+      const data = await orderApi.getOrdersFromBackend();
+      const allOrders = data.orders || [];
+      const query = orderId.trim().toLowerCase();
+      const found = allOrders.find((o: any) => {
+        const idText = String(o.id || "").toLowerCase();
+        const numberText = String(o.orderNumber || "").toLowerCase();
+        return idText.includes(query) || idText.slice(-6) === query || numberText.includes(query);
+      });
 
-    // Search by order ID (last 6 chars match)
-    const allOrders = orders.getAll();
-    const found = allOrders.find(o => 
-      o.id.toLowerCase().includes(orderId.toLowerCase()) ||
-      o.id.slice(-6).toLowerCase() === orderId.toLowerCase()
-    );
-
-    setTimeout(() => {
       if (found) {
-        setOrder(found);
+        setOrder(found as Order);
       } else {
         setError("Sifariş tapılmadı. Kodu yoxlayın.");
         setOrder(null);
       }
+    } catch (error) {
+      console.error("[Track] load orders error:", error);
+      setError("Sifarişlər yüklənmədi.");
+      setOrder(null);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   const getStatusSteps = (status: Order["status"]) => {

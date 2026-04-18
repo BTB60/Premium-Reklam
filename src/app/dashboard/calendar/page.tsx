@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { auth, calendar, orders, type User, type CalendarEvent, type Order } from "@/lib/db";
+import { calendar, type CalendarEvent } from "@/lib/db";
+import { authApi, orderApi, type UserData, type Order } from "@/lib/authApi";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { CalendarView } from "@/components/user/CalendarView";
@@ -13,21 +14,32 @@ import { Button } from "@/components/ui/Button";
 
 export default function CalendarPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = auth.getCurrentUser();
+    const currentUser = authApi.getCurrentUser();
     if (!currentUser) {
       router.push("/login");
       return;
     }
     setUser(currentUser);
-    setEvents(calendar.getByUserId(currentUser.id));
-    setUserOrders(orders.getByUserId(currentUser.id));
-    setLoading(false);
+    setEvents(calendar.getByUserId(String(currentUser.userId)));
+
+    orderApi
+      .getMyOrders()
+      .then((data) => {
+        setUserOrders(data.orders || []);
+      })
+      .catch((error) => {
+        console.error("[Calendar] load orders error:", error);
+        setUserOrders([]);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [router]);
 
   if (loading) {
@@ -59,7 +71,7 @@ export default function CalendarPage() {
             <h1 className="text-2xl font-bold text-[#1F2937]">Təqvimim</h1>
           </motion.div>
 
-          <CalendarView events={events} orders={userOrders} userId={user.id} />
+          <CalendarView events={events} orders={userOrders as any} userId={String(user.userId)} />
         </div>
       </main>
 
