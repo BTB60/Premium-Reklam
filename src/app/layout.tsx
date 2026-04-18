@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { WhatsAppChat } from "@/components/ui/WhatsAppChat";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { GoogleAnalytics, FacebookPixel } from "@/lib/analytics";
 
 export const metadata: Metadata = {
@@ -88,6 +89,7 @@ export default function RootLayout({
         {children}
         <WhatsAppChat />
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
