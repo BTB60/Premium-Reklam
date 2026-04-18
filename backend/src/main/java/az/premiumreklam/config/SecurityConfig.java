@@ -27,7 +27,9 @@ public class SecurityConfig {
                 .anyRequest().permitAll()
             )
             .httpBasic(basic -> basic.disable())
-            .formLogin(form -> form.disable());
+            .formLogin(form -> form.disable())
+            //  добавляем JwtAuthenticationFilter — полностью отключаем для теста
+            ;
         return http.build();
     }
 

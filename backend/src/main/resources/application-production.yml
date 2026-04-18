@@ -1,8 +1,8 @@
-spring:
+﻿spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    # Render предоставляет DATABASE_URL в формате postgresql://...
+    # Spring Boot 3.3+ автоматически парсит DATABASE_URL, если не задан url явно
+    # оэтому убираем jdbc:postgresql://${DB_HOST}... и полагаемся на DATABASE_URL
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -23,12 +23,12 @@ spring:
         order_updates: true
 
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
     baseline-on-migrate: true
 
   redis:
-    url: ${REDIS_URL}
+    url: ${REDIS_URL:}
     timeout: 2000ms
     lettuce:
       pool:
@@ -39,8 +39,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -49,22 +49,23 @@ spring:
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:devSecretForRenderTestingOnly12345678901234567890}
   access-token:
     expiration: 3600000
   refresh-token:
     expiration: 604800000
 
 minio:
-  endpoint: ${MINIO_ENDPOINT}
-  access-key: ${MINIO_ACCESS_KEY}
-  secret-key: ${MINIO_SECRET_KEY}
+  endpoint: ${MINIO_ENDPOINT:}
+  access-key: ${MINIO_ACCESS_KEY:}
+  secret-key: ${MINIO_SECRET_KEY:}
   bucket-name: decorapp-files
 
 logging:
   level:
-    az.premiumreklam: INFO
-    org.springframework.security: WARN
+    az.premiumreklam: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
@@ -72,13 +73,15 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
-      show-details: never
+      show-details: always
+      probes:
+        enabled: true
 
 cors:
-  allowed-origins: ${CORS_ORIGINS:https://premium-reklam.az,https://premium-reklam.vercel.app,http://localhost:3000}
-  allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
+  allowed-origins: ${CORS_ORIGINS:*}
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD
   allowed-headers: "*"
-  allow-credentials: true
+  allow-credentials: false
