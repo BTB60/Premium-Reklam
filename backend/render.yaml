@@ -2,7 +2,7 @@
   - type: web
     name: premium-reklam-api
     runtime: docker
-    repo: https://github.com/BTB60/backandpremiumreklam
+    repo: https://github.com/BTB60/Premium-Reklam
     branch: main
     plan: free
     dockerfilePath: ./Dockerfile
@@ -15,3 +15,4 @@
         sync: false
     healthCheckPath: /api/ping
     autoDeploy: true
+
