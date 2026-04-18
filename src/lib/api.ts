@@ -1,11 +1,9 @@
 // API Client for Spring Boot Backend
 // Note: This file is kept for backward compatibility. Use authApi.ts for all API calls.
 
-// ✅ LOCAL-FIRST: По умолчанию стучимся в локальный бэкенд
-// Для продакшена задай: NEXT_PUBLIC_API_URL=https://premium-reklam-backend.onrender.com
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : 'http://localhost:8080/api';
+  : 'https://premium-reklam-backend.onrender.com/api';
 
 // Helper function to check if response is JSON
 async function parseResponse(response: Response) {
@@ -99,4 +97,5 @@ export const api = {
     return parseResponse(response);
   },
 };
+
 export default api;
