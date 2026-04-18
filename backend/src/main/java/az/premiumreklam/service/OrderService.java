@@ -9,9 +9,9 @@ import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.ProductRepository;
 import az.premiumreklam.repository.UserRepository;
 import az.premiumreklam.repository.UserPriceRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

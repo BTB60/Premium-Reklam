@@ -2,7 +2,7 @@ package az.premiumreklam.service;
 
 import az.premiumreklam.entity.User;
 import az.premiumreklam.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
