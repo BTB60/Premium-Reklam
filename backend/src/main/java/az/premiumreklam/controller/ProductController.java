@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.controller;
+package az.premiumreklam.controller;
 
 import az.premiumreklam.dto.product.ProductRequest;
 import az.premiumreklam.entity.Product;

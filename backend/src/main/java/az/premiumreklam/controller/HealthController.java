@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.controller;
+package az.premiumreklam.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

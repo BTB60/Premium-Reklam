@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.config;
+package az.premiumreklam.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

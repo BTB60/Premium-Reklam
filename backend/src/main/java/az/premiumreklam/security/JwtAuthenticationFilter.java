@@ -1,4 +1,4 @@
-﻿package az.premiumreklam.security;
+package az.premiumreklam.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
