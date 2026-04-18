@@ -16,3 +16,4 @@
     healthCheckPath: /api/ping
     autoDeploy: true
 
+
