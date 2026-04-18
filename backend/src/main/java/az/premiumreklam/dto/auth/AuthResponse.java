@@ -15,6 +15,8 @@ public class AuthResponse {
     private UUID userId;
     private String username;
     private String fullName;
+    private String email;
+    private String phone;
     private String role;
 
     public static AuthResponse fromUser(User user, String token) {
@@ -23,6 +25,8 @@ public class AuthResponse {
                 .userId(user.getId())
                 .username(user.getUsername())
                 .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
                 .role(user.getRole().getValue())
                 .build();
     }

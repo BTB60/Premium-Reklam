@@ -8,13 +8,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+    SecurityAutoConfiguration.class,
+    ManagementWebSecurityAutoConfiguration.class
+})
 @RequiredArgsConstructor
 public class PremiumReklamApplication {
 

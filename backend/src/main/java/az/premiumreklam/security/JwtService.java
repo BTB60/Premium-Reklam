@@ -27,32 +27,24 @@ public class JwtService {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
+    // 🔥 НОВЫЙ МЕТОД: генерация токена с permissions для subadmin
     public String generateToken(String username, String role, Map<String, String> permissions) {
         return Jwts.builder()
-            .subject(username)
+            .setSubject(username)
             .claim("role", role)
             .claim("permissions", permissions)
-            .issuedAt(new Date())
-            .expiration(new Date(System.currentTimeMillis() + expiration))
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + expiration))
             .signWith(getSigningKey(), SignatureAlgorithm.HS256)
             .compact();
     }
 
+    // Существующие методы (оставляем как есть)
     public String generateToken(String username) {
         return Jwts.builder()
-            .subject(username)
-            .issuedAt(new Date())
-            .expiration(new Date(System.currentTimeMillis() + expiration))
-            .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-            .compact();
-    }
-
-    public String generateResetToken(String username) {
-        return Jwts.builder()
-            .subject(username)
-            .claim("type", "RESET")
-            .issuedAt(new Date())
-            .expiration(new Date(System.currentTimeMillis() + 3600000))
+            .setSubject(username)
+            .setIssuedAt(new Date())
+            .setExpiration(new Date(System.currentTimeMillis() + expiration))
             .signWith(getSigningKey(), SignatureAlgorithm.HS256)
             .compact();
     }
@@ -67,19 +59,19 @@ public class JwtService {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-            .verifyWith(getSigningKey())
+        return Jwts.parserBuilder()
+            .setSigningKey(getSigningKey())
             .build()
-            .parseSignedClaims(token)
-            .getPayload();
+            .parseClaimsJws(token)
+            .getBody();
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()
-                .verifyWith(getSigningKey())
+            Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token);
+                .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
             return false;

@@ -9,9 +9,9 @@ import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.ProductRepository;
 import az.premiumreklam.repository.UserRepository;
 import az.premiumreklam.repository.UserPriceRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -56,8 +56,10 @@ public class OrderService {
                 }
 
                 BigDecimal quantity = defaultBigDecimal(itemRequest.getQuantity(), BigDecimal.ONE);
+                // Check for user-specific price first, then product's salePrice, fallback to request price
                 BigDecimal unitPrice = BigDecimal.ZERO;
                 if (product != null) {
+                    // Check if user has custom price for this product
                     var userPriceOpt = userPriceRepository.findByUserIdAndProductIdAndIsActiveTrue(user.getId(), product.getId());
                     if (userPriceOpt.isPresent()) {
                         unitPrice = userPriceOpt.get().getCustomPrice();
@@ -135,7 +137,7 @@ public class OrderService {
     }
 
     public Order getOrderById(UUID id) {
-        return orderRepository.findById(id)
+        return orderRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
     }
 

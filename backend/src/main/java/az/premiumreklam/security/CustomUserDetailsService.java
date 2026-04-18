@@ -5,11 +5,11 @@ import az.premiumreklam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
-// import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-// @Service ← ОТКЛЮЧЕНО: предотвращает авто-конфигурацию Security, которая блокирует /api/**
+@Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 

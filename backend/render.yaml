@@ -1,8 +1,8 @@
-﻿services:
+services:
   - type: web
     name: premium-reklam-api
     runtime: docker
-    repo: https://github.com/BTB60/Premium-Reklam
+    repo: https://github.com/BTB60/backandpremiumreklam
     branch: main
     plan: free
     dockerfilePath: ./Dockerfile
@@ -11,10 +11,5 @@
         value: production
       - key: DATABASE_URL
         sync: false
-      - key: JWT_SECRET
-        sync: false
-    healthCheckPath: /actuator/health
+    healthCheckPath: /api/health
     autoDeploy: true
-
-
-

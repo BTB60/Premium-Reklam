@@ -1,15 +1,14 @@
-﻿spring:
+spring:
   datasource:
-    url: ${DATABASE_URL}
-    # Render предоставляет DATABASE_URL в формате postgresql://...
-    # Spring Boot 3.3+ автоматически парсит DATABASE_URL, если не задан url явно
-    # оэтому убираем jdbc:postgresql://${DB_HOST}... и полагаемся на DATABASE_URL
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=require
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
       connection-timeout: 20000
       idle-timeout: 300000
-      max-lifetime: 900000
+      max-lifetime: 1200000
 
   jpa:
     hibernate:
@@ -24,12 +23,12 @@
         order_updates: true
 
   flyway:
-    enabled: false
+    enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
 
   redis:
-    url: ${REDIS_URL:}
+    url: ${REDIS_URL}
     timeout: 2000ms
     lettuce:
       pool:
@@ -40,8 +39,8 @@
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -50,23 +49,22 @@
             enable: true
 
 jwt:
-  secret: ${JWT_SECRET:devSecretForRenderTestingOnly12345678901234567890}
+  secret: ${JWT_SECRET}
   access-token:
-    expiration: 3600000
+    expiration: 3600000 # 1 hour
   refresh-token:
-    expiration: 604800000
+    expiration: 604800000 # 7 days
 
 minio:
-  endpoint: ${MINIO_ENDPOINT:}
-  access-key: ${MINIO_ACCESS_KEY:}
-  secret-key: ${MINIO_SECRET_KEY:}
+  endpoint: ${MINIO_ENDPOINT}
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
   bucket-name: decorapp-files
 
 logging:
   level:
-    az.premiumreklam: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
+    az.decorapp: INFO
+    org.springframework.security: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
@@ -74,16 +72,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
   endpoint:
     health:
-      show-details: always
-      probes:
-        enabled: true
+      show-details: never
 
 cors:
-  allowed-origins: ${CORS_ORIGINS:*}
-  allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD
+  allowed-origins: ${CORS_ORIGINS:https://decorapp.az,https://www.decorapp.az}
+  allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH
   allowed-headers: "*"
-  allow-credentials: false
-
+  allow-credentials: true
