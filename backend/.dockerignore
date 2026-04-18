@@ -1,7 +1,5 @@
-build/
 .gradle/
-.idea/
-*.iml
-out/
-target/
-.DS_Store
+build/
+!build/libs/*.jar
+src/
+*.md
