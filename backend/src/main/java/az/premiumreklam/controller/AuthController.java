@@ -52,19 +52,21 @@ public class AuthController {
     // 🔥 ВХОД ДЛЯ SUBADMIN (публичный эндпоинт)
     @PostMapping("/subadmin/login")
     public ResponseEntity<?> subadminLogin(@RequestBody SubadminLoginRequest request) {
-        return subadminService.authenticate(request.getLogin(), request.getPassword())
-            .map(subadmin -> {
-                subadminService.updateLastLogin(subadmin.getId());
-                String token = jwtService.generateToken(subadmin.getLogin(), "SUBADMIN", subadmin.getPermissions());
-                return ResponseEntity.ok(SubadminLoginResponse.builder()
-                    .token(token)
-                    .subadminId(subadmin.getId())
-                    .login(subadmin.getLogin())
-                    .role("SUBADMIN")
-                    .permissions(subadmin.getPermissions())
-                    .build());
-            })
-            .orElse(ResponseEntity.status(401).body(Map.of("error", "Invalid credentials")));
+        var auth = subadminService.authenticate(request.getLogin(), request.getPassword());
+        if (auth.isEmpty()) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid credentials"));
+        }
+        Subadmin subadmin = auth.get();
+        subadminService.updateLastLogin(subadmin.getId());
+        String token = jwtService.generateToken(subadmin.getLogin(), "SUBADMIN", subadmin.getPermissions());
+        SubadminLoginResponse body = SubadminLoginResponse.builder()
+                .token(token)
+                .subadminId(subadmin.getId())
+                .login(subadmin.getLogin())
+                .role("SUBADMIN")
+                .permissions(subadmin.getPermissions())
+                .build();
+        return ResponseEntity.ok(body);
     }
 
     // 🔥 CRUD ДЛЯ SUBADMIN (только для ADMIN)
