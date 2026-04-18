@@ -1,4 +1,3 @@
-// src/app/admin/dashboard/components/FinanceDashboard.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,47 +6,23 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { 
   Search, Download, DollarSign, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertCircle, CheckCircle, Clock, Filter, Package
+  Wallet, CreditCard, AlertCircle, CheckCircle, Clock, Filter
 } from "lucide-react";
 
-// ✅ Универсальные интерфейсы: поддерживают поля бэкенда и Mock DB
-interface OrderItem {
-  id: string;
-  productId: string;
-  productName: string;
-  width: number;
-  height: number;
-  quantity: number;
-  unitPrice: number;     // Цена продажи
-  totalPrice: number;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  basePrice: number;     // Цена продажи
-  costPrice?: number;    // ✅ Закупочная цена (ключевое поле)
-  unit: "m²" | "ədəd" | "metr";
-  isActive: boolean;
-  category: string;
-  description: string;
-  minOrder: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Order {
-  id: string;
-  orderNumber?: string;
+interface Payment {
+  id: number;
+  orderId: number;
+  orderNumber: string;
   userId: string;
-  customerName?: string;
-  customerPhone?: string;
-  items: OrderItem[];
-  workflowStatus: string;
-  paymentStatus: "pending" | "partial" | "paid";
-  finalTotal: number;
-  paidAmount?: number;
+  userFullName: string;
+  userUsername: string;
+  amount: number;
+  paidAmount: number;
+  paymentMethod: "cash" | "card" | "transfer" | "other";
+  paymentStatus: "pending" | "partial" | "paid" | "refunded";
+  paymentDate?: string;
   createdAt: string;
+  note?: string;
 }
 
 interface User {
@@ -56,45 +31,29 @@ interface User {
   username: string;
 }
 
-// ✅ Агрегированная строка для таблицы (рассчитывается на лету)
-interface FinanceRow {
-  id: string;
-  orderId: string;
-  orderNumber: string;
-  userId: string;
-  userFullName: string;
-  revenue: number;      // Выручка (продажа)
-  cost: number;         // Себестоимость (закупка)
-  profit: number;       // Прибыль (revenue - cost)
-  margin: number;       // Маржа в %
-  paymentStatus: string;
-  paymentMethod?: string;
-  createdAt: string;
-}
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
 
 export default function FinanceDashboard() {
-  const [rows, setRows] = useState<FinanceRow[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [products, setProducts] = useState<Record<string, Product>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [methodFilter, setMethodFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
-  const [source, setSource] = useState<"api" | "local">("local");
 
   useEffect(() => {
-    loadData();
+    loadPayments();
+    loadUsers();
   }, []);
 
   const getToken = () => {
     if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem("decor_current_user");
+    if (!stored) return null;
     try {
-      const stored = localStorage.getItem("decor_current_user");
-      if (!stored) return null;
       const parsed = JSON.parse(stored);
       return parsed?.token || null;
     } catch {
@@ -102,138 +61,106 @@ export default function FinanceDashboard() {
     }
   };
 
-  // ✅ Загрузка данных: гибридный режим (API → localStorage)
-  const loadData = async () => {
-    setLoading(true);
-    setSource("local"); // По умолчанию локальный режим
-    
+  const loadPayments = async () => {
     try {
-      // 1. Загружаем товары (нужны для costPrice)
-      const productsRaw = localStorage.getItem("decor_products");
-      const productsList: Product[] = productsRaw ? JSON.parse(productsRaw) : [];
-      const productsMap: Record<string, Product> = {};
-      productsList.forEach(p => { if (p.isActive) productsMap[p.id] = p; });
-      setProducts(productsMap);
-
-      // 2. Загружаем пользователей
-      const usersRaw = localStorage.getItem("decor_users");
-      const usersList: User[] = usersRaw ? JSON.parse(usersRaw) : [];
-      setUsers(usersList);
-
-      // 3. Пробуем загрузить заказы с бэкенда
       const token = getToken();
-      const ordersRes = await fetch(`${API_BASE}/orders`, {
+      const res = await fetch(`${API_BASE}/payments`, {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
-
-      let ordersList: Order[] = [];
-      
-      if (ordersRes.ok) {
-        const data = await ordersRes.json();
-        ordersList = Array.isArray(data) ? data : data?.orders || data?.content || [];
-        setSource("api");
-      } else {
-        console.log(`[Finance] Backend ${ordersRes.status}, using localStorage`);
-        const ordersRaw = localStorage.getItem("decor_orders");
-        ordersList = ordersRaw ? JSON.parse(ordersRaw) : [];
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data?.payments || [];
+        setPayments(list);
       }
-
-      // 4. Рассчитываем финансовые строки
-      const calculated = calculateFinanceRows(ordersList, productsMap, usersList);
-      setRows(calculated);
-      setError("");
-      
-    } catch (err: any) {
-      console.warn("[Finance] Load error, using localStorage:", err.message);
-      // Фоллбэк: читаем всё из localStorage
-      try {
-        const productsRaw = localStorage.getItem("decor_products");
-        const productsList: Product[] = productsRaw ? JSON.parse(productsRaw) : [];
-        const productsMap: Record<string, Product> = {};
-        productsList.forEach(p => { if (p.isActive) productsMap[p.id] = p; });
-        setProducts(productsMap);
-
-        const usersRaw = localStorage.getItem("decor_users");
-        const usersList: User[] = usersRaw ? JSON.parse(usersRaw) : [];
-        setUsers(usersList);
-
-        const ordersRaw = localStorage.getItem("decor_orders");
-        const ordersList: Order[] = ordersRaw ? JSON.parse(ordersRaw) : [];
-        
-        const calculated = calculateFinanceRows(ordersList, productsMap, usersList);
-        setRows(calculated);
-        setError("");
-      } catch (e) {
-        setError("Не удалось загрузить данные");
-      }
+    } catch (error) {
+      console.error("[Finance] Load error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Ключевая функция: расчёт прибыли по каждому заказу
-  const calculateFinanceRows = (
-    orders: Order[], 
-    products: Record<string, Product>, 
-    users: User[]
-  ): FinanceRow[] => {
-    return orders
-      .filter(o => o.items && Array.isArray(o.items))
-      .map(order => {
-        let revenue = 0;
-        let cost = 0;
-
-        order.items.forEach((item: OrderItem) => {
-          const product = products[item.productId];
-          const salePrice = item.unitPrice || 0;
-          const purchasePrice = product?.costPrice ?? 0;
-          
-          // Для товаров с площадью: учитываем ширину × высоту
-          const isAreaBased = product?.unit === "m²";
-          const quantity = isAreaBased 
-            ? (item.width || 0) * (item.height || 0) 
-            : (item.quantity || 1);
-
-          revenue += salePrice * quantity;
-          cost += purchasePrice * quantity;
-        });
-
-        const profit = revenue - cost;
-        const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-        
-        const user = users.find(u => u.id === String(order.userId));
-
-        return {
-          id: order.id,
-          orderId: order.id,
-          orderNumber: order.orderNumber || `#${order.id.slice(-6)}`,
-          userId: order.userId,
-          userFullName: user?.fullName || "Naməlum",
-          revenue: Math.round(revenue * 100) / 100,
-          cost: Math.round(cost * 100) / 100,
-          profit: Math.round(profit * 100) / 100,
-          margin: Math.round(margin * 100) / 100,
-          paymentStatus: order.paymentStatus,
-          paymentMethod: (order as any).paymentMethod,
-          createdAt: order.createdAt,
-        };
+  const loadUsers = async () => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/users`, {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data?.users || [];
+        setUsers(list);
+      }
+    } catch (error) {
+      console.error("[Finance] Load users error:", error);
+    }
   };
 
-  // ✅ Фильтрация
-  const filteredRows = rows.filter(row => {
-    if (searchQuery) {
-      const matches = 
-        row.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        row.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        row.userFullName.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matches) return false;
+  const updatePaymentStatus = async (paymentId: number, status: string) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ paymentStatus: status })
+      });
+      if (res.ok) {
+        loadPayments();
+      } else {
+        alert("Status yenilənmədi");
+      }
+    } catch (error) {
+      console.error("[Finance] Update error:", error);
+      alert("Xəta baş verdi");
     }
-    if (statusFilter !== "all" && row.paymentStatus !== statusFilter) return false;
+  };
+
+  const addPayment = async (orderId: number, amount: number, method: string) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/payments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          orderId,
+          amount,
+          paymentMethod: method,
+          paymentStatus: "paid",
+          paymentDate: new Date().toISOString()
+        })
+      });
+      if (res.ok) {
+        loadPayments();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("[Finance] Add payment error:", error);
+      return false;
+    }
+  };
+
+  const filteredPayments = payments.filter(p => {
+    if (searchQuery) {
+      const user = users.find(u => u.id === String(p.userId));
+      const matchesSearch = 
+        p.id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user?.username.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+    }
+    if (statusFilter !== "all" && p.paymentStatus !== statusFilter) return false;
+    if (methodFilter !== "all" && p.paymentMethod !== methodFilter) return false;
     if (dateFilter !== "all") {
-      const rowDate = new Date(row.createdAt);
+      const paymentDate = new Date(p.paymentDate || p.createdAt);
       const now = new Date();
-      const daysDiff = (now.getTime() - rowDate.getTime()) / (1000 * 60 * 60 * 24);
+      const daysDiff = (now.getTime() - paymentDate.getTime()) / (1000 * 60 * 60 * 24);
       if (dateFilter === "today" && daysDiff > 1) return false;
       if (dateFilter === "week" && daysDiff > 7) return false;
       if (dateFilter === "month" && daysDiff > 30) return false;
@@ -241,36 +168,60 @@ export default function FinanceDashboard() {
     return true;
   });
 
-  // ✅ Статистика (ПРИБЫЛЬ, а не просто выручка)
   const stats = {
-    totalRevenue: filteredRows.reduce((sum, r) => sum + r.revenue, 0),   // Оборот
-    totalCost: filteredRows.reduce((sum, r) => sum + r.cost, 0),         // Затраты
-    totalProfit: filteredRows.reduce((sum, r) => sum + r.profit, 0),     // ✅ Чистая прибыль (Ümumi gəlir)
-    avgMargin: filteredRows.length > 0 
-      ? filteredRows.reduce((sum, r) => sum + r.margin, 0) / filteredRows.length 
+    totalRevenue: payments.filter(p => p.paymentStatus === "paid").reduce((sum, p) => sum + p.paidAmount, 0),
+    totalDebt: payments.reduce((sum, p) => sum + (p.amount - p.paidAmount), 0),
+    pendingCount: payments.filter(p => p.paymentStatus === "pending").length,
+    partialCount: payments.filter(p => p.paymentStatus === "partial").length,
+    paidCount: payments.filter(p => p.paymentStatus === "paid").length,
+    avgPayment: payments.length > 0 
+      ? payments.reduce((sum, p) => sum + p.paidAmount, 0) / payments.filter(p => p.paidAmount > 0).length 
       : 0,
-    paidCount: filteredRows.filter(r => r.paymentStatus === "paid").length,
-    pendingCount: filteredRows.filter(r => r.paymentStatus !== "paid").length,
   };
 
-  const [error, setError] = useState<string>("");
-
   const handleExport = () => {
-    const headers = ["ID", "Sifariş", "İstifadəçi", "Gəlir", "Xərc", "Mənfəət", "Marja", "Status", "Tarix"];
-    const rows = filteredRows.map(r => [
-      r.id, r.orderNumber, r.userFullName,
-      r.revenue.toFixed(2), r.cost.toFixed(2), r.profit.toFixed(2),
-      `${r.margin.toFixed(1)}%`, r.paymentStatus,
-      new Date(r.createdAt).toLocaleDateString("az-AZ")
-    ]);
+    const headers = ["ID", "Sifariş", "İstifadəçi", "Məbləğ", "Ödənilib", "Borc", "Status", "Tarix"];
+    const rows = filteredPayments.map(p => {
+      const user = users.find(u => u.id === String(p.userId));
+      return [
+        p.id,
+        p.orderNumber,
+        user?.fullName || "-",
+        p.amount.toFixed(2),
+        p.paidAmount.toFixed(2),
+        (p.amount - p.paidAmount).toFixed(2),
+        p.paymentStatus,
+        new Date(p.paymentDate || p.createdAt).toLocaleDateString("az-AZ")
+      ];
+    });
     const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
     const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `finance_profit_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `finance_export_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const getMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      cash: "Nağd",
+      card: "Kart",
+      transfer: "Köçürmə",
+      other: "Digər"
+    };
+    return labels[method] || method;
+  };
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "bg-amber-100 text-amber-700",
+      partial: "bg-blue-100 text-blue-700",
+      paid: "bg-green-100 text-green-700",
+      refunded: "bg-red-100 text-red-700"
+    };
+    return colors[status] || "bg-gray-100 text-gray-700";
   };
 
   if (loading) {
@@ -288,75 +239,53 @@ export default function FinanceDashboard() {
           <Wallet className="w-8 h-8 text-[#D90429]" />
           <h1 className="text-2xl font-bold text-[#1F2937]">Maliyyə</h1>
         </div>
-        <div className="flex gap-2">
-          {source === "local" && (
-            <span className="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded">
-              Lokal mənbə
-            </span>
-          )}
-          <Button onClick={handleExport} variant="ghost" size="sm" icon={<Download className="w-4 h-4" />}>
-            Export
-          </Button>
-        </div>
+        <Button onClick={handleExport} variant="ghost" size="sm" icon={<Download className="w-4 h-4" />}>
+          Export
+        </Button>
       </div>
 
-      {error && (
-        <Card className="p-4 mb-6 bg-red-50 border border-red-200">
-          <div className="flex items-center gap-2 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4" />
-            <span>{error}</span>
-          </div>
-        </Card>
-      )}
-
-      {/* ✅ Статистика: ПРИБЫЛЬ вместо просто выручки */}
+      {/* Статистика */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card className="p-6 bg-gradient-to-br from-green-500 to-green-600 text-white">
           <div className="flex items-center justify-between">
             <TrendingUp className="w-6 h-6" />
-            <span className="text-xs bg-white/20 px-2 py-1 rounded">
-              {stats.avgMargin.toFixed(1)}%
-            </span>
+            <span className="text-xs bg-white/20 px-2 py-1 rounded">+12%</span>
           </div>
-          <p className="text-white/80 text-sm mt-2">Ümumi gəlir (Mənfəət)</p>
-          <p className="text-2xl font-bold">
-            {stats.totalProfit.toFixed(2)} AZN
-          </p>
-          <p className="text-xs text-white/60 mt-1">
-            Gəlir: {stats.totalRevenue.toFixed(0)} − Xərc: {stats.totalCost.toFixed(0)}
-          </p>
+          <p className="text-white/80 text-sm mt-2">Ümumi gəlir</p>
+          <p className="text-2xl font-bold">{stats.totalRevenue.toFixed(2)} AZN</p>
         </Card>
 
-        <Card className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+        <Card className="p-6 bg-gradient-to-br from-red-500 to-red-600 text-white">
           <div className="flex items-center justify-between">
-            <DollarSign className="w-6 h-6" />
+            <TrendingDown className="w-6 h-6" />
+            <span className="text-xs bg-white/20 px-2 py-1 rounded">-{stats.totalDebt > 0 ? "var" : "0"}</span>
           </div>
-          <p className="text-white/80 text-sm mt-2">Ümumi dövriyyə</p>
-          <p className="text-2xl font-bold">{stats.totalRevenue.toFixed(2)} AZN</p>
+          <p className="text-white/80 text-sm mt-2">Ümumi borc</p>
+          <p className="text-2xl font-bold">{stats.totalDebt.toFixed(2)} AZN</p>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
-            <Package className="w-5 h-5 text-amber-500" />
-            <span className="text-xs text-amber-600">Xərc</span>
+            <Clock className="w-5 h-5 text-amber-500" />
+            <span className="text-xs text-amber-600">Gözləyir</span>
           </div>
-          <p className="text-[#6B7280] text-sm">Məhsul maya dəyəri</p>
-          <p className="text-2xl font-bold text-[#1F2937]">{stats.totalCost.toFixed(2)} AZN</p>
+          <p className="text-[#6B7280] text-sm">Ödənişlər</p>
+          <p className="text-2xl font-bold text-[#1F2937]">{stats.pendingCount + stats.partialCount}</p>
         </Card>
 
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
-            <span className="text-xs text-green-600">Marja</span>
+            <span className="text-xs text-green-600">Tamam</span>
           </div>
-          <p className="text-[#6B7280] text-sm">Orta mənfəətlik</p>
-          <p className="text-2xl font-bold text-[#1F2937]">{stats.avgMargin.toFixed(1)}%</p>
+          <p className="text-[#6B7280] text-sm">Ödənilib</p>
+          <p className="text-2xl font-bold text-[#1F2937]">{stats.paidCount}</p>
         </Card>
       </div>
 
       {/* Фильтры */}
       <Card className="p-4 mb-6">
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-5 gap-4">
           <div className="relative md:col-span-2">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -373,9 +302,21 @@ export default function FinanceDashboard() {
             className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
           >
             <option value="all">Bütün statuslar</option>
-            <option value="paid">Ödənilib</option>
             <option value="pending">Gözləyir</option>
             <option value="partial">Qismən</option>
+            <option value="paid">Ödənilib</option>
+            <option value="refunded">Qaytarılıb</option>
+          </select>
+          <select
+            value={methodFilter}
+            onChange={(e) => setMethodFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
+          >
+            <option value="all">Bütün üsullar</option>
+            <option value="cash">Nağd</option>
+            <option value="card">Kart</option>
+            <option value="transfer">Köçürmə</option>
+            <option value="other">Digər</option>
           </select>
           <select
             value={dateFilter}
@@ -390,91 +331,127 @@ export default function FinanceDashboard() {
         </div>
       </Card>
 
-      {/* ✅ Таблица: Выручка / Затраты / Прибыль */}
+      {/* Таблица платежей */}
       <Card className="overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Ödəniş ID</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Sifariş</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">İstifadəçi</th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-[#6B7280]">Gəlir</th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-[#6B7280]">Xərc</th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-[#6B7280]">Mənfəət</th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-[#6B7280]">Marja</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Məbləğ</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Ödənilib</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Borc</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Üsul</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Status</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Əməliyyat</th>
             </tr>
           </thead>
           <tbody>
-            {filteredRows.length === 0 ? (
+            {filteredPayments.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-[#6B7280]">
-                  Məlumat tapılmadı
+                <td colSpan={9} className="py-12 text-center text-[#6B7280]">
+                  Ödəniş tapılmadı
                 </td>
               </tr>
             ) : (
-              filteredRows.map((row) => (
-                <tr key={row.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium">
-                    <span className="text-sm text-[#6B7280]">{row.orderNumber}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <p className="font-medium text-sm">{row.userFullName}</p>
-                  </td>
-                  <td className="py-3 px-4 text-right font-medium text-[#1F2937]">
-                    {row.revenue.toFixed(2)} AZN
-                  </td>
-                  <td className="py-3 px-4 text-right text-gray-500">
-                    {row.cost.toFixed(2)} AZN
-                  </td>
-                  <td className="py-3 px-4 text-right font-bold">
-                    <span className={row.profit >= 0 ? "text-green-600" : "text-red-600"}>
-                      {row.profit.toFixed(2)} AZN
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      row.margin >= 30 ? "bg-green-100 text-green-700" :
-                      row.margin >= 15 ? "bg-amber-100 text-amber-700" :
-                      "bg-red-100 text-red-700"
-                    }`}>
-                      {row.margin.toFixed(1)}%
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <StatusBadge status={row.paymentStatus} />
-                  </td>
-                </tr>
-              ))
+              filteredPayments.map((payment) => {
+                const user = users.find(u => u.id === String(payment.userId));
+                const debt = payment.amount - payment.paidAmount;
+                
+                return (
+                  <tr key={payment.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="py-3 px-4 font-medium">#{payment.id}</td>
+                    <td className="py-3 px-4">
+                      <span className="text-sm text-[#6B7280]">{payment.orderNumber}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div>
+                        <p className="font-medium text-sm">{user?.fullName || "Naməlum"}</p>
+                        <p className="text-xs text-[#6B7280]">@{user?.username}</p>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-bold text-[#1F2937]">
+                      {payment.amount.toFixed(2)} AZN
+                    </td>
+                    <td className="py-3 px-4 text-green-600 font-medium">
+                      {payment.paidAmount.toFixed(2)} AZN
+                    </td>
+                    <td className="py-3 px-4 font-medium">
+                      {debt > 0 ? (
+                        <span className="text-red-600">{debt.toFixed(2)} AZN</span>
+                      ) : (
+                        <span className="text-green-600">0 AZN</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        payment.paymentMethod === "cash" ? "bg-green-100 text-green-700" :
+                        payment.paymentMethod === "card" ? "bg-blue-100 text-blue-700" :
+                        payment.paymentMethod === "transfer" ? "bg-purple-100 text-purple-700" :
+                        "bg-gray-100 text-gray-700"
+                      }`}>
+                        {getMethodLabel(payment.paymentMethod)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <select
+                        value={payment.paymentStatus}
+                        onChange={(e) => updatePaymentStatus(payment.id, e.target.value)}
+                        className={`text-xs px-2 py-1 rounded border ${getStatusColor(payment.paymentStatus)}`}
+                      >
+                        <option value="pending">Gözləyir</option>
+                        <option value="partial">Qismən</option>
+                        <option value="paid">Ödənilib</option>
+                        <option value="refunded">Qaytarılıb</option>
+                      </select>
+                    </td>
+                    <td className="py-3 px-4">
+                      {debt > 0 && payment.paymentStatus !== "refunded" && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => addPayment(payment.orderId, debt, "cash")}
+                          className="text-green-600 hover:bg-green-50"
+                        >
+                          <CreditCard className="w-4 h-4 mr-1" />
+                          Ödə
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </Card>
 
       {/* Итоговая строка */}
-      {filteredRows.length > 0 && (
+      {filteredPayments.length > 0 && (
         <Card className="mt-4 p-4 bg-[#1F2937] text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-6">
               <div>
                 <p className="text-white/60 text-xs">Göstərilən</p>
-                <p className="font-bold">{filteredRows.length} ədəd</p>
+                <p className="font-bold">{filteredPayments.length} ədəd</p>
               </div>
               <div>
-                <p className="text-white/60 text-xs">Ümumi gəlir</p>
-                <p className="font-bold text-green-400">{stats.totalRevenue.toFixed(2)} AZN</p>
+                <p className="text-white/60 text-xs">Ümumi məbləğ</p>
+                <p className="font-bold">{filteredPayments.reduce((s, p) => s + p.amount, 0).toFixed(2)} AZN</p>
               </div>
               <div>
-                <p className="text-white/60 text-xs">Ümumi xərc</p>
-                <p className="font-bold text-red-400">{stats.totalCost.toFixed(2)} AZN</p>
+                <p className="text-white/60 text-xs">Ümumi ödənilib</p>
+                <p className="font-bold text-green-400">{filteredPayments.reduce((s, p) => s + p.paidAmount, 0).toFixed(2)} AZN</p>
               </div>
               <div>
-                <p className="text-white/60 text-xs">Xalis mənfəət</p>
-                <p className="font-bold text-emerald-400">{stats.totalProfit.toFixed(2)} AZN</p>
+                <p className="text-white/60 text-xs">Ümumi borc</p>
+                <p className="font-bold text-red-400">{filteredPayments.reduce((s, p) => s + (p.amount - p.paidAmount), 0).toFixed(2)} AZN</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-white/60 text-xs">Orta marja</p>
-              <p className="font-bold">{stats.avgMargin.toFixed(1)}%</p>
+              <p className="text-white/60 text-xs">Orta ödəniş</p>
+              <p className="font-bold">{stats.avgPayment.toFixed(2)} AZN</p>
             </div>
           </div>
         </Card>

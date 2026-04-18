@@ -1,19 +1,28 @@
-// src/app/admin/dashboard/components/ProductsManager.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Search, Plus, Edit, Trash2, Save, X, Package, AlertCircle, RefreshCw, Wallet } from "lucide-react";
-import { productApi, type Product as ApiProduct } from "@/lib/authApi";
+import { Search, Plus, Edit, Trash2, Save, X, Package, AlertCircle } from "lucide-react";
 
-// 🔗 Локальный интерфейс, расширенный для совместимости
-interface Product extends Omit<ApiProduct, 'id'> {
-  id: string | number;
+interface Product {
+  id: number;
+  name: string;
+  description?: string;
+  category: string;
   unitPrice?: number;
-  costPrice?: number; // ✅ Maya dəyəri (себестоимость)
+  width?: number;
+  height?: number;
+  status: "active" | "inactive" | "draft";
+  imageUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
+  : "https://premium-reklam-backend.onrender.com/api";
 
 const CATEGORIES = [
   "Banner", "Vinil", "Poster", "Kətan", "Oracal", "Digiflex", "Laminat"
@@ -26,14 +35,12 @@ export default function ProductsManager() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formError, setFormError] = useState("");
 
-  // Form State
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
-  const [costPrice, setCostPrice] = useState(""); // ✅ Maya dəyəri
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [status, setStatus] = useState("active");
@@ -44,14 +51,43 @@ export default function ProductsManager() {
     loadProducts();
   }, []);
 
-  const loadProducts = async () => {
-    setLoading(true);
+  const getToken = () => {
+    if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem("decor_current_user");
+    if (!stored) return null;
     try {
-      const data = await productApi.getAll();
-      const normalized = data.map(p => ({ ...p, id: String(p.id) }));
-      setProducts(normalized as Product[]);
+      const parsed = JSON.parse(stored);
+      return parsed?.token || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const loadProducts = async () => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/products`, {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : data?.products || [];
+        
+        // Мапим backend salePrice → frontend unitPrice
+        const mapped = list.map((p: any) => ({
+          ...p,
+          id: p.id ? (typeof p.id === 'object' ? p.id.toString() : p.id) : Date.now(),
+          unitPrice: p.salePrice !== undefined && p.salePrice !== null ? Number(p.salePrice) : 0,
+          status: p.status ? p.status.toLowerCase() : "active",
+        }));
+        
+        setProducts(mapped);
+        localStorage.setItem("decor_products", JSON.stringify(mapped));
+      }
     } catch (error) {
       console.error("[Products] Load error:", error);
+      const stored = localStorage.getItem("decor_products");
+      if (stored) setProducts(JSON.parse(stored));
     } finally {
       setLoading(false);
     }
@@ -61,7 +97,6 @@ export default function ProductsManager() {
     setName("");
     setCategory("");
     setUnitPrice("0");
-    setCostPrice(""); // ✅ Сброс себестоимости
     setWidth("");
     setHeight("");
     setStatus("active");
@@ -74,17 +109,14 @@ export default function ProductsManager() {
     setEditingId(product.id);
     setName(product.name);
     setCategory(product.category || "");
-    const price = (product as any).unitPrice ?? (product as any).salePrice ?? (product as any).basePrice ?? 0;
-    setUnitPrice(String(price));
-    // ✅ Заполнение поля себестоимости
-    setCostPrice(product.costPrice !== undefined && product.costPrice !== null ? String(product.costPrice) : "");
+    setUnitPrice(product.unitPrice !== undefined && product.unitPrice !== null 
+      ? String(product.unitPrice) 
+      : "0");
     setWidth(product.width !== undefined && product.width !== null ? String(product.width) : "");
     setHeight(product.height !== undefined && product.height !== null ? String(product.height) : "");
-    const s = (product as any).status?.toLowerCase() || "active";
-    const isActive = (product as any).isActive !== false;
-    setStatus(isActive ? "active" : (s === "inactive" ? "inactive" : "active"));
+    setStatus(product.status || "active");
     setDescription(product.description || "");
-    setImageUrl((product as any).imageUrl || "");
+    setImageUrl(product.imageUrl || "");
     setShowForm(true);
   };
 
@@ -99,85 +131,176 @@ export default function ProductsManager() {
 
     const priceValue = parseFloat(unitPrice);
     const finalPrice = isNaN(priceValue) || priceValue < 0 ? 0 : priceValue;
-    
-    // ✅ Обработка себестоимости
-    const costValue = costPrice === "" ? undefined : parseFloat(costPrice);
-    const finalCost = costValue !== undefined && !isNaN(costValue) && costValue >= 0 ? costValue : undefined;
-    
     const widthValue = width === "" ? undefined : parseFloat(width);
     const heightValue = height === "" ? undefined : parseFloat(height);
-    const isActive = status === "active";
 
-    const payload = {
+    const requestBody = {
       name: name.trim(),
       description: description.trim() || "",
       category: category.trim() || "Banner",
-      basePrice: finalPrice,
       salePrice: finalPrice,
-      unitPrice: finalPrice,
-      costPrice: finalCost, // ✅ Добавляем себестоимость в payload
       width: widthValue,
       height: heightValue,
-      isActive: isActive,
-      status: isActive ? "ACTIVE" : "INACTIVE",
+      status: status.toUpperCase(),
       imageUrl: imageUrl.trim() || "",
     };
 
-    try {
-      let savedProduct;
-      if (editingId) {
-        savedProduct = await productApi.update(editingId, payload);
-      } else {
-        savedProduct = await productApi.create(payload);
-      }
+    // 🔥 ЖЕСТКОЕ ЛОГИРОВАНИЕ
+    console.log("=== [PRODUCTS] SAVING ===");
+    console.log("Editing ID:", editingId);
+    console.log("Request body:", JSON.stringify(requestBody, null, 2));
+    console.log("Expected salePrice:", finalPrice);
 
-      await loadProducts();
+    try {
+      const token = getToken();
+      const method = editingId ? "PUT" : "POST";
+      const url = editingId 
+        ? `${API_BASE}/products/${editingId}` 
+        : `${API_BASE}/products`;
+
+      console.log("Fetch URL:", url);
+      console.log("Method:", method);
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const responseText = await res.text();
+      console.log("Response status:", res.status);
+      console.log("Response body:", responseText);
+
+      if (res.ok) {
+        const savedProduct = responseText ? JSON.parse(responseText) : {};
+        
+        // 🔥 Проверка: вернул ли бэкенд salePrice?
+        const returnedPrice = savedProduct.salePrice;
+        console.log("Backend returned salePrice:", returnedPrice);
+        
+        if (returnedPrice === undefined || returnedPrice === null) {
+          console.warn("⚠️ Backend did NOT return salePrice - check ProductService.java");
+        }
+
+        // Обновляем локально
+        let updated: Product[];
+        if (editingId) {
+          updated = products.map(p => 
+            p.id === editingId 
+              ? { 
+                  ...p, 
+                  name: requestBody.name,
+                  description: requestBody.description,
+                  category: requestBody.category,
+                  unitPrice: requestBody.salePrice,
+                  width: requestBody.width,
+                  height: requestBody.height,
+                  status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+                  imageUrl: requestBody.imageUrl,
+                  updatedAt: new Date().toISOString() 
+                } 
+              : p
+          );
+        } else {
+          const newProduct: Product = {
+            id: typeof savedProduct.id === 'object' ? savedProduct.id.toString() : (savedProduct.id || Date.now()),
+            name: requestBody.name,
+            description: requestBody.description,
+            category: requestBody.category,
+            unitPrice: requestBody.salePrice,
+            width: requestBody.width,
+            height: requestBody.height,
+            status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+            imageUrl: requestBody.imageUrl,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          updated = [...products, newProduct];
+        }
+        
+        setProducts(updated);
+        localStorage.setItem("decor_products", JSON.stringify(updated));
+        
+        setShowForm(false);
+        setEditingId(null);
+        resetForm();
+        setFormError("Yadda saxlandı: " + finalPrice + " AZN");
+      } else {
+        console.error("Backend error:", res.status, responseText);
+        throw new Error(responseText || `HTTP ${res.status}`);
+      }
+    } catch (error: any) {
+      console.error("[Products] Save error:", error);
+      
+      // Фолбэк
+      let updated: Product[];
+      if (editingId) {
+        updated = products.map(p => 
+          p.id === editingId 
+            ? { 
+                ...p, 
+                name: requestBody.name, 
+                unitPrice: requestBody.salePrice, 
+                status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+                updatedAt: new Date().toISOString() 
+              } 
+            : p
+        );
+      } else {
+        updated = [...products, { 
+          id: Date.now(), 
+          name: requestBody.name, 
+          unitPrice: requestBody.salePrice,
+          status: requestBody.status.toLowerCase() as "active" | "inactive" | "draft",
+          category: requestBody.category,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }];
+      }
+      
+      setProducts(updated);
+      localStorage.setItem("decor_products", JSON.stringify(updated));
       
       setShowForm(false);
       setEditingId(null);
       resetForm();
-      setFormError("Yadda saxlandı: " + finalPrice + " AZN");
-      
-      setTimeout(() => setFormError(""), 3000);
-
-    } catch (error: any) {
-      console.error("[Products] Save error:", error);
-      setFormError(error.message || "Xəta baş verdi");
+      setFormError("Yadda saxlandı (lokal): " + requestBody.salePrice + " AZN");
     }
+    
+    console.log("=== [PRODUCTS] END ===");
   };
 
-  const handleDelete = async (id: string | number) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("Məhsulu silmək istədiyinizə əminsiniz?")) return;
     
     try {
-      await productApi.delete(id);
-      await loadProducts();
-    } catch (error) {
-      console.error("[Products] Delete error:", error);
-      const updated = products.filter(p => String(p.id) !== String(id));
-      setProducts(updated);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("decor_products", JSON.stringify(updated));
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/products/${id}`, {
+        method: "DELETE",
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
+      
+      if (res.ok) {
+        await loadProducts();
+      } else {
+        throw new Error("API error");
       }
+    } catch (error) {
+      const updated = products.filter(p => p.id !== id);
+      setProducts(updated);
+      localStorage.setItem("decor_products", JSON.stringify(updated));
     }
   };
 
   const filteredProducts = products.filter(p => {
-    const matchesSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || p.category === categoryFilter;
-    const pStatus = (p as any).status?.toLowerCase() || ((p as any).isActive === false ? "inactive" : "active");
-    const matchesStatus = statusFilter === "all" || pStatus === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
+    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    return true;
   });
-
-  // ✅ Хелпер для расчёта маржи (для отображения в таблице)
-  const getMargin = (p: Product) => {
-    const sale = (p as any).salePrice ?? (p as any).basePrice ?? (p as any).unitPrice ?? 0;
-    const cost = p.costPrice ?? 0;
-    if (sale <= 0) return null;
-    const margin = ((sale - cost) / sale) * 100;
-    return Math.round(margin * 100) / 100;
-  };
 
   if (loading) {
     return (
@@ -194,14 +317,9 @@ export default function ProductsManager() {
           <Package className="w-8 h-8 text-[#D90429]" />
           <h1 className="text-2xl font-bold text-[#1F2937]">Məhsullar</h1>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={loadProducts} variant="ghost" size="sm" icon={<RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />}>
-            Yenilə
-          </Button>
-          <Button onClick={() => { setShowForm(true); resetForm(); }} icon={<Plus className="w-4 h-4" />}>
-            Yeni məhsul
-          </Button>
-        </div>
+        <Button onClick={() => { setShowForm(true); resetForm(); }} icon={<Plus className="w-4 h-4" />}>
+          Yeni məhsul
+        </Button>
       </div>
 
       <Card className="p-4 mb-6">
@@ -250,7 +368,7 @@ export default function ProductsManager() {
           </h3>
           
           {formError && (
-            <div className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${formError.includes('Xəta') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
               {formError}
             </div>
@@ -281,10 +399,8 @@ export default function ProductsManager() {
                   ))}
                 </select>
               </div>
-              
-              {/* ✅ Цена продажи */}
               <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1">Satış qiyməti (AZN) *</label>
+                <label className="block text-sm font-medium text-[#6B7280] mb-1">Qiymət (AZN) *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -295,27 +411,6 @@ export default function ProductsManager() {
                   required
                 />
               </div>
-              
-              {/* ✅ Maya dəyəri (себестоимость) */}
-              <div>
-                <label className="block text-sm font-medium text-[#6B7280] mb-1 flex items-center gap-1">
-                  <Wallet className="w-3.5 h-3.5" />
-                  Maya dəyəri (AZN)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={costPrice}
-                  onChange={(e) => setCostPrice(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429] bg-gray-50"
-                  placeholder="Opsional"
-                />
-                <p className="text-[10px] text-[#9CA3AF] mt-1">
-                  Mənfəət hesablamaq üçün (məs: {unitPrice ? (parseFloat(unitPrice) * 0.7).toFixed(2) : "0.00"} AZN)
-                </p>
-              </div>
-              
               <div>
                 <label className="block text-sm font-medium text-[#6B7280] mb-1">Status</label>
                 <select
@@ -396,9 +491,7 @@ export default function ProductsManager() {
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Məhsul</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Kateqoriya</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Ölçü</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Satış</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Maya</th>
-              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Marja</th>
+              <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Qiymət</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Status</th>
               <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Əməliyyat</th>
             </tr>
@@ -406,87 +499,62 @@ export default function ProductsManager() {
           <tbody>
             {filteredProducts.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-[#6B7280]">
+                <td colSpan={6} className="py-12 text-center text-[#6B7280]">
                   Məhsul tapılmadı
                 </td>
               </tr>
             ) : (
-              filteredProducts.map((product) => {
-                const salePrice = (product as any).salePrice ?? (product as any).basePrice ?? (product as any).unitPrice ?? 0;
-                const cost = product.costPrice ?? 0;
-                const margin = getMargin(product);
-                
-                return (
-                  <tr key={String(product.id)} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        {(product as any).imageUrl && (
-                          <img src={(product as any).imageUrl} alt="" className="w-10 h-10 object-cover rounded" />
-                        )}
-                        <div>
-                          <p className="font-medium text-[#1F2937]">{product.name}</p>
-                          {product.description && (
-                            <p className="text-xs text-[#6B7280] line-clamp-1">{product.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                        {product.category || "-"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-[#6B7280]">
-                      {product.width && product.height 
-                        ? `${product.width} × ${product.height} m²` 
-                        : "-"}
-                    </td>
-                    <td className="py-3 px-4 font-bold text-[#1F2937]">
-                      {salePrice.toFixed(2)} AZN
-                    </td>
-                    <td className="py-3 px-4 text-sm text-[#6B7280]">
-                      {product.costPrice !== undefined && product.costPrice !== null 
-                        ? <span className="font-medium">{product.costPrice.toFixed(2)} AZN</span> 
-                        : <span className="text-gray-400">—</span>
-                      }
-                    </td>
-                    <td className="py-3 px-4">
-                      {margin !== null ? (
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                          margin >= 50 ? "bg-green-100 text-green-700" :
-                          margin >= 30 ? "bg-amber-100 text-amber-700" :
-                          "bg-red-100 text-red-700"
-                        }`}>
-                          {margin}%
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
+              filteredProducts.map((product) => (
+                <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      {product.imageUrl && (
+                        <img src={product.imageUrl} alt="" className="w-10 h-10 object-cover rounded" />
                       )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <StatusBadge status={(product as any).status?.toLowerCase() || ((product as any).isActive === false ? "inactive" : "active")} />
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="p-2 text-blue-500 hover:bg-blue-50 rounded"
-                          title="Redaktə"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded"
-                          title="Sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div>
+                        <p className="font-medium text-[#1F2937]">{product.name}</p>
+                        {product.description && (
+                          <p className="text-xs text-[#6B7280] line-clamp-1">{product.description}</p>
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                      {product.category || "-"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-[#6B7280]">
+                    {product.width && product.height 
+                      ? `${product.width} × ${product.height} m²` 
+                      : "-"}
+                  </td>
+                  <td className="py-3 px-4 font-bold text-[#1F2937]">
+                    {(product.unitPrice || 0).toFixed(2)} AZN
+                  </td>
+                  <td className="py-3 px-4">
+                    <StatusBadge status={product.status} />
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="p-2 text-blue-500 hover:bg-blue-50 rounded"
+                        title="Redaktə"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>

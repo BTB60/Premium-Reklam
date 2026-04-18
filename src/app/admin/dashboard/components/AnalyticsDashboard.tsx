@@ -1,41 +1,31 @@
-// src/app/admin/dashboard/components/AnalyticsDashboard.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { 
-  TrendingUp, DollarSign, ShoppingBag, Users, 
-  Package, Download, AlertCircle
+  TrendingUp, TrendingDown, DollarSign, ShoppingBag, Users, 
+  Package, Calendar, Download, ArrowUpRight, ArrowDownRight, AlertCircle
 } from "lucide-react";
 
-// ✅ Универсальный интерфейс: поддерживает поля бэкенда и Mock DB
 interface Order {
-  id: string | number;
-  orderNumber?: string;
-  userId?: string | number;
+  id: number;
+  orderNumber: string;
+  userId?: number;
   userFullName?: string;
-  customerName?: string;
-  // Статусы: поддерживаем оба формата
-  status?: string;           // legacy: pending, completed
-  workflowStatus?: string;   // new: təsdiq, bitdi
-  // Суммы: поддерживаем оба поля
-  totalAmount?: number;      // бэкенд
-  finalTotal?: number;       // Mock DB
+  status: string;
+  totalAmount: number;
   paidAmount?: number;
-  paymentStatus?: string;    // pending, partial, paid
   createdAt: string;
-  items?: OrderItem[];
+  items: OrderItem[];
 }
 
 interface OrderItem {
-  id?: number;
-  productName?: string;
-  name?: string;
-  quantity?: number;
-  unitPrice?: number;
-  lineTotal?: number;
-  totalPrice?: number;
+  id: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
 }
 
 interface User {
@@ -56,29 +46,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
 
-// ✅ Хелпер: получение суммы заказа (универсальный)
-const getOrderTotal = (o: Order): number => {
-  return Number(o.finalTotal || o.totalAmount || 0);
-};
-
-// ✅ Хелпер: проверка статуса "оплачен"
-const isOrderPaid = (o: Order): boolean => {
-  return o.paymentStatus === "paid" || o.workflowStatus === "bitdi" || o.status === "completed";
-};
-
-// ✅ Хелпер: проверка статуса "в работе"
-const isOrderPending = (o: Order): boolean => {
-  return o.workflowStatus === "təsdiq" || o.status === "pending";
-};
-
 export default function AnalyticsDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [users] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [dateRange, setDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
-  const [source, setSource] = useState<"api" | "local">("api");
 
   useEffect(() => {
     loadAnalytics();
@@ -96,52 +70,6 @@ export default function AnalyticsDashboard() {
     }
   };
 
-  // ✅ Загрузка из localStorage (гарантированный фоллбэк)
-  const loadFromLocalStorage = () => {
-    try {
-      const stored = localStorage.getItem("decor_orders");
-      if (stored) {
-        const localOrders = JSON.parse(stored);
-        console.log("[Analytics] Loaded from localStorage:", localOrders.length);
-        setOrders(localOrders);
-        setSource("local");
-        processOrders(localOrders);
-        setError("");
-        return true;
-      }
-    } catch (e) {
-      console.warn("[Analytics] LocalStorage parse error:", e);
-    }
-    return false;
-  };
-
-  // ✅ Обработка заказов: группировка по датам
-  const processOrders = (ordersList: Order[]) => {
-    const now = new Date();
-    const daysToSubtract = dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : dateRange === "90d" ? 90 : 365;
-    const cutoffDate = new Date(now.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
-    
-    const filtered = ordersList.filter((o) => {
-      const dateStr = o.createdAt || (o as any).createdDate || "";
-      const orderDate = new Date(dateStr);
-      return !isNaN(orderDate.getTime()) && orderDate >= cutoffDate;
-    });
-    
-    // Группировка по дням
-    const statsByDate: Record<string, DailyStats> = {};
-    filtered.forEach((order) => {
-      const date = (order.createdAt || (order as any).createdDate || "").split("T")[0];
-      if (date) {
-        if (!statsByDate[date]) {
-          statsByDate[date] = { date, revenue: 0, orders: 0 };
-        }
-        statsByDate[date].revenue += getOrderTotal(order);
-        statsByDate[date].orders += 1;
-      }
-    });
-    setDailyStats(Object.values(statsByDate).sort((a, b) => a.date.localeCompare(b.date)));
-  };
-
   const loadAnalytics = async () => {
     setError("");
     setLoading(true);
@@ -150,72 +78,113 @@ export default function AnalyticsDashboard() {
       const token = getToken();
       const headers: HeadersInit = token ? { "Authorization": `Bearer ${token}` } : {};
 
-      // 🔥 Загрузка заказов с бэкенда
+      console.log("[Analytics] Fetching orders from:", `${API_BASE}/orders`);
+      
+      // 🔥 Загрузка заказов
       const ordersRes = await fetch(`${API_BASE}/orders`, { headers });
+      console.log("[Analytics] Orders response status:", ordersRes.status);
       
-      // ✅ КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: 403/404/500 → фоллбэк на localStorage
-      if (!ordersRes.ok) {
-        console.log(`[Analytics] Backend returned ${ordersRes.status}, switching to localStorage`);
-        if (!loadFromLocalStorage()) {
-          setError(`Server: ${ordersRes.status}. Данные загружены локально.`);
-          setOrders([]);
+      if (ordersRes.ok) {
+        const data = await ordersRes.json();
+        console.log("[Analytics] Orders data:", data);
+        
+        // 🔥 Поддержка разных форматов ответа
+        const ordersList = Array.isArray(data) 
+          ? data 
+          : data?.orders 
+          ? data.orders 
+          : data?.content 
+          ? data.content 
+          : [];
+        
+        console.log("[Analytics] Parsed orders count:", ordersList.length);
+        
+        // Фильтр по дате
+        const now = new Date();
+        const daysToSubtract = dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : dateRange === "90d" ? 90 : 365;
+        const cutoffDate = new Date(now.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+        
+        const filtered = ordersList.filter((o: Order) => {
+          const orderDate = new Date((o as any).createdAt || (o as any).createdDate || (o as any).date);
+          return !isNaN(orderDate.getTime()) && orderDate >= cutoffDate;
+        });
+        
+        console.log("[Analytics] Filtered orders count:", filtered.length);
+        setOrders(filtered);
+        
+        // Группировка по дням
+        const statsByDate: Record<string, DailyStats> = {};
+        filtered.forEach((order: Order) => {
+          const date = ((order as any).createdAt || (order as any).createdDate || "").split("T")[0];
+          if (date) {
+            if (!statsByDate[date]) {
+              statsByDate[date] = { date, revenue: 0, orders: 0 };
+            }
+            statsByDate[date].revenue += order.totalAmount || 0;
+            statsByDate[date].orders += 1;
+          }
+        });
+        setDailyStats(Object.values(statsByDate).sort((a, b) => a.date.localeCompare(b.date)));
+      } else {
+        const errText = await ordersRes.text().catch(() => "Unknown error");
+        console.error("[Analytics] Orders fetch error:", ordersRes.status, errText);
+        setError(`Orders: ${ordersRes.status} ${errText.slice(0, 100)}`);
+      }
+
+      // 🔥 Загрузка пользователей (опционально)
+      try {
+        const usersRes = await fetch(`${API_BASE}/users`, { headers });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const usersList = Array.isArray(usersData) ? usersData : usersData?.users || [];
+          setUsers(usersList);
+          console.log("[Analytics] Users loaded:", usersList.length);
         }
-        setLoading(false);
-        return;
+      } catch (e) {
+        console.warn("[Analytics] Users fetch skipped:", e);
+        // Не блокируем, если пользователей нет
       }
-      
-      const data = await ordersRes.json();
-      const ordersList: Order[] = Array.isArray(data) 
-        ? data 
-        : data?.orders ? data.orders 
-        : data?.content ? data.content 
-        : [];
-      
-      console.log("[Analytics] Orders from API:", ordersList.length);
-      setOrders(ordersList);
-      setSource("api");
-      processOrders(ordersList);
-      
+
     } catch (err: any) {
-      console.warn("[Analytics] Network error, using localStorage:", err.message);
-      if (!loadFromLocalStorage()) {
-        setError("Не удалось загрузить данные");
-        setOrders([]);
-      }
+      console.error("[Analytics] Load error:", err);
+      setError(err.message || "Failed to load analytics");
+      
+      // 🔥 Фолбэк: пробуем загрузить из localStorage
+      try {
+        const stored = localStorage.getItem("decor_orders");
+        if (stored) {
+          const localOrders = JSON.parse(stored);
+          console.log("[Analytics] Fallback: loaded from localStorage:", localOrders.length);
+          setOrders(localOrders);
+          setError(""); // Скрываем ошибку, если фолбэк сработал
+        }
+      } catch {}
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔥 Ключевые метрики (универсальные)
+  // 🔥 Ключевые метрики
   const metrics = {
-    totalRevenue: orders.reduce((sum, o) => sum + getOrderTotal(o), 0),
+    totalRevenue: orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
     totalOrders: orders.length,
-    avgOrderValue: orders.length > 0 
-      ? orders.reduce((sum, o) => sum + getOrderTotal(o), 0) / orders.length 
-      : 0,
-    totalPaid: orders.reduce((sum, o) => sum + (o.paidAmount || getOrderTotal(o)), 0),
-    completedOrders: orders.filter(o => 
-      o.workflowStatus === "bitdi" || o.status === "completed" || o.status === "COMPLETED"
-    ).length,
-    pendingOrders: orders.filter(o => 
-      o.workflowStatus === "təsdiq" || o.status === "pending" || o.status === "PENDING"
-    ).length,
-    activeCustomers: new Set(orders.map(o => o.userId || (o as any).customerId)).size,
+    avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0) / orders.length : 0,
+    totalPaid: orders.reduce((sum, o) => sum + (o.paidAmount || o.totalAmount || 0), 0),
+    totalDebt: 0, // Можно добавить, если есть поле debt
+    completedOrders: orders.filter(o => o.status === "completed" || o.status === "COMPLETED").length,
+    pendingOrders: orders.filter(o => o.status === "pending" || o.status === "PENDING").length,
+    activeCustomers: new Set(orders.map(o => (o as any).userId || (o as any).customerId)).size,
   };
 
-  // 🔥 Статусы: маппинг обоих форматов
-  const getStatusKey = (o: Order): string => {
-    if (o.workflowStatus) return o.workflowStatus; // new: təsdiq, ödəniş, bitdi
-    if (o.status) return o.status.toLowerCase();    // legacy: pending, completed
-    return "unknown";
+  // 🔥 Статусы заказов
+  const statusDistribution: Record<string, number> = {
+    pending: orders.filter(o => o.status?.toLowerCase() === "pending").length,
+    approved: orders.filter(o => o.status?.toLowerCase() === "approved").length,
+    production: orders.filter(o => o.status?.toLowerCase() === "production").length,
+    ready: orders.filter(o => o.status?.toLowerCase() === "ready").length,
+    completed: orders.filter(o => o.status?.toLowerCase() === "completed").length,
+    cancelled: orders.filter(o => o.status?.toLowerCase() === "cancelled").length,
   };
-
-  const statusDistribution: Record<string, number> = {};
-  orders.forEach(o => {
-    const key = getStatusKey(o);
-    statusDistribution[key] = (statusDistribution[key] || 0) + 1;
-  });
 
   // 🔥 Топ продуктов
   const productStats: Record<string, { quantity: number; revenue: number }> = {};
@@ -223,9 +192,11 @@ export default function AnalyticsDashboard() {
     if (Array.isArray(order.items)) {
       order.items.forEach((item: any) => {
         const name = item.productName || item.name || "Unknown";
-        if (!productStats[name]) productStats[name] = { quantity: 0, revenue: 0 };
+        if (!productStats[name]) {
+          productStats[name] = { quantity: 0, revenue: 0 };
+        }
         productStats[name].quantity += item.quantity || 1;
-        productStats[name].revenue += item.lineTotal || item.totalPrice || item.unitPrice || 0;
+        productStats[name].revenue += (item as any).lineTotal || (item as any).totalPrice || (item as any).unitPrice || 0;
       });
     }
   });
@@ -237,21 +208,23 @@ export default function AnalyticsDashboard() {
   // 🔥 Топ клиентов
   const customerStats: Record<string, { name: string; orders: number; revenue: number }> = {};
   orders.forEach(order => {
-    const customerId = String(order.userId || (order as any).customerId || "unknown");
+    const customerId = String((order as any).userId || (order as any).customerId || "unknown");
     if (!customerStats[customerId]) {
       customerStats[customerId] = { 
-        name: order.userFullName || order.customerName || "Naməlum",
-        orders: 0, revenue: 0 
+        name: (order as any).userFullName || (order as any).customerName || "Naməlum",
+        orders: 0, 
+        revenue: 0 
       };
     }
     customerStats[customerId].orders += 1;
-    customerStats[customerId].revenue += getOrderTotal(order);
+    customerStats[customerId].revenue += order.totalAmount || 0;
   });
   const topCustomers = Object.entries(customerStats)
     .map(([id, stats]) => ({ id, ...stats }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
+  // 🔥 Динамика выручки
   const maxDailyRevenue = dailyStats.length > 0 ? Math.max(...dailyStats.map(s => s.revenue), 1) : 1;
 
   const handleExport = () => {
@@ -262,7 +235,7 @@ export default function AnalyticsDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `analytics_${dateRange}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `analytics_export_${dateRange}_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -299,17 +272,13 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      {error && source === "api" && (
-        <Card className="p-4 mb-6 bg-amber-50 border border-amber-200">
-          <div className="flex items-center gap-2 text-amber-700 text-sm">
+      {error && (
+        <Card className="p-4 mb-6 bg-red-50 border border-red-200">
+          <div className="flex items-center gap-2 text-red-700 text-sm">
             <AlertCircle className="w-4 h-4" />
-            <span>{error} • Rejim: <b>Offline (localStorage)</b></span>
+            <span>{error}</span>
           </div>
         </Card>
-      )}
-
-      {source === "local" && (
-        <div className="mb-4 text-xs text-gray-500">📊 Məlumat mənbəyi: Lokal yaddaş</div>
       )}
 
       {/* 🔥 Ключевые метрики */}
@@ -321,6 +290,7 @@ export default function AnalyticsDashboard() {
           <p className="text-[#6B7280] text-sm">Ümumi gəlir</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.totalRevenue.toFixed(2)} AZN</p>
         </Card>
+
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <ShoppingBag className="w-5 h-5 text-blue-500" />
@@ -328,6 +298,7 @@ export default function AnalyticsDashboard() {
           <p className="text-[#6B7280] text-sm">Sifariş sayı</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.totalOrders}</p>
         </Card>
+
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <Users className="w-5 h-5 text-purple-500" />
@@ -335,6 +306,7 @@ export default function AnalyticsDashboard() {
           <p className="text-[#6B7280] text-sm">Aktiv müştərilər</p>
           <p className="text-2xl font-bold text-[#1F2937]">{metrics.activeCustomers}</p>
         </Card>
+
         <Card className="p-6">
           <div className="flex items-center justify-between mb-2">
             <Package className="w-5 h-5 text-amber-500" />
@@ -360,12 +332,12 @@ export default function AnalyticsDashboard() {
         </Card>
         <Card className="p-4 bg-gray-50">
           <p className="text-gray-600 text-sm">Ləğv edildi</p>
-          <p className="text-xl font-bold text-gray-700">{statusDistribution["cancelled"] || 0}</p>
+          <p className="text-xl font-bold text-gray-700">{statusDistribution.cancelled}</p>
         </Card>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
-        {/* 🔥 График выручки */}
+        {/* 🔥 График выручки по дням */}
         <Card className="p-6">
           <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5" />
@@ -395,7 +367,7 @@ export default function AnalyticsDashboard() {
           )}
         </Card>
 
-        {/* 🔥 Статусы */}
+        {/* 🔥 Распределение по статусам */}
         <Card className="p-6">
           <h3 className="font-bold text-[#1F2937] mb-4 flex items-center gap-2">
             <Package className="w-5 h-5" />
@@ -410,31 +382,29 @@ export default function AnalyticsDashboard() {
                 .map(([status, count]) => {
                   const percentage = orders.length > 0 ? (count / orders.length) * 100 : 0;
                   const colors: Record<string, string> = {
-                    "təsdiq": "bg-amber-500", "pending": "bg-amber-500",
-                    "ödəniş": "bg-blue-500", "approved": "bg-blue-500",
-                    "dizayn": "bg-purple-500", "production": "bg-purple-500",
-                    "istehsal": "bg-indigo-500", "ready": "bg-indigo-500",
-                    "kuryer": "bg-cyan-500", "delivering": "bg-cyan-500",
-                    "bitdi": "bg-green-500", "completed": "bg-green-500",
-                    "cancelled": "bg-red-500",
+                    pending: "bg-amber-500",
+                    approved: "bg-blue-500",
+                    production: "bg-purple-500",
+                    ready: "bg-indigo-500",
+                    completed: "bg-green-500",
+                    cancelled: "bg-red-500",
                   };
                   const labels: Record<string, string> = {
-                    "təsdiq": "Gözləyir", "pending": "Gözləyir",
-                    "ödəniş": "Ödəniş", "approved": "Təsdiqləndi",
-                    "dizayn": "Dizayn", "production": "İstehsalat",
-                    "istehsal": "İstehsalat", "ready": "Hazır",
-                    "kuryer": "Kuryerdə", "delivering": "Çatdırılma",
-                    "bitdi": "Tamamlandı", "completed": "Tamamlandı",
-                    "cancelled": "Ləğv edildi",
+                    pending: "Gözləyir",
+                    approved: "Təsdiqləndi",
+                    production: "İstehsalat",
+                    ready: "Hazır",
+                    completed: "Tamamlandı",
+                    cancelled: "Ləğv edildi",
                   };
                   return (
                     <div key={status} className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${colors[status] || "bg-gray-400"}`} />
-                      <span className="text-sm text-[#6B7280] flex-1">{labels[status] || status}</span>
+                      <div className={`w-3 h-3 rounded-full ${colors[status]}`} />
+                      <span className="text-sm text-[#6B7280] flex-1">{labels[status]}</span>
                       <span className="text-sm font-medium text-[#1F2937]">{count}</span>
                       <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full ${colors[status] || "bg-gray-400"} rounded-full`}
+                          className={`h-full ${colors[status]} rounded-full`}
                           style={{ width: `${percentage}%` }}
                         />
                       </div>

@@ -1,4 +1,3 @@
-// src/app/admin/login/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -46,45 +45,24 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // 1. Вызываем авторизацию
       const user = await authApi.login(username, password);
       
-      console.log("[AdminLogin] authApi.login returned:", user);
-      
-      // 2. ✅ КЛЮЧЕВОЕ: явно сохраняем сессию через authApi
-      // Это гарантирует, что данные попадут в decor_current_user в правильном формате
-      authApi.saveCurrentUser(user);
-      
-      // 3. ✅ Дополнительная страховка: прямая запись в localStorage
+      // 🔥 КЛЮЧЕВОЕ: очищаем subadmin-сессию и ставим флаг admin
       if (typeof window !== "undefined") {
-        // Флаг типа сессии (если используется в админке)
+        sessionStorage.removeItem("premium_subadmin_session");
         localStorage.setItem("premium_session_type", "admin");
-        
-        // Прямая запись пользователя (на случай, если saveCurrentUser не сработал)
-        const safeUser = { ...user };
-        // Убираем чувствительные данные, если есть
-        if ("password" in safeUser) delete safeUser.password;
-        if ("password_hash" in safeUser) delete safeUser.password_hash;
-        
-        localStorage.setItem("decor_current_user", JSON.stringify(safeUser));
-        console.log("[AdminLogin] Saved to localStorage:", safeUser);
+        localStorage.setItem("decor_current_user", JSON.stringify(user));
+        console.log("[Login] Saved admin user:", user);
       }
       
-      // 4. ✅ Проверка: читаем обратно и логируем
-      if (typeof window !== "undefined") {
-        const checkSession = JSON.parse(localStorage.getItem("decor_current_user") || "null");
-        console.log("[AdminLogin] Session check after save:", checkSession);
-      }
-      
-      // 5. Небольшая задержка для гарантированной записи
+      // Небольшая задержка для гарантированной записи в localStorage
       setTimeout(() => {
-        console.log("[AdminLogin] Redirecting to /admin/dashboard");
         router.push("/admin/dashboard");
         router.refresh();
-      }, 150);
+      }, 100);
       
     } catch (err: any) {
-      console.error("[AdminLogin] Error:", err);
+      console.error("[Login] Error:", err);
       setError(err.message || ui.error);
     } finally {
       setLoading(false);
