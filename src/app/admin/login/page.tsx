@@ -46,7 +46,16 @@ export default function AdminLoginPage() {
 
     try {
       const user = await authApi.login(username, password);
-      
+
+      if (user.role !== "ADMIN") {
+        setError(
+          lang === "az"
+            ? "Bu səhifə yalnız ADMIN hesabı üçündür."
+            : "This page is for ADMIN accounts only."
+        );
+        return;
+      }
+
       // 🔥 КЛЮЧЕВОЕ: очищаем subadmin-сессию и ставим флаг admin
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("premium_subadmin_session");
