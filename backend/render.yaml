@@ -13,7 +13,8 @@
         sync: false
       - key: JWT_SECRET
         sync: false
-    healthCheckPath: /api/ping
+    healthCheckPath: /actuator/health
     autoDeploy: true
+
 
 

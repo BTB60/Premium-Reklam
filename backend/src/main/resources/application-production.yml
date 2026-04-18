@@ -1,5 +1,6 @@
 ﻿spring:
   datasource:
+    url: ${DATABASE_URL}
     # Render предоставляет DATABASE_URL в формате postgresql://...
     # Spring Boot 3.3+ автоматически парсит DATABASE_URL, если не задан url явно
     # оэтому убираем jdbc:postgresql://${DB_HOST}... и полагаемся на DATABASE_URL
@@ -85,3 +86,4 @@ cors:
   allowed-methods: GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD
   allowed-headers: "*"
   allow-credentials: false
+
