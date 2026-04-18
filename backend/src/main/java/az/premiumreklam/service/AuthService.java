@@ -5,7 +5,6 @@ import az.premiumreklam.entity.User;
 import az.premiumreklam.enums.UserRole;
 import az.premiumreklam.enums.UserStatus;
 import az.premiumreklam.repository.UserRepository;
-import az.premiumreklam.security.CustomUserDetailsService;
 import az.premiumreklam.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.*;
@@ -22,7 +21,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
-    private final CustomUserDetailsService customUserDetailsService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -45,9 +43,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        String token = jwtService.generateToken(
-                customUserDetailsService.loadUserByUsername(user.getUsername())
-        );
+        String token = jwtService.generateToken(user.getUsername());
 
         return AuthResponse.fromUser(user, token);
     }
@@ -66,9 +62,7 @@ public class AuthService {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
-        String token = jwtService.generateToken(
-                customUserDetailsService.loadUserByUsername(user.getUsername())
-        );
+        String token = jwtService.generateToken(user.getUsername());
 
         return AuthResponse.fromUser(user, token);
     }

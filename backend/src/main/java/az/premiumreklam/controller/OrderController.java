@@ -29,7 +29,8 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderResponse> getAll(Authentication authentication) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<OrderResponse> getAll() {
         return orderService.getAllOrders().stream()
                 .map(OrderResponse::fromEntity)
                 .collect(Collectors.toList());

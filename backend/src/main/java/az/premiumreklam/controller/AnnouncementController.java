@@ -5,6 +5,7 @@ import az.premiumreklam.entity.Announcement;
 import az.premiumreklam.service.AnnouncementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,21 +41,25 @@ public class AnnouncementController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Announcement create(@RequestBody AnnouncementRequest request) {
         return announcementService.create(request);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public Announcement update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
         return announcementService.update(id, request);
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public Announcement patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
         return announcementService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         announcementService.delete(id);
         return ResponseEntity.ok().build();
