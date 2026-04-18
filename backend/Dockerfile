@@ -1,7 +1,8 @@
 FROM gradle:8.5-jdk17-alpine AS builder
 WORKDIR /app
-COPY . .
-RUN ./gradlew clean bootJar -x test --no-daemon --no-build-cache
+COPY build.gradle settings.gradle ./
+COPY src ./src
+RUN gradle clean bootJar -x test --no-daemon
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
