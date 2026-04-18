@@ -1,4 +1,4 @@
-package az.premiumreklam.security;
+﻿package az.premiumreklam.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,7 +15,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -41,7 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             username = jwtService.extractUsername(jwt);
         } catch (Exception e) {
-            // Токен невалидный — пропускаем без аутентификации
+            // РўРѕРєРµРЅ РЅРµРІР°Р»РёРґРЅС‹Р№ вЂ” РїСЂРѕРїСѓСЃРєР°РµРј Р±РµР· Р°СѓС‚РµРЅС‚РёС„РёРєР°С†РёРё
             filterChain.doFilter(request, response);
             return;
         }
