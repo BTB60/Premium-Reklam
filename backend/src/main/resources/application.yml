@@ -82,10 +82,12 @@ logging:
 
 ---
 # Production / Render (SPRING_PROFILES_ACTIVE=production or prod)
+# Note: comma-separated on-profile means ALL listed profiles must be active (AND).
+# Use | for OR so a single active profile (e.g. production) loads this block.
 spring:
   config:
     activate:
-      on-profile: "production,prod"
+      on-profile: "production | prod"
 
   datasource:
     url: ${DATABASE_URL}
