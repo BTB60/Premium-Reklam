@@ -36,10 +36,13 @@ public final class PostgresDatasourceUrlSupport {
         if (raw == null || raw.isBlank()) {
             return raw;
         }
+        String jdbc;
         if (raw.startsWith("jdbc:")) {
-            return appendSslForRenderIfMissing(raw);
+            jdbc = appendSslForManagedCloudIfMissing(raw);
+        } else {
+            jdbc = libpqUriToJdbcUrl(raw);
         }
-        return libpqUriToJdbcUrl(raw);
+        return normalizePgJdbcQueryParams(jdbc);
     }
 
     public static String extractUsername(String raw) {
@@ -50,9 +53,8 @@ public final class PostgresDatasourceUrlSupport {
         if (userInfo == null || userInfo.isBlank()) {
             return null;
         }
-        int colon = userInfo.indexOf(':');
-        String user = colon >= 0 ? userInfo.substring(0, colon) : userInfo;
-        return URLDecoder.decode(user, StandardCharsets.UTF_8);
+        String[] up = userInfo.split(":", 2);
+        return URLDecoder.decode(up[0], StandardCharsets.UTF_8);
     }
 
     public static String extractPassword(String raw) {
@@ -63,9 +65,11 @@ public final class PostgresDatasourceUrlSupport {
         if (userInfo == null || !userInfo.contains(":")) {
             return null;
         }
-        int colon = userInfo.indexOf(':');
-        String pass = userInfo.substring(colon + 1);
-        return URLDecoder.decode(pass, StandardCharsets.UTF_8);
+        String[] up = userInfo.split(":", 2);
+        if (up.length < 2) {
+            return null;
+        }
+        return URLDecoder.decode(up[1], StandardCharsets.UTF_8);
     }
 
     private static String libpqUriToJdbcUrl(String raw) {
@@ -88,17 +92,33 @@ public final class PostgresDatasourceUrlSupport {
         if (httpStyle.getQuery() != null && !httpStyle.getQuery().isBlank()) {
             jdbc.append("?").append(httpStyle.getQuery());
         }
-        return appendSslForRenderIfMissing(jdbc.toString());
+        return appendSslForManagedCloudIfMissing(jdbc.toString());
     }
 
-    private static String appendSslForRenderIfMissing(String jdbcUrl) {
+    /**
+     * Neon / AWS RDS often need TLS; libpq URLs may already include {@code sslmode=require}.
+     */
+    private static String appendSslForManagedCloudIfMissing(String jdbcUrl) {
         if (jdbcUrl.contains("sslmode=")) {
             return jdbcUrl;
         }
-        if (!jdbcUrl.contains(".render.com")) {
+        boolean needsSsl = jdbcUrl.contains(".render.com")
+                || jdbcUrl.contains(".neon.tech")
+                || jdbcUrl.contains(".amazonaws.com");
+        if (!needsSsl) {
             return jdbcUrl;
         }
         return jdbcUrl + (jdbcUrl.contains("?") ? "&" : "?") + "sslmode=require";
+    }
+
+    /**
+     * pgjdbc expects {@code channelBinding}, while Neon copies often use libpq's {@code channel_binding}.
+     */
+    private static String normalizePgJdbcQueryParams(String jdbcUrl) {
+        if (jdbcUrl == null || !jdbcUrl.contains("channel_binding=")) {
+            return jdbcUrl;
+        }
+        return jdbcUrl.replace("channel_binding=", "channelBinding=");
     }
 
     private static String mask(String url) {
