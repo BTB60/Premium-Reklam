@@ -17,4 +17,5 @@ COPY --from=builder /app/target/*.jar app.jar
 # No need for -Dspring.datasource.url — use DatabaseUrlBootstrap / PostgresDatasourceUrlSupport instead.
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -jar app.jar"]
+# Bind all interfaces so Render detects an open PORT (if the JVM reaches Tomcat startup).
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -Dserver.address=0.0.0.0 -jar app.jar"]

@@ -112,6 +112,8 @@ spring:
 
 server:
   port: ${PORT:8080}
+  # Render health checks need the process listening on all interfaces (not only loopback).
+  address: 0.0.0.0
 
 jwt:
   secret: ${APP_JWT_SECRET:${JWT_SECRET:changeThisSecretInProdMin32CharsLong!!}}
