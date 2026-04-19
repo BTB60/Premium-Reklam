@@ -24,7 +24,7 @@ public class RenderDatabaseUrlEnvironmentPostProcessor implements EnvironmentPos
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
-        String envUrl = System.getenv("DATABASE_URL");
+        String envUrl = PostgresDatasourceUrlSupport.findRawDatabaseUrlFromOs();
         if (envUrl == null || envUrl.isBlank()) {
             return;
         }

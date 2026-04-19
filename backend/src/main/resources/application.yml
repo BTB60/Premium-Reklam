@@ -89,7 +89,8 @@ spring:
     activate:
       on-profile: "production | prod"
 
-  # Empty default avoids a literal "${DATABASE_URL}" when the env var is missing (Neon/Render: set DATABASE_URL).
+  # Set DATABASE_URL or NEON_DATABASE_URL (etc.) in Render — see PostgresDatasourceUrlSupport.
+  # Empty default avoids a literal "${DATABASE_URL}" when the env var is missing.
   datasource:
     url: ${DATABASE_URL:}
     username: ${DATABASE_USERNAME:}

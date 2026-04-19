@@ -23,8 +23,8 @@ public class ProductionDataSourceConfig {
         String raw = PostgresDatasourceUrlSupport.resolveRaw(properties, env);
         if (raw == null || raw.isBlank()) {
             throw new IllegalStateException(
-                    "DATABASE_URL is not set. In Render: Environment → add DATABASE_URL (Neon connection string or Render Postgres link), "
-                            + "then redeploy.");
+                    "No database URL in environment. In Render → Environment set DATABASE_URL (or NEON_DATABASE_URL) "
+                            + "to your full postgresql://... or jdbc:postgresql://... string, then redeploy.");
         }
         if (raw.contains("${")) {
             throw new IllegalStateException(

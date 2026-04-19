@@ -15,8 +15,8 @@ public final class DatabaseUrlBootstrap {
         if (spa != null && "local".equalsIgnoreCase(spa.trim())) {
             return;
         }
-        String raw = System.getenv("DATABASE_URL");
-        if (raw == null || raw.isBlank() || raw.contains("${")) {
+        String raw = PostgresDatasourceUrlSupport.findRawDatabaseUrlFromOs();
+        if (raw == null || raw.isBlank()) {
             return;
         }
         String jdbcUrl = PostgresDatasourceUrlSupport.toJdbcUrlForSpring(raw);

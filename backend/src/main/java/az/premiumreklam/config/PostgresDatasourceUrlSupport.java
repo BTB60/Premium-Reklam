@@ -16,15 +16,38 @@ public final class PostgresDatasourceUrlSupport {
     private PostgresDatasourceUrlSupport() {
     }
 
+    private static final String[] DATABASE_URL_ENV_KEYS = {
+            "DATABASE_URL",
+            "NEON_DATABASE_URL",
+            "JDBC_DATABASE_URL",
+            "POSTGRES_URL",
+            "POSTGRESQL_URL",
+    };
+
+    /**
+     * First non-blank URL from OS env (Render / Neon / Heroku often use different names).
+     */
+    public static String findRawDatabaseUrlFromOs() {
+        for (String key : DATABASE_URL_ENV_KEYS) {
+            String v = System.getenv(key);
+            if (v != null && !v.isBlank() && !v.contains("${")) {
+                return v;
+            }
+        }
+        return null;
+    }
+
     /** Prefer OS env so YAML placeholders never leave a literal {@code ${...}} to Hikari. */
     public static String resolveRaw(DataSourceProperties properties, Environment env) {
-        String fromEnv = System.getenv("DATABASE_URL");
-        if (fromEnv != null && !fromEnv.isBlank()) {
-            return fromEnv;
+        String fromOs = findRawDatabaseUrlFromOs();
+        if (fromOs != null) {
+            return fromOs;
         }
-        String fromSpringEnv = env.getProperty("DATABASE_URL");
-        if (fromSpringEnv != null && !fromSpringEnv.isBlank()) {
-            return fromSpringEnv;
+        for (String key : DATABASE_URL_ENV_KEYS) {
+            String v = env.getProperty(key);
+            if (v != null && !v.isBlank() && !v.contains("${")) {
+                return v;
+            }
         }
         return properties.getUrl();
     }
