@@ -100,7 +100,8 @@ spring:
       connection-timeout: 30000
 
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    # Render env: SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect (optional; default below)
+    database-platform: ${SPRING_JPA_DATABASE_PLATFORM:org.hibernate.dialect.PostgreSQLDialect}
     hibernate:
       # validate fails on empty DB (first deploy). Use DDL_AUTO=validate when schema is managed (e.g. Flyway).
       ddl-auto: ${DDL_AUTO:update}
