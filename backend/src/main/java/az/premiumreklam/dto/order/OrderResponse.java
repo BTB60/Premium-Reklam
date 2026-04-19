@@ -1,4 +1,4 @@
-package az.premiumreklam.dto.order;
+﻿package az.premiumreklam.dto.order;
 
 import az.premiumreklam.entity.Order;
 import az.premiumreklam.entity.OrderItem;
@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Getter
@@ -18,13 +17,13 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @Builder
 public class OrderResponse {
-    private UUID id;
+    private Long id;
     private String orderNumber;
     private String customerName;
     private String customerPhone;
     private String customerWhatsapp;
     private String customerAddress;
-    private UUID userId;
+    private Long userId;
     private String userFullName;
     private String userUsername;
     private String status;
@@ -46,8 +45,8 @@ public class OrderResponse {
     @AllArgsConstructor
     @Builder
     public static class OrderItemResponse {
-        private UUID id;
-        private UUID productId;
+        private Long id;
+        private Long productId;
         private String productName;
         private String unit;
         private BigDecimal quantity;
@@ -88,22 +87,26 @@ public class OrderResponse {
 
         if (order.getItems() != null) {
             builder.items(order.getItems().stream()
-                    .map(item -> OrderItemResponse.builder()
-                            .id(item.getId())
-                            .productId(item.getProduct() != null ? item.getProduct().getId() : null)
-                            .productName(item.getProductName())
-                            .unit(item.getUnit() != null ? item.getUnit().name() : null)
-                            .quantity(item.getQuantity())
-                            .width(item.getWidth())
-                            .height(item.getHeight())
-                            .area(item.getArea())
-                            .unitPrice(item.getUnitPrice())
-                            .lineTotal(item.getLineTotal())
-                            .note(item.getNote())
-                            .build())
+                    .map(OrderResponse::toItemResponse)
                     .collect(Collectors.toList()));
         }
 
         return builder.build();
+    }
+
+    private static OrderItemResponse toItemResponse(OrderItem item) {
+        return OrderItemResponse.builder()
+                .id(item.getId())
+                .productId(item.getProduct() != null ? item.getProduct().getId() : null)
+                .productName(item.getProductName())
+                .unit(item.getUnit() != null ? item.getUnit().name() : null)
+                .quantity(item.getQuantity())
+                .width(item.getWidth())
+                .height(item.getHeight())
+                .area(item.getArea())
+                .unitPrice(item.getUnitPrice())
+                .lineTotal(item.getLineTotal())
+                .note(item.getNote())
+                .build();
     }
 }

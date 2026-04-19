@@ -2,13 +2,12 @@ package az.premiumreklam.service;
 
 import az.premiumreklam.entity.User;
 import az.premiumreklam.repository.UserRepository;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +24,7 @@ public class UserService {
     }
 
     @Transactional
-    public User updateProfile(UUID userId, String fullName, String phone, String email) {
+    public User updateProfile(Long userId, String fullName, String phone, String email) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
 

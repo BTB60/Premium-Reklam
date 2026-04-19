@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.Map;
 
 @Data
@@ -12,7 +13,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class SubadminLoginResponse {
     private String token;
-    private String subadminId;
+    private Long subadminId;
     private String login;
     private String role;
     private Map<String, String> permissions;

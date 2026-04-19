@@ -5,12 +5,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Getter
 @Setter
 public class OrderItemRequest {
-    private UUID productId;
+    private Long productId;
     private String productName;
     private ProductUnit unit;
     private BigDecimal quantity;

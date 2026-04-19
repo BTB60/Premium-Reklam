@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -56,23 +56,23 @@ public class OrderService {
                 }
 
                 BigDecimal quantity = defaultBigDecimal(itemRequest.getQuantity(), BigDecimal.ONE);
-                // Check for user-specific price first, then product's salePrice, fallback to request price
                 BigDecimal unitPrice = BigDecimal.ZERO;
                 if (product != null) {
-                    // Check if user has custom price for this product
-                    var userPriceOpt = userPriceRepository.findByUserIdAndProductIdAndIsActiveTrue(user.getId(), product.getId());
+                    var userPriceOpt = userPriceRepository.findByUser_IdAndProduct_IdAndIsActiveTrue(user.getId(), product.getId());
                     if (userPriceOpt.isPresent()) {
                         unitPrice = userPriceOpt.get().getCustomPrice();
                     } else {
-                        unitPrice = product.getSalePrice() != null ? product.getSalePrice() : defaultBigDecimal(itemRequest.getUnitPrice());
+                        unitPrice = product.getSalePrice() != null
+                                ? product.getSalePrice()
+                                : defaultBigDecimal(itemRequest.getUnitPrice());
                     }
                 } else {
                     unitPrice = defaultBigDecimal(itemRequest.getUnitPrice());
                 }
                 BigDecimal width = itemRequest.getWidth();
                 BigDecimal height = itemRequest.getHeight();
-                ProductUnit unit = (product != null && product.getUnit() != null) 
-                        ? product.getUnit() 
+                ProductUnit unit = (product != null && product.getUnit() != null)
+                        ? product.getUnit()
                         : (itemRequest.getUnit() == null ? ProductUnit.M2 : itemRequest.getUnit());
 
                 BigDecimal area = BigDecimal.ZERO;
@@ -133,30 +133,31 @@ public class OrderService {
     public List<Order> getOrdersByUsername(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
-        return orderRepository.findByUserId(user.getId());
+        return orderRepository.findByUser_Id(user.getId());
     }
 
-    public Order getOrderById(UUID id) {
+    public Order getOrderById(Long id) {
         return orderRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
     }
 
     @Transactional
-    public Order updateOrderStatus(UUID id, OrderStatus status) {
+    public Order updateOrderStatus(Long id, OrderStatus status) {
         Order order = getOrderById(id);
         order.setStatus(status);
         return orderRepository.save(order);
     }
 
     @Transactional
-    public void deleteOrder(UUID id) {
+    public void deleteOrder(Long id) {
         Order order = getOrderById(id);
         orderRepository.delete(order);
     }
 
     private String generateOrderNumber() {
+        int suffix = ThreadLocalRandom.current().nextInt(0x1000000);
         return "ORD-" + LocalDate.now().toString().replace("-", "") + "-" +
-                UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+                String.format("%06X", suffix);
     }
 
     private BigDecimal defaultBigDecimal(BigDecimal value) {

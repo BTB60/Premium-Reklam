@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -29,7 +28,7 @@ public class PaymentController {
     @PostMapping("/order/{orderId}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('KASSIR') or hasRole('MUHASIB')")
     public ResponseEntity<?> addPaymentToOrder(
-            @PathVariable UUID orderId,
+            @PathVariable Long orderId,
             @RequestBody Map<String, Object> request) {
         try {
             BigDecimal amount = new BigDecimal(request.get("amount").toString());

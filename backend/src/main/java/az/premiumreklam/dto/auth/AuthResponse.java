@@ -5,14 +5,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.UUID;
-
 @Getter
 @AllArgsConstructor
 @Builder
 public class AuthResponse {
     private String token;
-    private UUID userId;
+    private Long userId;
     private String username;
     private String fullName;
     private String email;

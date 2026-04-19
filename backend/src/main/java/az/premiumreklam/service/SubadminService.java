@@ -4,6 +4,7 @@ import az.premiumreklam.entity.Subadmin;
 import az.premiumreklam.repository.SubadminRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -19,7 +20,7 @@ public class SubadminService {
         return subadminRepository.findAll();
     }
 
-    public Optional<Subadmin> getById(String id) {
+    public Optional<Subadmin> getById(Long id) {
         return subadminRepository.findById(id);
     }
 
@@ -30,7 +31,7 @@ public class SubadminService {
         return subadminRepository.save(subadmin);
     }
 
-    public Subadmin update(String id, Subadmin updated) {
+    public Subadmin update(Long id, Subadmin updated) {
         return subadminRepository.findById(id).map(existing -> {
             existing.setLogin(updated.getLogin());
             existing.setPassword(updated.getPassword());
@@ -39,16 +40,16 @@ public class SubadminService {
         }).orElseThrow(() -> new RuntimeException("Subadmin not found"));
     }
 
-    public void delete(String id) {
+    public void delete(Long id) {
         subadminRepository.deleteById(id);
     }
 
     public Optional<Subadmin> authenticate(String login, String password) {
         return subadminRepository.findByLogin(login)
-            .filter(subadmin -> subadmin.getPassword().equals(password));
+                .filter(subadmin -> subadmin.getPassword().equals(password));
     }
 
-    public void updateLastLogin(String id) {
+    public void updateLastLogin(Long id) {
         subadminRepository.findById(id).ifPresent(subadmin -> {
             subadmin.setLastLogin(LocalDateTime.now());
             subadminRepository.save(subadmin);

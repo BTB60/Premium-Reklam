@@ -12,7 +12,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -44,20 +43,20 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public OrderResponse getById(@PathVariable UUID id) {
+    public OrderResponse getById(@PathVariable Long id) {
         return OrderResponse.fromEntity(orderService.getOrderById(id));
     }
 
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public OrderResponse updateStatus(@PathVariable UUID id, @RequestParam String status) {
+    public OrderResponse updateStatus(@PathVariable Long id, @RequestParam String status) {
         OrderStatus orderStatus = OrderStatus.fromValue(status);
         return OrderResponse.fromEntity(orderService.updateOrderStatus(id, orderStatus));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> delete(@PathVariable UUID id) {
+    public ResponseEntity<?> delete(@PathVariable Long id) {
         orderService.deleteOrder(id);
         return ResponseEntity.ok().build();
     }

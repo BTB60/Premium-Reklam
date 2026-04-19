@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -42,14 +41,14 @@ public class ProductService {
         return productRepository.findAll();
     }
 
-    public Product getById(UUID id) {
+    public Product getById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Məhsul tapılmadı"));
     }
 
-    public Product update(UUID id, ProductRequest request) {
+    public Product update(Long id, ProductRequest request) {
         Product product = getById(id);
-        
+
         if (request.getName() != null) product.setName(request.getName());
         if (request.getSku() != null) product.setSku(request.getSku());
         if (request.getCategory() != null) product.setCategory(request.getCategory());
@@ -66,7 +65,7 @@ public class ProductService {
     }
 
     @Transactional
-    public void delete(UUID id) {
+    public void delete(Long id) {
         Product product = getById(id);
         product.setStatus(ProductStatus.INACTIVE);
         productRepository.save(product);

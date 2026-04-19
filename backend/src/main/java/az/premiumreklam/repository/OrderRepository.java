@@ -9,18 +9,17 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order, UUID> {
+public interface OrderRepository extends JpaRepository<Order, Long> {
     @Override
     @EntityGraph(attributePaths = {"user", "items", "items.product"})
     List<Order> findAll();
 
     @EntityGraph(attributePaths = {"user", "items", "items.product"})
-    List<Order> findByUserId(UUID userId);
+    List<Order> findByUser_Id(Long userId);
 
     @EntityGraph(attributePaths = {"user", "items", "items.product"})
     @Query("SELECT o FROM Order o WHERE o.id = :id")
-    Optional<Order> findWithDetailsById(@Param("id") UUID id);
+    Optional<Order> findWithDetailsById(@Param("id") Long id);
 }

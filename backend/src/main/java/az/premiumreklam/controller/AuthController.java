@@ -85,13 +85,13 @@ public class AuthController {
 
     @PutMapping("/subadmins/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Subadmin> updateSubadmin(@PathVariable String id, @RequestBody Subadmin updated) {
+    public ResponseEntity<Subadmin> updateSubadmin(@PathVariable Long id, @RequestBody Subadmin updated) {
         return ResponseEntity.ok(subadminService.update(id, updated));
     }
 
     @DeleteMapping("/subadmins/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteSubadmin(@PathVariable String id) {
+    public ResponseEntity<Void> deleteSubadmin(@PathVariable Long id) {
         subadminService.delete(id);
         return ResponseEntity.noContent().build();
     }

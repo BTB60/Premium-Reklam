@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +28,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public Order addPayment(UUID orderId, BigDecimal amount) {
+    public Order addPayment(Long orderId, BigDecimal amount) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
 
@@ -39,15 +38,13 @@ public class PaymentService {
 
         BigDecimal newPaidAmount = order.getPaidAmount().add(amount);
         BigDecimal maxAllowed = order.getTotalAmount();
-        
-        // Don't allow overpayment
+
         if (newPaidAmount.compareTo(maxAllowed) > 0) {
             newPaidAmount = maxAllowed;
         }
 
         BigDecimal newRemainingAmount = maxAllowed.subtract(newPaidAmount);
 
-        // Update payment status
         PaymentStatus newStatus;
         if (newRemainingAmount.compareTo(BigDecimal.ZERO) <= 0) {
             newStatus = PaymentStatus.PAID;
