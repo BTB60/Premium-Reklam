@@ -16,7 +16,9 @@ public final class PostgresDatasourceUrlSupport {
     private PostgresDatasourceUrlSupport() {
     }
 
+    /** Spring Boot maps SPRING_DATASOURCE_URL → spring.datasource.url; list OS keys we read before YAML. */
     private static final String[] DATABASE_URL_ENV_KEYS = {
+            "SPRING_DATASOURCE_URL",
             "DATABASE_URL",
             "NEON_DATABASE_URL",
             "JDBC_DATABASE_URL",
