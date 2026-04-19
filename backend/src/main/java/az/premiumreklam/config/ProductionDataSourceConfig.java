@@ -23,12 +23,12 @@ public class ProductionDataSourceConfig {
         String raw = PostgresDatasourceUrlSupport.resolveRaw(properties, env);
         if (raw == null || raw.isBlank()) {
             throw new IllegalStateException(
-                    "Set DATABASE_URL in the host environment (Render: link PostgreSQL) or spring.datasource.url.");
+                    "DATABASE_URL is not set. In Render: Environment → add DATABASE_URL (Neon connection string or Render Postgres link), "
+                            + "then redeploy.");
         }
         if (raw.contains("${")) {
             throw new IllegalStateException(
-                    "DATABASE_URL is still unresolved (value looks like a placeholder). "
-                            + "In Render: Web Service → Environment → add DATABASE_URL from the Postgres resource, then redeploy.");
+                    "DATABASE_URL looks like an unresolved placeholder. Set a real connection string in Render → Environment.");
         }
 
         String jdbcUrl = PostgresDatasourceUrlSupport.toJdbcUrlForSpring(raw);

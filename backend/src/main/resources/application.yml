@@ -89,9 +89,9 @@ spring:
     activate:
       on-profile: "production | prod"
 
-  # Render injects DATABASE_URL (often postgres://...). Runtime also maps it to jdbc:postgresql://...
+  # Empty default avoids a literal "${DATABASE_URL}" when the env var is missing (Neon/Render: set DATABASE_URL).
   datasource:
-    url: ${DATABASE_URL}
+    url: ${DATABASE_URL:}
     username: ${DATABASE_USERNAME:}
     password: ${DATABASE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
