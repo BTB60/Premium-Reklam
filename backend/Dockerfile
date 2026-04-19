@@ -13,6 +13,9 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 
+# Ensure Postgres/JPA production config is always used in this image (Render UI env overrides if set).
+ENV SPRING_PROFILES_ACTIVE=production
+
 # Render sets PORT, DATABASE_URL, etc. as container environment variables; the JVM inherits them.
 # No need for -Dspring.datasource.url — use DatabaseUrlBootstrap / PostgresDatasourceUrlSupport instead.
 EXPOSE 8080
