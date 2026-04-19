@@ -89,6 +89,7 @@ spring:
     activate:
       on-profile: "production | prod"
 
+  # Render injects DATABASE_URL (often postgres://...). Runtime also maps it to jdbc:postgresql://...
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME:}

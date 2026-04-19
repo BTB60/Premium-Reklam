@@ -13,8 +13,8 @@ FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=builder /app/target/*.jar app.jar
 
-# Render-in verdiyi portu birbaşa mənimsədirik
+# Render sets PORT, DATABASE_URL, etc. as container environment variables; the JVM inherits them.
+# No need for -Dspring.datasource.url — use DatabaseUrlBootstrap / PostgresDatasourceUrlSupport instead.
 EXPOSE 8080
 
-# Parametrləri ENTRYPOINT-də daha dəqiq qeyd edirik
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -jar app.jar"]

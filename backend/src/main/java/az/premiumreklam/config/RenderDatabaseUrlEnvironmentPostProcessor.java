@@ -32,8 +32,17 @@ public class RenderDatabaseUrlEnvironmentPostProcessor implements EnvironmentPos
         if (spa != null && "local".equalsIgnoreCase(spa.trim())) {
             return;
         }
+        String jdbcUrl = PostgresDatasourceUrlSupport.toJdbcUrlForSpring(envUrl);
         Map<String, Object> map = new HashMap<>();
-        map.put("spring.datasource.url", envUrl);
+        map.put("spring.datasource.url", jdbcUrl);
+        String u = PostgresDatasourceUrlSupport.extractUsername(envUrl);
+        String p = PostgresDatasourceUrlSupport.extractPassword(envUrl);
+        if (u != null && !u.isBlank()) {
+            map.put("spring.datasource.username", u);
+        }
+        if (p != null && !p.isBlank()) {
+            map.put("spring.datasource.password", p);
+        }
         environment.getPropertySources().addFirst(new MapPropertySource("renderDatabaseUrlFromEnv", map));
     }
 }
