@@ -89,11 +89,11 @@ spring:
     activate:
       on-profile: "production | prod"
 
-  # Render: prefer SPRING_DATASOURCE_* (Spring Boot standard); or DATABASE_URL / Neon aliases — see PostgresDatasourceUrlSupport.
+  # Render: SPRING_DATASOURCE_* (Spring), DATABASE_URL / Neon, or PGHOST+PGDATABASE+PGUSER+PGPASSWORD — see PostgresDatasourceUrlSupport.
   datasource:
     url: ${SPRING_DATASOURCE_URL:${DATABASE_URL:}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DATABASE_USERNAME:}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DATABASE_PASSWORD:}}
+    username: ${SPRING_DATASOURCE_USERNAME:${PGUSER:${DATABASE_USERNAME:}}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${PGPASSWORD:${DATABASE_PASSWORD:}}}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10

@@ -51,7 +51,85 @@ public final class PostgresDatasourceUrlSupport {
                 return v;
             }
         }
+        String composed = tryComposeJdbcUrlFromDiscretePostgresEnv(env);
+        if (composed != null) {
+            return composed;
+        }
         return properties.getUrl();
+    }
+
+    /**
+     * Render Postgres (and others) sometimes expose {@code PGHOST}, {@code PGDATABASE}, {@code PGPORT}
+     * instead of a single {@code DATABASE_URL}.
+     */
+    public static String tryComposeJdbcUrlFromDiscretePostgresEnv(Environment env) {
+        String host = firstNonBlank(
+                System.getenv("PGHOST"),
+                env.getProperty("PGHOST"),
+                System.getenv("SPRING_DATASOURCE_HOST"),
+                env.getProperty("SPRING_DATASOURCE_HOST"));
+        String db = firstNonBlank(
+                System.getenv("PGDATABASE"),
+                System.getenv("POSTGRES_DB"),
+                env.getProperty("PGDATABASE"),
+                env.getProperty("POSTGRES_DB"),
+                System.getenv("SPRING_DATASOURCE_NAME"),
+                env.getProperty("SPRING_DATASOURCE_NAME"));
+        if (host == null || host.isBlank() || db == null || db.isBlank()) {
+            return null;
+        }
+        String port = firstNonBlank(
+                System.getenv("PGPORT"),
+                env.getProperty("PGPORT"),
+                "5432");
+        String base = "jdbc:postgresql://" + host.trim() + ":" + port.trim() + "/" + db.trim();
+        return appendSslForManagedCloudIfMissing(base);
+    }
+
+    /** Username when not embedded in URL: Spring standard, then libpq env. */
+    public static String resolveUsername(DataSourceProperties properties, Environment env, String rawUrl) {
+        String u = properties.getUsername();
+        if (u != null && !u.isBlank()) {
+            return u;
+        }
+        u = extractUsername(rawUrl);
+        if (u != null && !u.isBlank()) {
+            return u;
+        }
+        return firstNonBlank(
+                System.getenv("SPRING_DATASOURCE_USERNAME"),
+                env.getProperty("SPRING_DATASOURCE_USERNAME"),
+                System.getenv("PGUSER"),
+                env.getProperty("PGUSER"));
+    }
+
+    /** Password when not embedded in URL. */
+    public static String resolvePassword(DataSourceProperties properties, Environment env, String rawUrl) {
+        String p = properties.getPassword();
+        if (p != null && !p.isBlank()) {
+            return p;
+        }
+        p = extractPassword(rawUrl);
+        if (p != null && !p.isBlank()) {
+            return p;
+        }
+        return firstNonBlank(
+                System.getenv("SPRING_DATASOURCE_PASSWORD"),
+                env.getProperty("SPRING_DATASOURCE_PASSWORD"),
+                System.getenv("PGPASSWORD"),
+                env.getProperty("PGPASSWORD"));
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+        for (String v : values) {
+            if (v != null && !v.isBlank()) {
+                return v;
+            }
+        }
+        return null;
     }
 
     /**

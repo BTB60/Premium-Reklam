@@ -11,7 +11,9 @@ import org.springframework.core.env.Environment;
 import javax.sql.DataSource;
 
 /**
- * Render often supplies {@code postgres://} URIs; {@link PostgresDatasourceUrlSupport} normalizes to JDBC.
+ * Production {@link DataSource}: reads URL/credentials from env ({@code SPRING_DATASOURCE_*},
+ * {@code DATABASE_URL}, {@code PGHOST}/{@code PGDATABASE}/…). Libpq URLs are converted via
+ * {@link PostgresDatasourceUrlSupport}.
  */
 @Configuration
 @Profile({"production", "prod"})
@@ -22,25 +24,18 @@ public class ProductionDataSourceConfig {
     public DataSource dataSource(DataSourceProperties properties, Environment env) {
         String raw = PostgresDatasourceUrlSupport.resolveRaw(properties, env);
         if (raw == null || raw.isBlank()) {
-            throw new IllegalStateException(
-                    "No database URL in environment. In Render set SPRING_DATASOURCE_URL (jdbc:...) and username/password, "
-                            + "or DATABASE_URL / NEON_DATABASE_URL (postgresql://...), then redeploy.");
+            throw new IllegalStateException(missingDatabaseMessage());
         }
         if (raw.contains("${")) {
             throw new IllegalStateException(
-                    "DATABASE_URL looks like an unresolved placeholder. Set a real connection string in Render → Environment.");
+                    "Datasource URL still looks like an unresolved placeholder (${...}). "
+                            + "In Render → Environment, set real values (no ${} in the value field).");
         }
 
         String jdbcUrl = PostgresDatasourceUrlSupport.toJdbcUrlForSpring(raw);
 
-        String user = properties.getUsername();
-        String pass = properties.getPassword();
-        if (user == null || user.isBlank()) {
-            user = PostgresDatasourceUrlSupport.extractUsername(raw);
-        }
-        if (pass == null || pass.isBlank()) {
-            pass = PostgresDatasourceUrlSupport.extractPassword(raw);
-        }
+        String user = PostgresDatasourceUrlSupport.resolveUsername(properties, env, raw);
+        String pass = PostgresDatasourceUrlSupport.resolvePassword(properties, env, raw);
 
         String origUrl = properties.getUrl();
         String origUser = properties.getUsername();
@@ -59,5 +54,17 @@ public class ProductionDataSourceConfig {
             properties.setUsername(origUser);
             properties.setPassword(origPass);
         }
+    }
+
+    private static String missingDatabaseMessage() {
+        return String.join("\n",
+                "No database URL could be resolved from the environment.",
+                "",
+                "Set one of the following in Render → Environment (then redeploy):",
+                "  • SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/DBNAME  (+ SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD),",
+                "  • DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME",
+                "  • Or libpq-style: PGHOST, PGDATABASE, PGPORT (optional), PGUSER, PGPASSWORD",
+                "",
+                "Tip: Link the Render PostgreSQL instance to the web service, or paste the connection string from the DB dashboard.");
     }
 }
