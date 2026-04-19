@@ -101,7 +101,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${DDL_AUTO:validate}
+      # validate fails on empty DB (first deploy). Use DDL_AUTO=validate when schema is managed (e.g. Flyway).
+      ddl-auto: ${DDL_AUTO:update}
     show-sql: false
     open-in-view: false
     properties:
