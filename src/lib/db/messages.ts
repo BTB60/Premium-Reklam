@@ -129,7 +129,9 @@ function createNotificationForUser(userId: string, message: SupportMessage): voi
 
 export function getUnreadSupportNotifications(userId: string): SupportNotification[] {
   const notifications = getFromStorage<SupportNotification[]>(NOTIFICATIONS_KEY, []);
-  return notifications.filter(n => n.userId === userId && !n.read);
+  return notifications.filter(
+    (n) => String(n.userId) === String(userId) && !n.read
+  );
 }
 
 export function markNotificationAsRead(notificationId: string): boolean {

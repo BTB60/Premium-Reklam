@@ -289,7 +289,8 @@ export const notifications = {
     return getNotifications();
   },
   getByUserId(userId: string): Notification[] {
-    return getNotifications().filter((n) => n.userId === userId);
+    const key = String(userId);
+    return getNotifications().filter((n) => String(n.userId) === key);
   },
   create(notification: Omit<Notification, "id" | "createdAt" | "isRead">): Notification {
     const newNotification: Notification = {
