@@ -2,9 +2,12 @@ package az.premiumreklam.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 /**
  * CORS is applied via {@link CorsConfigurationSource} + {@code http.cors()} in {@link SecurityConfig}.
@@ -15,13 +18,16 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class CorsConfig {
 
+    @Value("${app.cors.allowed-origin-patterns:https://premium-reklam.vercel.app,http://localhost:3000}")
+    private List<String> allowedOriginPatterns;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.addAllowedOriginPattern("*");
+        config.setAllowedOriginPatterns(allowedOriginPatterns);
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
-        config.setAllowCredentials(false);
+        config.setAllowCredentials(true);
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

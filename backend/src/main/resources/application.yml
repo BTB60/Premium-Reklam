@@ -7,6 +7,10 @@ spring:
   profiles:
     default: local
 
+app:
+  cors:
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://premium-reklam.vercel.app,http://localhost:3000}
+
 ---
 spring:
   config:
