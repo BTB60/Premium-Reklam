@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.Function;
@@ -22,9 +24,21 @@ public class JwtService {
     @Value("${jwt.expiration:86400000}")
     private long expiration;
 
+    /**
+     * HS256 requires a key of at least 256 bits. Short env secrets are rejected by jjwt;
+     * we derive a 256-bit key with SHA-256 so any non-empty secret works.
+     */
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = sha256(secret.getBytes(StandardCharsets.UTF_8));
         return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private static byte[] sha256(byte[] input) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(input);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     public String generateToken(String username, String role, Map<String, String> permissions) {
