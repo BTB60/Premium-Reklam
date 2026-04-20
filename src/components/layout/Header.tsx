@@ -39,6 +39,20 @@ const adminNavItems = [
   { label: "Maliyyə", href: "/admin/finance" },
 ];
 
+function getSessionUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("decor_current_user");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { id?: string | number; userId?: string | number };
+    if (parsed.userId != null) return String(parsed.userId);
+    if (parsed.id != null) return String(parsed.id);
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export function Header({ variant = "public", userName, notifications: propNotifications = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -57,7 +71,8 @@ export function Header({ variant = "public", userName, notifications: propNotifi
     if (variant === "public") {
       return { userNotifications: [], unreadCount: 0 };
     }
-    const all = notifications.getAll();
+    const uid = getSessionUserId();
+    const all = uid ? notifications.getByUserId(uid) : [];
     const unread = all.filter(n => !n.isRead);
     return {
       userNotifications: all.slice(0, 5),
@@ -87,7 +102,8 @@ export function Header({ variant = "public", userName, notifications: propNotifi
 
   const handleMarkAsRead = (id: string) => {
     notifications.markAsRead(id);
-    const all = notifications.getAll();
+    const uid = getSessionUserId();
+    const all = uid ? notifications.getByUserId(uid) : [];
     setUserNotifications(all.slice(0, 5));
     setUnreadCount(all.filter(n => !n.isRead).length);
   };

@@ -9,7 +9,7 @@ spring:
 
 app:
   cors:
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://premium-reklam.vercel.app,https://*.vercel.app,http://localhost:3000}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://premium-reklam.vercel.app,https://*.vercel.app,https://premiumreklam.shop,https://*.premiumreklam.shop,http://localhost:3000}
 
 ---
 spring:

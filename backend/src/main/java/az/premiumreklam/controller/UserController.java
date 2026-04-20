@@ -69,6 +69,7 @@ public class UserController {
         map.put("email", u.getEmail() != null ? u.getEmail() : "");
         map.put("phone", u.getPhone() != null ? u.getPhone() : "");
         map.put("role", u.getRole().getValue());
+        map.put("totalDebt", u.getTotalDebt());
         return map;
     }
 }

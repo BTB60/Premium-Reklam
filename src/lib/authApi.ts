@@ -475,11 +475,13 @@ export const authApi = {
     email: string;
     phone: string;
     role: string;
+    totalDebt?: number;
   }> {
     const data = await fetchApi("/users/profile/me");
     return {
       ...data,
       role: mapRole(String(data.role)),
+      totalDebt: Number((data as { totalDebt?: unknown }).totalDebt ?? 0),
     };
   },
 
@@ -494,6 +496,7 @@ export const authApi = {
     email: string;
     phone: string;
     role: string;
+    totalDebt?: number;
   }> {
     const data = await fetchApi("/users/profile/me", {
       method: "PUT",
@@ -502,6 +505,7 @@ export const authApi = {
     return {
       ...data,
       role: mapRole(String(data.role)),
+      totalDebt: Number((data as { totalDebt?: unknown }).totalDebt ?? 0),
     };
   },
 };

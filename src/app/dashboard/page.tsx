@@ -76,14 +76,23 @@ export default function DashboardPage() {
     loadData();
   }, [router]);
 
+  useEffect(() => {
+    const onBalanceUpdated = () => {
+      void loadData();
+    };
+    window.addEventListener("premium:user-balance-updated", onBalanceUpdated);
+    return () => window.removeEventListener("premium:user-balance-updated", onBalanceUpdated);
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     try {
       const user = authApi.getCurrentUser();
       
-      const [ordersResponse, productsData] = await Promise.all([
+      const [ordersResponse, productsData, profile] = await Promise.all([
         orderApi.getMyOrders(),
         productApi.getActiveCatalog(),
+        authApi.getMyProfile().catch(() => null),
       ]);
       const ordersData = ordersResponse as any;
       const orders = ordersData.orders || [];
@@ -110,7 +119,10 @@ export default function DashboardPage() {
         monthOrderCount: monthOrders.length,
         monthOrderAmount: monthOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
         totalPaid: activeOrders.reduce((sum: number, o: any) => sum + Number(o.paidAmount || 0), 0),
-        totalDebt: activeOrders.reduce((sum: number, o: any) => sum + Number(o.remainingAmount || 0), 0),
+        totalDebt:
+          profile && Number.isFinite(Number((profile as any).totalDebt))
+            ? Number((profile as any).totalDebt)
+            : activeOrders.reduce((sum: number, o: any) => sum + Number(o.remainingAmount || 0), 0),
         totalOrders: orders.length,
         totalAmount: activeOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
       };
