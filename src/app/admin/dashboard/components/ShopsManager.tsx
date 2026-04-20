@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { getAdminBearerToken, getAdminDashboardApiBase } from "./admin-dashboard-api";
 import type { DashboardShop, ShopUserOption } from "./shops-manager/types";
+import { storeRequests, vendorStores } from "@/lib/db/vendor";
 import { ShopsHeaderBar } from "./shops-manager/ShopsHeaderBar";
 import { ShopsStatsCards } from "./shops-manager/ShopsStatsCards";
 import { ShopsFilterBar } from "./shops-manager/ShopsFilterBar";
@@ -20,7 +21,7 @@ export default function ShopsManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | number | null>(null);
   const [formError, setFormError] = useState("");
 
   const [formData, setFormData] = useState<Partial<DashboardShop>>({
@@ -38,14 +39,62 @@ export default function ShopsManager() {
     loadUsers();
   }, []);
 
+  useEffect(() => {
+    // user məlumatları gələndən sonra vendor cədvəlində ad/username düzgün görünsün
+    if (users.length > 0) {
+      loadShops();
+    }
+  }, [users.length]);
+
   const getToken = () => getAdminBearerToken();
 
   const loadShops = async () => {
     try {
-      const stored = localStorage.getItem("decor_shops");
-      if (stored) {
-        setShops(JSON.parse(stored));
-      }
+      // 1) Vendor store müraciətləri (pending/approved/rejected)
+      const requestRows = storeRequests.getAll().map((r) => ({
+        id: r.id,
+        userId: r.vendorId,
+        userFullName: r.vendorName,
+        userUsername: r.vendorName,
+        name: r.name,
+        description: r.description,
+        address: r.address,
+        phone: r.phone,
+        email: r.email,
+        status:
+          r.status === "approved"
+            ? ("active" as const)
+            : r.status === "rejected"
+              ? ("inactive" as const)
+              : ("pending" as const),
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      })) as DashboardShop[];
+
+      // 2) Təsdiq edilmiş real mağazalar
+      const storeRows = vendorStores.getAllIncludingInactive().map((s) => ({
+        id: s.id,
+        userId: s.vendorId,
+        userFullName: users.find((u) => String(u.id) === String(s.vendorId))?.fullName || s.name,
+        userUsername: users.find((u) => String(u.id) === String(s.vendorId))?.username || s.vendorId,
+        name: s.name,
+        description: s.description,
+        address: s.address,
+        phone: s.phone,
+        email: s.email,
+        status: s.isActive ? ("active" as const) : ("inactive" as const),
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      })) as DashboardShop[];
+
+      // request və store eyni vendor üçün təkrar düşməsin: store olan üstünlük alsın
+      const byVendor = new Map<string, DashboardShop>();
+      for (const r of requestRows) byVendor.set(String(r.userId), r);
+      for (const s of storeRows) byVendor.set(String(s.userId), s);
+      const combined = Array.from(byVendor.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setShops(combined);
     } catch (error) {
       console.error("[Shops] Load error:", error);
     } finally {
@@ -169,7 +218,7 @@ export default function ShopsManager() {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (!confirm("Mağazanı silmək istədiyinizə əminsiniz?")) return;
 
     try {
@@ -185,14 +234,40 @@ export default function ShopsManager() {
         throw new Error("API error");
       }
     } catch (error) {
-      const updated = shops.filter((s) => s.id !== id);
+      const updated = shops.filter((s) => String(s.id) !== String(id));
       setShops(updated);
       localStorage.setItem("decor_shops", JSON.stringify(updated));
     }
   };
 
-  const updateShopStatus = async (shopId: number, status: string) => {
+  const updateShopStatus = async (shopId: string | number, status: string) => {
     try {
+      const target = shops.find((s) => String(s.id) === String(shopId));
+      if (target) {
+        // Local vendor flow: pending müraciət təsdiqi/rəddi
+        const request = storeRequests.getById(String(shopId));
+        if (request) {
+          if (status === "active") {
+            storeRequests.approve(request.id, "admin");
+          } else if (status === "inactive") {
+            storeRequests.reject(request.id, "admin", "Admin tərəfindən qeyri-aktiv edildi");
+          }
+          await loadShops();
+          return;
+        }
+
+        // Mövcud mağaza aktiv/passiv
+        const existingStore = vendorStores.getById(String(shopId));
+        if (existingStore) {
+          vendorStores.update(existingStore.id, {
+            isActive: status === "active",
+            isApproved: status === "active" ? true : existingStore.isApproved,
+          });
+          await loadShops();
+          return;
+        }
+      }
+
       const token = getToken();
       const res = await fetch(`${API_BASE}/shops/${shopId}`, {
         method: "PATCH",
@@ -207,12 +282,11 @@ export default function ShopsManager() {
         await loadShops();
       } else {
         const updated = shops.map((s) =>
-          s.id === shopId
+          String(s.id) === String(shopId)
             ? { ...s, status: status as DashboardShop["status"], updatedAt: new Date().toISOString() }
             : s
         );
         setShops(updated);
-        localStorage.setItem("decor_shops", JSON.stringify(updated));
       }
     } catch (error) {
       console.error("[Shops] Update error:", error);

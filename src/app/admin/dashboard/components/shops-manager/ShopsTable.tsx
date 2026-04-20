@@ -20,8 +20,8 @@ export function ShopsTable({
 }: {
   shops: DashboardShop[];
   onEdit: (s: DashboardShop) => void;
-  onDelete: (id: number) => void;
-  onStatusChange: (shopId: number, status: string) => void;
+  onDelete: (id: string | number) => void;
+  onStatusChange: (shopId: string | number, status: string) => void;
 }) {
   return (
     <Card className="overflow-hidden">

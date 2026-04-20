@@ -1,5 +1,5 @@
 export interface DashboardShop {
-  id: number;
+  id: string | number;
   userId: string;
   userFullName: string;
   userUsername: string;
