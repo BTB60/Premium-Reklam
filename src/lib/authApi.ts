@@ -1,6 +1,5 @@
 // API Base URL - MUST be set in Vercel Environment Variables
 // For Vercel: NEXT_PUBLIC_API_URL = https://premium-reklam-backend.onrender.com
-import { auth as mockAuth } from "@/lib/db/auth";
 
 declare const process: {
   env: Record<string, string | undefined>;
@@ -11,6 +10,20 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
 const HEALTH_URL = `${BASE_URL}/health`;
+const MOCK_AUTH_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true" ||
+  (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV !== "production");
+
+type MockAuthModule = typeof import("@/lib/db/auth");
+let cachedMockAuth: MockAuthModule["auth"] | null = null;
+
+async function getMockAuth() {
+  if (!MOCK_AUTH_ENABLED) return null;
+  if (cachedMockAuth) return cachedMockAuth;
+  const mod = await import("@/lib/db/auth");
+  cachedMockAuth = mod.auth;
+  return cachedMockAuth;
+}
 
 if (process.env.NODE_ENV === "development") {
   console.log("[API Config] NEXT_PUBLIC_API_URL:", API_URL_FROM_ENV);
@@ -297,6 +310,9 @@ export const authApi = {
 
   async login(username: string, password: string, otpCode?: string): Promise<UserData & { requiresOtp?: boolean; message?: string }> {
     const tryLocalMock = async (): Promise<UserData | null> => {
+      if (!MOCK_AUTH_ENABLED) return null;
+      const mockAuth = await getMockAuth();
+      if (!mockAuth) return null;
       if (typeof window === "undefined") return null;
       const result = await mockAuth.login(username, password);
       if (!result.success || !result.user) return null;

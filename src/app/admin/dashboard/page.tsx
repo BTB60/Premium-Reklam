@@ -68,8 +68,9 @@ export default function DashboardPage() {
         try {
           const parsed = JSON.parse(adminSession) as { token?: string; role?: string; fullName?: string };
           const normalizedRole = normalizeRole(parsed?.role);
+          const isMockToken = String(parsed?.token || "").startsWith("mock.");
           console.log("[Dashboard] Parsed admin session:", parsed);
-          if (parsed?.token && parsed?.role) {
+          if (parsed?.token && parsed?.role && !isMockToken) {
             if (normalizedRole === "ADMIN") {
               console.log("[Dashboard] Loading as ADMIN:", parsed.fullName);
               setUser(parsed);
@@ -77,6 +78,10 @@ export default function DashboardPage() {
               return;
             }
             console.warn("[Dashboard] Admin session has wrong role:", parsed.role);
+          }
+          if (isMockToken) {
+            console.warn("[Dashboard] Mock token detected; forcing re-login with backend auth");
+            localStorage.removeItem("decor_current_user");
           }
         } catch (e) {
           console.error("[Dashboard] Admin parse error:", e);
