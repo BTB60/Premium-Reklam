@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Megaphone, Plus, Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { getAdminBearerToken, getAdminDashboardApiBase } from "./admin-dashboard-api";
 
 interface Announcement {
   id: number;
@@ -14,9 +15,6 @@ interface Announcement {
   createdAt: string;
   expiresAt?: string;
 }
-
-// 🔥 Жёсткий URL бэкенда — без переменных
-const API_BASE = "https://premium-reklam-backend.onrender.com/api";
 
 export default function ElanManager() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -33,7 +31,7 @@ export default function ElanManager() {
     setError(null);
     try {
       // 🔥 Запрос БЕЗ токена — бэкенд разрешает анонимный доступ
-      const res = await fetch(`${API_BASE}/announcements`);
+      const res = await fetch(`${getAdminDashboardApiBase()}/announcements`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setAnnouncements(Array.isArray(data) ? data : []);
@@ -53,11 +51,12 @@ export default function ElanManager() {
       return;
     }
     try {
-      // 🔥 Запрос БЕЗ токена — бэкенд разрешает анонимный доступ
-      const res = await fetch(`${API_BASE}/announcements`, {
+      const token = getAdminBearerToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${getAdminDashboardApiBase()}/announcements`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // 🔥 Не отправляем Authorization header
+        headers,
         body: JSON.stringify({
           title: formData.title.trim(),
           message: formData.message.trim(),
@@ -67,6 +66,13 @@ export default function ElanManager() {
         })
       });
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(
+            res.status === 403
+              ? "Bu əməliyyat üçün tam admin hüququ lazımdır (subadmin yalnız icazə verilmiş bölmələrə daxil ola bilər)."
+              : "Sessiya etibarsızdır — yenidən daxil olun."
+          );
+        }
         const txt = await res.text();
         throw new Error(txt || `HTTP ${res.status}`);
       }

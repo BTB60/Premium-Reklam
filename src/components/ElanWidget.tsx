@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Megaphone, X, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { getAdminDashboardApiBase } from "@/app/admin/dashboard/components/admin-dashboard-api";
 
 interface Announcement {
   id: number;
@@ -14,8 +15,6 @@ interface Announcement {
   createdAt: string;
   expiresAt?: string;
 }
-
-const API_BASE = "https://premium-reklam-backend.onrender.com/api";
 
 export default function ElanWidget() {
   const [showElan, setShowElan] = useState(false);
@@ -35,7 +34,7 @@ export default function ElanWidget() {
   const fetchActiveAnnouncements = async (): Promise<Announcement[] | null> => {
     setApiError(null);
     try {
-      const response = await fetch(`${API_BASE}/announcements/active`, {
+      const response = await fetch(`${getAdminDashboardApiBase()}/announcements/active`, {
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });

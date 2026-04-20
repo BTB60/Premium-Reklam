@@ -166,7 +166,17 @@ export interface UserPrice {
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   const user = getCurrentUser();
-  return user?.token || null;
+  if (user?.token) return user.token;
+  try {
+    const raw = sessionStorage.getItem("premium_subadmin_jwt");
+    if (raw) {
+      const s = JSON.parse(raw) as { token?: string };
+      if (s?.token) return s.token;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }
 
 function getCurrentUser(): UserData | null {

@@ -4,14 +4,28 @@ export function getAdminDashboardApiBase(): string {
     : "https://premium-reklam-backend.onrender.com/api";
 }
 
+const SUBADMIN_JWT_KEY = "premium_subadmin_jwt";
+
+/** Admin JWT (localStorage) və ya subadmin JWT (sessionStorage — backend /auth/subadmin/login). */
 export function getAdminBearerToken(): string | null {
   if (typeof window === "undefined") return null;
-  const stored = localStorage.getItem("decor_current_user");
-  if (!stored) return null;
   try {
-    const parsed = JSON.parse(stored);
-    return parsed?.token || null;
+    const admin = localStorage.getItem("decor_current_user");
+    if (admin) {
+      const parsed = JSON.parse(admin);
+      if (parsed?.token) return parsed.token as string;
+    }
   } catch {
-    return null;
+    /* ignore */
   }
+  try {
+    const raw = sessionStorage.getItem(SUBADMIN_JWT_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { token?: string };
+      if (parsed?.token) return parsed.token;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
 }

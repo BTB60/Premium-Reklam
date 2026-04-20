@@ -8,6 +8,7 @@ import {
   Search, Download, Package, AlertTriangle, CheckCircle, 
   TrendingUp, TrendingDown, Boxes, Filter, Plus, Edit, Trash2
 } from "lucide-react";
+import { getAdminBearerToken } from "./admin-dashboard-api";
 
 interface InventoryItem {
   id: number;
@@ -45,17 +46,7 @@ export default function InventoryDashboard() {
     loadInventory();
   }, []);
 
-  const getToken = () => {
-    if (typeof window === "undefined") return null;
-    const stored = localStorage.getItem("decor_current_user");
-    if (!stored) return null;
-    try {
-      const parsed = JSON.parse(stored);
-      return parsed?.token || null;
-    } catch {
-      return null;
-    }
-  };
+  const getToken = () => getAdminBearerToken();
 
   const loadInventory = async () => {
     try {

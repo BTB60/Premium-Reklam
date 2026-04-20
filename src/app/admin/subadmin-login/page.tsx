@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { Shield, Lock, ArrowRight, AlertTriangle, Key } from "lucide-react";
 import Link from "next/link";
+import { subadminAuth } from "@/lib/subadminAuth";
 
 const SUBADMINS_KEY = "premium_subadmins";
 const SUBADMIN_SESSION_KEY = "premium_subadmin_session";
@@ -99,59 +100,29 @@ export default function SubadminLoginPage() {
     console.log("[SubadminLogin] Attempting login:", { inputLogin, inputPassword });
 
     try {
-      const subadmins = getSubadmins();
-      console.log("[SubadminLogin] All subadmins in storage:", subadmins);
+      // 1) Backend JWT — panel API-ləri Authorization tələb edir
+      const backendSession = await subadminAuth.login(inputLogin, inputPassword);
 
-      // 🔥 Ищем с тримом и сравнением строка-в-строку
-      const subadmin = subadmins.find((s) => 
-        s.login.trim() === inputLogin && s.password === inputPassword
-      );
-
-      console.log("[SubadminLogin] Found subadmin:", subadmin ? "YES" : "NO");
-
-      if (!subadmin) {
-        // 🔥 Детальная отладка: покажем, что не совпало
-        const loginMatch = subadmins.find(s => s.login.trim() === inputLogin);
-        if (loginMatch) {
-          console.warn("[SubadminLogin] Login OK, password mismatch");
-          setError("Parol yanlışdır");
-        } else {
-          console.warn("[SubadminLogin] Login not found");
-          setError("Login tapılmadı");
-        }
-        throw new Error("Invalid credentials");
-      }
-
-      // Сохраняем сессию subadmin
       const session = {
-        subadminId: subadmin.id,
-        login: subadmin.login,
+        subadminId: String(backendSession.subadminId),
+        login: backendSession.login,
         role: "SUBADMIN" as const,
-        permissions: subadmin.permissions,
+        permissions: backendSession.permissions,
         lastLogin: new Date().toISOString(),
       };
 
       if (typeof window !== "undefined") {
-        // 🔥 Очищаем админ-сессию перед входом subadmin
         localStorage.removeItem("decor_current_user");
         localStorage.setItem("premium_session_type", "subadmin");
-        
         sessionStorage.setItem(SUBADMIN_SESSION_KEY, JSON.stringify(session));
-
-        // Обновляем lastLogin в списке subadmin
-        const updated = subadmins.map((s) =>
-          s.id === subadmin.id ? { ...s, lastLogin: session.lastLogin } : s
-        );
-        localStorage.setItem(SUBADMINS_KEY, JSON.stringify(updated));
-        
-        console.log("[SubadminLogin] Session saved:", session);
+        console.log("[SubadminLogin] Backend session saved:", session.login);
       }
 
       router.push("/admin/dashboard");
       router.refresh();
     } catch (err: any) {
       console.error("[SubadminLogin] Error:", err);
-      setError(ui.error);
+      setError(typeof err?.message === "string" && err.message.trim() ? err.message : ui.error);
     } finally {
       setLoading(false);
     }

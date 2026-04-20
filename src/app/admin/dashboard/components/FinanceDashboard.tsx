@@ -8,6 +8,7 @@ import {
   Search, Download, DollarSign, TrendingUp, TrendingDown, 
   Wallet, CreditCard, AlertCircle, CheckCircle, Clock, Filter
 } from "lucide-react";
+import { getAdminBearerToken } from "./admin-dashboard-api";
 
 interface Payment {
   id: number;
@@ -49,17 +50,7 @@ export default function FinanceDashboard() {
     loadUsers();
   }, []);
 
-  const getToken = () => {
-    if (typeof window === "undefined") return null;
-    const stored = localStorage.getItem("decor_current_user");
-    if (!stored) return null;
-    try {
-      const parsed = JSON.parse(stored);
-      return parsed?.token || null;
-    } catch {
-      return null;
-    }
-  };
+  const getToken = () => getAdminBearerToken();
 
   const loadPayments = async () => {
     try {
