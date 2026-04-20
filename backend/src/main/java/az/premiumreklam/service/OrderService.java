@@ -123,6 +123,14 @@ public class OrderService {
         order.setIsCredit(total.compareTo(BigDecimal.ZERO) > 0);
 
         Order saved = orderRepository.save(order);
+
+        // Yeni sifarişin ödənilməmiş hissəsi istifadəçinin ümumi borcuna əlavə olunur.
+        if (total.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal currentDebt = user.getTotalDebt() == null ? BigDecimal.ZERO : user.getTotalDebt();
+            user.setTotalDebt(currentDebt.add(total));
+            userRepository.save(user);
+        }
+
         // Yenidən yüklə ki, items (+ item.product) sessiya içində tam init olsun; JSON/DTO xəta verməsin
         return orderRepository.findWithDetailsById(saved.getId())
                 .orElseThrow(() -> new RuntimeException("Sifariş saxlanılmadı"));

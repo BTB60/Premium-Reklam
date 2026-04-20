@@ -75,7 +75,7 @@ export function Header({ variant = "public", userName, notifications: propNotifi
     const all = uid ? notifications.getByUserId(uid) : [];
     const unread = all.filter(n => !n.isRead);
     return {
-      userNotifications: all.slice(0, 5),
+      userNotifications: unread.slice(0, 5),
       unreadCount: unread.length || propNotifications
     };
   }, [variant, propNotifications]);
@@ -104,8 +104,9 @@ export function Header({ variant = "public", userName, notifications: propNotifi
     notifications.markAsRead(id);
     const uid = getSessionUserId();
     const all = uid ? notifications.getByUserId(uid) : [];
-    setUserNotifications(all.slice(0, 5));
-    setUnreadCount(all.filter(n => !n.isRead).length);
+    const unread = all.filter(n => !n.isRead);
+    setUserNotifications(unread.slice(0, 5));
+    setUnreadCount(unread.length);
   };
 
   return (

@@ -98,16 +98,15 @@ export default function NotificationsPage() {
 
   const markAsRead = (id: string) => {
     notificationsStore.markAsRead(id);
-    setNotifications((prev) =>
-      prev.map((n: Notification) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    // Oxunan bildirişi siyahıdan çıxarırıq ki yenidən görünməsin.
+    setNotifications((prev) => prev.filter((n: Notification) => n.id !== id));
   };
 
   const markAllAsRead = () => {
     notifications.forEach((n: Notification) => {
       if (!n.isRead) notificationsStore.markAsRead(n.id);
     });
-    setNotifications((prev) => prev.map((n: Notification) => ({ ...n, isRead: true })));
+    setNotifications([]);
   };
 
   const deleteNotification = (id: string) => {
