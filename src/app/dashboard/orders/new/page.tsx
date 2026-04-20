@@ -18,8 +18,9 @@ import {
   FileUp,
   MessageSquare
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { productApi } from "@/lib/authApi";
 
 // Step Indicator
 function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
@@ -57,23 +58,45 @@ function StepIndicator({ currentStep, totalSteps }: { currentStep: number; total
   );
 }
 
-// Product Selection Step
-function ProductSelection({ onSelect, selected }: { onSelect: (product: any) => void; selected: any }) {
-  const products = [
-    { id: 1, name: "Premium Pərdə", description: "Yüksək keyfiyyətli parça", price: 45, category: "Pərdə" },
-    { id: 2, name: "Klasik Jalüz", description: "Aluminium jalüz sistem", price: 35, category: "Jalüz" },
-    { id: 3, name: "Wallpaper", description: "3D effektli divar kağızı", price: 25, category: "Wallpaper" },
-    { id: 4, name: "Lamba Aksesuar", description: "Modern dizayn", price: 85, category: "Aksesuar" },
-    { id: 5, name: "Parquet", description: "Taxta döşəmə", price: 65, category: "Döşəmə" },
-    { id: 6, name: "Plintus", description: "Boyaqlı plintus", price: 12, category: "Aksesuar" },
-  ];
+type CatalogItem = { id: number; name: string; description: string; price: number; category: string };
 
-  const categories = ["Hamısı", "Pərdə", "Jalüz", "Wallpaper", "Döşəmə", "Aksesuar"];
+// Product Selection Step — yalnız backend kataloqu (admin əlavələri)
+function ProductSelection({
+  products,
+  loading,
+  onSelect,
+  selected,
+}: {
+  products: CatalogItem[];
+  loading: boolean;
+  onSelect: (product: CatalogItem) => void;
+  selected: CatalogItem | null;
+}) {
+  const categories = [
+    "Hamısı",
+    ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort(),
+  ];
   const [activeCategory, setActiveCategory] = useState("Hamısı");
 
-  const filteredProducts = activeCategory === "Hamısı" 
-    ? products 
-    : products.filter(p => p.category === activeCategory);
+  const filteredProducts =
+    activeCategory === "Hamısı"
+      ? products
+      : products.filter((p) => p.category === activeCategory);
+
+  if (loading) {
+    return (
+      <Card className="p-8 text-center text-[#6B7280]">Məhsullar yüklənir...</Card>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <Card className="p-6 text-center text-[#6B7280]">
+        Hal-hazırda kataloqda məhsul yoxdur. Yalnız admin paneldə əlavə olunan məhsullar burada
+        görünür.
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -272,7 +295,7 @@ function PriceSummary({ product, sizes, totalArea, totalPrice, notes, files }: {
           </div>
           <div className="flex items-center justify-between py-2 border-b border-[#E5E7EB]">
             <span className="text-[#6B7280]">Vahid Qiymət</span>
-            <span className="font-medium text-[#1F2937]">{product?.price} AZN/m²</span>
+            <span className="font-medium text-[#1F2937]">{product?.price ?? 0} AZN/m²</span>
           </div>
           <div className="flex items-center justify-between py-2 border-b border-[#E5E7EB]">
             <span className="text-[#6B7280]">Ümumi Sahə</span>
@@ -338,10 +361,37 @@ function SuccessStep() {
 
 export default function NewOrderPage() {
   const [step, setStep] = useState(1);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<CatalogItem | null>(null);
+  const [catalogProducts, setCatalogProducts] = useState<CatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [sizes, setSizes] = useState([{ width: 0, height: 0 }]);
   const [files, setFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setCatalogLoading(true);
+      try {
+        const list = await productApi.getActiveCatalog();
+        const mapped: CatalogItem[] = list.map((p) => ({
+          id: typeof p.id === "number" ? p.id : Number(p.id),
+          name: p.name,
+          description: p.description || "",
+          price: Number(p.salePrice) || 0,
+          category: (p.category || "Digər").trim() || "Digər",
+        }));
+        if (!cancelled) setCatalogProducts(mapped);
+      } catch {
+        if (!cancelled) setCatalogProducts([]);
+      } finally {
+        if (!cancelled) setCatalogLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totalSteps = 5;
 
@@ -367,7 +417,7 @@ export default function NewOrderPage() {
     setSizes(newSizes);
   };
 
-  const totalArea = sizes.reduce((acc, size) => acc + (size.width * size.height), 0);
+  const totalArea = sizes.reduce((acc, size) => acc + size.width * size.height, 0);
   const totalPrice = selectedProduct ? totalArea * selectedProduct.price : 0;
 
   const stepTitles = ["", "Məhsul Seç", "Ölçü Əlavə Et", "Fayl & Qeyd", "Qiyməti Yoxla", "Tamamlandı"];
@@ -408,12 +458,14 @@ export default function NewOrderPage() {
             transition={{ duration: 0.3 }}
           >
             {step === 1 && (
-              <ProductSelection 
+              <ProductSelection
+                products={catalogProducts}
+                loading={catalogLoading}
                 onSelect={(product) => {
                   setSelectedProduct(product);
                   handleNext();
-                }} 
-                selected={selectedProduct} 
+                }}
+                selected={selectedProduct}
               />
             )}
             

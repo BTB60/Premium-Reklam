@@ -607,6 +607,12 @@ export const productApi = {
       method: "DELETE",
     });
   },
+
+  /** Yalnız backend DB-dəki aktiv məhsullar (admin/subadmin əlavə etdiyi kataloq). */
+  async getActiveCatalog(): Promise<Product[]> {
+    const all = await this.getAll();
+    return all.filter((p) => String(p.status ?? "").toUpperCase() === "ACTIVE");
+  },
 };
 
 export interface OrderSummary {

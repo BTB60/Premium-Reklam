@@ -80,7 +80,7 @@ export default function DashboardPage() {
       
       const [ordersResponse, productsData] = await Promise.all([
         orderApi.getMyOrders(),
-        productApi.getAll(),
+        productApi.getActiveCatalog(),
       ]);
       const ordersData = ordersResponse as any;
       const orders = ordersData.orders || [];
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       };
       
       setOrderSummary(summary);
-      setProducts(productsData.filter((p: Product) => p.status === "ACTIVE") || []);
+      setProducts(productsData);
     } catch (error) {
       console.error("Data load error:", error);
       setUserOrders([]);

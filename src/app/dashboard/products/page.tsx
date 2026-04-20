@@ -20,8 +20,8 @@ export default function ProductsPage() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const data = await productApi.getAll();
-      setProducts(data.filter((p) => p.status === "ACTIVE") || []);
+      const data = await productApi.getActiveCatalog();
+      setProducts(data);
     } catch (error) {
       console.error("Load products error:", error);
     } finally {

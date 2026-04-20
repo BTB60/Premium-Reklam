@@ -1,8 +1,8 @@
 // src/lib/authApi/products.ts
-import { Product } from './types';
-import { saveWithFallback } from './storage';
-import { products as mockProducts } from '../db/products';
-import { BASE_URL } from './config';
+import { Product } from "./types";
+import { saveWithFallback } from "./storage";
+import { products as mockProducts } from "../db/products";
+import { BASE_URL, getToken } from "./config";
 
 export const productApi = {
   async create(product: Partial<Product>): Promise<Product> {
@@ -12,7 +12,7 @@ export const productApi = {
       category: product.category?.trim() || "Banner",
       description: product.description?.trim() || "",
       unit: (() => {
-        const u = (product.unit || "M2").toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const u = (product.unit || "M2").toString().toUpperCase().replace(/[^A-Z0-9]/g, "");
         if (u === "M2" || u === "M²" || u === "METERSQUARED") return "M2";
         if (u === "PIECE" || u === "EDEd" || u === "PCS") return "PIECE";
         if (u === "METER" || u === "METR" || u === "LINEARMETER") return "METER";
@@ -30,18 +30,31 @@ export const productApi = {
       height: product.height !== undefined ? Number(product.height) : null,
     };
 
-    return saveWithFallback('/products', backendPayload, (data) => {
-      // Фоллбэк: products.create() возвращает Product
-      return mockProducts.create({ 
-        ...product, 
-        id: undefined, 
-        createdAt: undefined, 
-        updatedAt: undefined 
+    return saveWithFallback("/products", backendPayload, (data) => {
+      return mockProducts.create({
+        ...product,
+        id: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
       });
     });
   },
 
   async getAll(): Promise<Product[]> {
-    return saveWithFallback('/products', null, () => mockProducts.getAll());
-  }
+    try {
+      const token = getToken();
+      const res = await fetch(`${BASE_URL}/products`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const text = await res.text();
+      if (!res.ok || text.trim().startsWith("<")) return [];
+      const data = JSON.parse(text);
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  },
 };

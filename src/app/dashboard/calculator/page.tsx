@@ -3,13 +3,34 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { auth, products, type User, type Product } from "@/lib/db";
+import { auth, type User, type Product } from "@/lib/db";
+import { productApi, type Product as ApiProduct } from "@/lib/authApi";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { PriceCalculator } from "@/components/user/PriceCalculator";
 import { ArrowLeft, Calculator } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+
+function mapApiProductToCalculator(p: ApiProduct): Product {
+  const raw = String(p.unit ?? "M2").toUpperCase();
+  let unit: Product["unit"] = "ədəd";
+  if (raw === "M2" || raw === "M²" || raw.includes("M2")) unit = "m²";
+  else if (raw === "METER" || raw === "METR" || raw === "LINEARMETER") unit = "metr";
+
+  return {
+    id: String(p.id),
+    name: p.name,
+    description: p.description ?? "",
+    category: p.category ?? "",
+    basePrice: Number(p.salePrice) || 0,
+    unit,
+    minOrder: 1,
+    isActive: String(p.status ?? "").toUpperCase() === "ACTIVE",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 export default function CalculatorPage() {
   const router = useRouter();
@@ -24,8 +45,16 @@ export default function CalculatorPage() {
       return;
     }
     setUser(currentUser);
-    setAvailableProducts(products.getActive());
-    setLoading(false);
+    void (async () => {
+      try {
+        const list = await productApi.getActiveCatalog();
+        setAvailableProducts(list.map(mapApiProductToCalculator));
+      } catch {
+        setAvailableProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
   if (loading) {

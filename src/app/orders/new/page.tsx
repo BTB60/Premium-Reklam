@@ -27,7 +27,7 @@ import {
   getDiscountMessage,
   type User 
 } from "@/lib/db";
-import { authApi, orderApi, type UserData } from "@/lib/authApi";
+import { authApi, orderApi, productApi, type UserData } from "@/lib/authApi";
 
 interface SizeItem {
   id: string;
@@ -45,13 +45,7 @@ interface OrderItem {
   sizes: SizeItem[];
 }
 
-const PRODUCTS = [
-  { id: "banner", name: "Banner", unitPrice: 5 },
-  { id: "vinyl", name: "Vinil", unitPrice: 8 },
-  { id: "poster", name: "Poster", unitPrice: 3 },
-  { id: "canvas", name: "Kətan", unitPrice: 12 },
-  { id: "oracal", name: "Oracal", unitPrice: 6 },
-];
+type CatalogRow = { id: string; name: string; unitPrice: number };
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -66,10 +60,11 @@ export default function NewOrderPage() {
     discountRate: 0 
   });
   
-  // Form state
-  const [selectedProduct, setSelectedProduct] = useState(PRODUCTS[0]);
+  // Form state — məhsullar yalnız backend kataloqundan (admin)
+  const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<CatalogRow | null>(null);
   const [sizes, setSizes] = useState<SizeItem[]>([
-    { id: "1", width: 1.8, height: 1.8, area: 3.24, basePrice: 16.2, finalPrice: 16.2 }
+    { id: "1", width: 1.8, height: 1.8, area: 3.24, basePrice: 16.2, finalPrice: 16.2 },
   ]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "debt">("cash");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -87,7 +82,10 @@ export default function NewOrderPage() {
 
     void (async () => {
       try {
-        const summary = await orderApi.getMySummary();
+        const [summary, plist] = await Promise.all([
+          orderApi.getMySummary(),
+          productApi.getActiveCatalog(),
+        ]);
         const totalSpent = Number(summary.totalAmount || 0);
         setPriorOrderTotal(totalSpent);
         const discount = calculateDiscount(totalSpent);
@@ -96,6 +94,23 @@ export default function NewOrderPage() {
           discountTier: discount.tier,
           discountRate: discount.rate,
         });
+        const rows: CatalogRow[] = plist.map((p) => ({
+          id: String(p.id),
+          name: p.name,
+          unitPrice: Number(p.salePrice) || 0,
+        }));
+        setCatalog(rows);
+        if (rows.length > 0) {
+          const first = rows[0];
+          setSelectedProduct(first);
+          setSizes((prev) =>
+            prev.map((s) => ({
+              ...s,
+              basePrice: s.area * first.unitPrice,
+              finalPrice: s.area * first.unitPrice,
+            })),
+          );
+        }
       } catch {
         setPriorOrderTotal(0);
         setMonthlyStats({
@@ -103,6 +118,8 @@ export default function NewOrderPage() {
           discountTier: "none",
           discountRate: 0,
         });
+        setCatalog([]);
+        setSelectedProduct(null);
       } finally {
         setLoading(false);
       }
@@ -114,7 +131,8 @@ export default function NewOrderPage() {
   };
 
   const calculatePrice = (area: number) => {
-    return area * selectedProduct.unitPrice;
+    const up = selectedProduct?.unitPrice ?? 0;
+    return area * up;
   };
 
   const updateSize = (id: string, field: "width" | "height", value: number) => {
@@ -132,13 +150,15 @@ export default function NewOrderPage() {
   };
 
   const addSize = () => {
+    if (!selectedProduct) return;
+    const up = selectedProduct.unitPrice;
     const newSize: SizeItem = {
       id: Date.now().toString(),
       width: 1,
       height: 1,
       area: 1,
-      basePrice: selectedProduct.unitPrice,
-      finalPrice: selectedProduct.unitPrice
+      basePrice: up,
+      finalPrice: up,
     };
     setSizes([...sizes, newSize]);
   };
@@ -181,10 +201,10 @@ export default function NewOrderPage() {
   const canUseDebt = Boolean(user && user.role === "ADMIN");
 
   const handleSubmit = async () => {
-    if (!user) return;
-    
+    if (!user || !selectedProduct) return;
+
     setSubmitting(true);
-    
+
     try {
       const orderItems = sizes.map((size) => ({
         productName: selectedProduct.name,
@@ -231,6 +251,37 @@ export default function NewOrderPage() {
 
   if (!user) return null;
 
+  if (!loading && catalog.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FB]">
+        <Header />
+        <main className="pt-20 pb-24 lg:pb-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-4 mb-8"
+            >
+              <Link href="/dashboard">
+                <Button variant="ghost" icon={<ArrowLeft className="w-5 h-5" />}>
+                  Geri
+                </Button>
+              </Link>
+              <h1 className="text-2xl font-bold text-[#1F2937]">Yeni sifariş</h1>
+            </motion.div>
+            <Card className="p-8 text-center text-[#6B7280]">
+              Kataloqda məhsul yoxdur. Yalnız admin paneldə əlavə olunan məhsullar göstərilir; məhsul
+              əlavə edildikdən sonra sifariş verə bilərsiniz.
+            </Card>
+          </div>
+        </main>
+        <MobileNav />
+      </div>
+    );
+  }
+
+  if (!selectedProduct) return null;
+
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
       <Header />
@@ -273,19 +324,21 @@ export default function NewOrderPage() {
                 <select
                   value={selectedProduct.id}
                   onChange={(e) => {
-                    const product = PRODUCTS.find(p => p.id === e.target.value)!;
+                    const product = catalog.find((p) => p.id === e.target.value);
+                    if (!product) return;
                     setSelectedProduct(product);
-                    // Recalculate prices
-                    setSizes(sizes.map(size => ({
+                    setSizes(sizes.map((size) => ({
                       ...size,
                       basePrice: size.area * product.unitPrice,
-                      finalPrice: size.area * product.unitPrice
+                      finalPrice: size.area * product.unitPrice,
                     })));
                   }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D90429] text-lg"
                 >
-                  {PRODUCTS.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                  {catalog.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </Card>
