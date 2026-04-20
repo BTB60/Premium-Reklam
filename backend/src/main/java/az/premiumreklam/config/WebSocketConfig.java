@@ -9,6 +9,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -17,8 +18,8 @@ import java.util.List;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
-    @Value("${app.cors.allowed-origin-patterns:https://premium-reklam.vercel.app,http://localhost:3000}")
-    private List<String> allowedOriginPatterns;
+    @Value("${app.cors.allowed-origin-patterns:https://premium-reklam.vercel.app,https://*.vercel.app,http://localhost:3000}")
+    private String allowedOriginPatternsRaw;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -29,6 +30,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        List<String> allowedOriginPatterns = Arrays.stream(allowedOriginPatternsRaw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .toList();
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(allowedOriginPatterns.toArray(String[]::new))
                 .withSockJS();

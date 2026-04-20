@@ -19,6 +19,29 @@ export type ClientPaymentRequestRow = {
   createdAt: string;
 };
 
+export type FinanceUserDebtRow = {
+  userId: number;
+  username: string;
+  fullName: string;
+  totalDebt: number;
+};
+
+export type FinanceTransactionType = "DEBIT" | "CREDIT";
+
+export type FinanceTransactionHistoryRow = {
+  id: number;
+  userId: number;
+  username: string;
+  fullName: string;
+  transactionType: FinanceTransactionType;
+  amount: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  performedBy?: string;
+  note?: string;
+  createdAt: string;
+};
+
 export async function submitClientPaymentRequest(amount: number): Promise<ClientPaymentRequestRow> {
   const res = await fetch(`${BASE_URL}/payment-requests`, {
     method: "POST",
@@ -76,4 +99,41 @@ export async function markAllInAppNotificationsRead(): Promise<number> {
   }
   const data = (await res.json()) as { updated?: number };
   return data.updated ?? 0;
+}
+
+export async function fetchFinanceDebts(): Promise<FinanceUserDebtRow[]> {
+  const res = await fetch(`${BASE_URL}/admin/finance/debts`, {
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? (data as FinanceUserDebtRow[]) : [];
+}
+
+export async function fetchFinanceTransactions(userId?: number): Promise<FinanceTransactionHistoryRow[]> {
+  const url = userId
+    ? `${BASE_URL}/admin/finance/transactions?userId=${userId}`
+    : `${BASE_URL}/admin/finance/transactions`;
+  const res = await fetch(url, { headers: { ...authHeaders() } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? (data as FinanceTransactionHistoryRow[]) : [];
+}
+
+export async function updateFinanceBalance(input: {
+  userId: number;
+  amount: number;
+  transactionType: FinanceTransactionType;
+  note?: string;
+}): Promise<FinanceTransactionHistoryRow> {
+  const res = await fetch(`${BASE_URL}/admin/finance/update-balance`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(err.message || "Balans yenilənmədi");
+  }
+  return res.json() as Promise<FinanceTransactionHistoryRow>;
 }

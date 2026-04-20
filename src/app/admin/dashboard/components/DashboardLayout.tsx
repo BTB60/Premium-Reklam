@@ -46,22 +46,22 @@ interface DashboardLayoutProps {
   onLogout: () => void;
 }
 
-const ALL_NAV_ITEMS: { id: ActiveTab; label: string; icon: any; permission?: keyof SubadminSession["permissions"]; adminOnly?: boolean }[] = [
-  { id: "dashboard", label: "Dashboard", icon: TrendingUp },
-  { id: "users", label: "İstifadəçilər", icon: Users, permission: "users" },
-  { id: "orders", label: "Sifarişlər", icon: Package, permission: "orders" },
-  { id: "shops", label: "Mağazalar", icon: Store, permission: "products" },
-  { id: "elan", label: "Elanlar", icon: Megaphone, adminOnly: true },
-  { id: "notifications", label: "Bildirişlər", icon: Bell, permission: "support" },
-  { id: "analytics", label: "Analytics", icon: BarChart3, permission: "analytics" },
-  { id: "products", label: "Məhsullar", icon: Store, permission: "products" },
-  { id: "finance", label: "Maliyyə", icon: Wallet, permission: "finance" },
-  { id: "inventory", label: "Anbar", icon: Boxes, permission: "inventory" },
-  { id: "workerTasks", label: "Tapşırıqlar", icon: ClipboardList, permission: "tasks" },
-  { id: "support", label: "Dəstək", icon: Headphones, permission: "support" },
-  { id: "settings", label: "Sistem Ayarları", icon: Settings, permission: "settings" },
-  { id: "auditLogs", label: "Audit Logs", icon: History, adminOnly: true },
-  { id: "accessSettings", label: "Giriş Ayarları", icon: Shield, adminOnly: true },
+const ALL_NAV_ITEMS: { id: ActiveTab; labelAz: string; labelEn: string; icon: any; permission?: keyof SubadminSession["permissions"]; adminOnly?: boolean }[] = [
+  { id: "dashboard", labelAz: "Dashboard", labelEn: "Dashboard", icon: TrendingUp },
+  { id: "users", labelAz: "İstifadəçilər", labelEn: "Users", icon: Users, permission: "users" },
+  { id: "orders", labelAz: "Sifarişlər", labelEn: "Orders", icon: Package, permission: "orders" },
+  { id: "shops", labelAz: "Mağazalar", labelEn: "Shops", icon: Store, permission: "products" },
+  { id: "elan", labelAz: "Elanlar", labelEn: "Announcements", icon: Megaphone, adminOnly: true },
+  { id: "notifications", labelAz: "Bildirişlər", labelEn: "Notifications", icon: Bell, permission: "support" },
+  { id: "analytics", labelAz: "Analitika", labelEn: "Analytics", icon: BarChart3, permission: "analytics" },
+  { id: "products", labelAz: "Məhsullar", labelEn: "Products", icon: Store, permission: "products" },
+  { id: "finance", labelAz: "Maliyyə", labelEn: "Finance", icon: Wallet, permission: "finance" },
+  { id: "inventory", labelAz: "Anbar", labelEn: "Inventory", icon: Boxes, permission: "inventory" },
+  { id: "workerTasks", labelAz: "Tapşırıqlar", labelEn: "Tasks", icon: ClipboardList, permission: "tasks" },
+  { id: "support", labelAz: "Dəstək", labelEn: "Support", icon: Headphones, permission: "support" },
+  { id: "settings", labelAz: "Sistem Ayarları", labelEn: "System Settings", icon: Settings, permission: "settings" },
+  { id: "auditLogs", labelAz: "Audit Jurnalı", labelEn: "Audit Logs", icon: History, adminOnly: true },
+  { id: "accessSettings", labelAz: "Giriş Ayarları", labelEn: "Access Settings", icon: Shield, adminOnly: true },
 ];
 
 function hasPermission(permissions: Record<string, PermissionLevel> | undefined, feature: string, level: PermissionLevel = "view"): boolean {
@@ -74,10 +74,30 @@ function hasPermission(permissions: Record<string, PermissionLevel> | undefined,
 
 export default function DashboardLayout({ user, subadminSession, activeTab, onTabChange, onLogout }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [lang, setLang] = useState<"az" | "en">("az");
+  const [lang, setLang] = useState<"az" | "en">(() => {
+    if (typeof window === "undefined") return "az";
+    const saved = localStorage.getItem("premium_admin_lang");
+    return saved === "en" ? "en" : "az";
+  });
 
   const isAdmin = user?.role === "ADMIN";
   const permissions = subadminSession?.permissions;
+  const ui = {
+    az: {
+      panelTitle: "Admin Panel",
+      logout: "Çıxış",
+      menu: "Menyu",
+      roleLabel: "Rol",
+      userLabel: "İstifadəçi",
+    },
+    en: {
+      panelTitle: "Admin Panel",
+      logout: "Logout",
+      menu: "Menu",
+      roleLabel: "Role",
+      userLabel: "User",
+    },
+  }[lang];
 
   const navItems = ALL_NAV_ITEMS.filter((item) => {
     if (isAdmin) return true;
@@ -101,19 +121,28 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 <Menu className="w-6 h-6" />
               </button>
               <Shield className="w-6 h-6 text-[#ff6600]" />
-              <span className="font-bold text-lg">Admin Panel</span>
+              <span className="font-bold text-lg">{ui.panelTitle}</span>
               <span className="text-xs text-gray-400">
-                {user?.role} {subadminSession && `(${subadminSession.login})`}
+                {ui.roleLabel}: {user?.role} {subadminSession && `(${subadminSession.login})`}
               </span>
             </div>
             <div className="flex items-center gap-4">
               <ServerNotificationsMarkAllButton className="hidden sm:inline text-[#ffb383] hover:text-[#ff6600]" />
-              <Button variant="ghost" size="sm" onClick={() => setLang(lang === "az" ? "en" : "az")} icon={<Key className="w-4 h-4" />}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  const nextLang = lang === "az" ? "en" : "az";
+                  setLang(nextLang);
+                  localStorage.setItem("premium_admin_lang", nextLang);
+                }}
+                icon={<Key className="w-4 h-4" />}
+              >
                 {lang.toUpperCase()}
               </Button>
-              <span className="text-gray-400 text-sm hidden sm:block">{user?.fullName}</span>
+              <span className="text-gray-400 text-sm hidden sm:block">{ui.userLabel}: {user?.fullName}</span>
               <Button variant="ghost" size="sm" onClick={onLogout} icon={<LogOut className="w-4 h-4" />}>
-                <span className="hidden sm:inline">Çıxış</span>
+                <span className="hidden sm:inline">{ui.logout}</span>
               </Button>
             </div>
           </div>
@@ -126,7 +155,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
         )}
         <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[var(--card-glass)] min-h-screen border-r border-[var(--border)] backdrop-blur-xl transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
           <div className="flex items-center justify-between p-4 lg:hidden">
-            <span className="font-bold text-lg">Menyu</span>
+            <span className="font-bold text-lg">{ui.menu}</span>
             <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -143,7 +172,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
                 }`}
               >
                 <item.icon className="w-5 h-5" />
-                <span className="text-sm">{item.label}</span>
+                <span className="text-sm">{lang === "az" ? item.labelAz : item.labelEn}</span>
               </button>
             ))}
           </nav>
@@ -153,7 +182,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
           <AnimatePresence mode="wait">
             {activeTab === "dashboard" && (
               <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <StatsCards />
+                <StatsCards onNavigate={onTabChange} />
               </motion.div>
             )}
             {activeTab === "users" && (

@@ -3,26 +3,31 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { StatusBadge } from "@/components/ui/StatusBadge";
 import { 
   Search, Download, DollarSign, TrendingUp, TrendingDown, 
-  Wallet, CreditCard, AlertCircle, CheckCircle, Clock, Filter
+  Wallet, CreditCard, AlertCircle, CheckCircle, Clock, X
 } from "lucide-react";
 import { getAdminBearerToken } from "./admin-dashboard-api";
 import {
   approveClientPaymentRequest,
+  fetchFinanceDebts,
+  fetchFinanceTransactions,
   fetchPendingClientPayments,
   rejectClientPaymentRequest,
+  updateFinanceBalance,
   type ClientPaymentRequestRow,
+  type FinanceTransactionHistoryRow,
+  type FinanceTransactionType,
+  type FinanceUserDebtRow,
 } from "@/lib/clientPaymentNotificationsApi";
 
 interface Payment {
   id: number;
-  orderId: number;
-  orderNumber: string;
-  userId: string;
-  userFullName: string;
-  userUsername: string;
+  orderId?: number;
+  orderNumber?: string;
+  userId?: string;
+  userFullName?: string;
+  userUsername?: string;
   amount: number;
   paidAmount: number;
   paymentMethod: "cash" | "card" | "transfer" | "other";
@@ -52,10 +57,19 @@ export default function FinanceDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [methodFilter, setMethodFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("all");
+  const [debts, setDebts] = useState<FinanceUserDebtRow[]>([]);
+  const [history, setHistory] = useState<FinanceTransactionHistoryRow[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [txUser, setTxUser] = useState<FinanceUserDebtRow | null>(null);
+  const [txAmount, setTxAmount] = useState("");
+  const [txNote, setTxNote] = useState("");
+  const [txType, setTxType] = useState<FinanceTransactionType>("CREDIT");
+  const [txSubmitting, setTxSubmitting] = useState(false);
 
   useEffect(() => {
     loadPayments();
     loadUsers();
+    void loadDebtsAndHistory();
     try {
       const sub = localStorage.getItem("premium_session_type") === "subadmin";
       if (sub) {
@@ -69,6 +83,19 @@ export default function FinanceDashboard() {
       setIsFullAdmin(false);
     }
   }, []);
+
+  const loadDebtsAndHistory = async () => {
+    try {
+      const [debtRows, historyRows] = await Promise.all([
+        fetchFinanceDebts(),
+        fetchFinanceTransactions(),
+      ]);
+      setDebts(debtRows);
+      setHistory(historyRows);
+    } catch (error) {
+      console.error("[Finance] load debts/history error:", error);
+    }
+  };
 
   const loadClientPayPending = async () => {
     try {
@@ -97,7 +124,29 @@ export default function FinanceDashboard() {
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : data?.payments || [];
-        setPayments(list);
+        const normalized: Payment[] = list.map((row: any) => {
+          const amount = Number(row?.amount ?? 0);
+          const methodRaw = String(row?.method ?? "").toLowerCase();
+          const method: Payment["paymentMethod"] =
+            methodRaw === "cash" || methodRaw === "card" || methodRaw === "transfer" ? methodRaw : "other";
+          const createdAt = row?.createdAt || new Date().toISOString();
+          return {
+            id: Number(row?.id ?? 0),
+            orderId: row?.order?.id ? Number(row.order.id) : undefined,
+            orderNumber: row?.order?.orderNumber || (row?.order?.id ? `#${row.order.id}` : undefined),
+            userId: row?.user?.id != null ? String(row.user.id) : undefined,
+            userFullName: row?.user?.fullName || undefined,
+            userUsername: row?.user?.username || undefined,
+            amount,
+            paidAmount: amount,
+            paymentMethod: method,
+            paymentStatus: "paid",
+            paymentDate: createdAt,
+            createdAt,
+            note: row?.note || undefined,
+          };
+        });
+        setPayments(normalized);
       }
     } catch (error) {
       console.error("[Finance] Load error:", error);
@@ -122,53 +171,38 @@ export default function FinanceDashboard() {
     }
   };
 
-  const updatePaymentStatus = async (paymentId: number, status: string) => {
-    try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/payments/${paymentId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ paymentStatus: status })
-      });
-      if (res.ok) {
-        loadPayments();
-      } else {
-        alert("Status yenilənmədi");
-      }
-    } catch (error) {
-      console.error("[Finance] Update error:", error);
-      alert("Xəta baş verdi");
-    }
+  const updatePaymentStatus = async (_paymentId: number, _status: string) => {};
+  const addPayment = async (_orderId: number, _amount: number, _method: string) => false;
+
+  const openTxModal = (user: FinanceUserDebtRow, type: FinanceTransactionType) => {
+    setTxUser(user);
+    setTxType(type);
+    setTxAmount("");
+    setTxNote("");
+    setModalOpen(true);
   };
 
-  const addPayment = async (orderId: number, amount: number, method: string) => {
+  const submitTx = async () => {
+    if (!txUser) return;
+    const amount = Number(txAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert("Məbləğ düzgün deyil");
+      return;
+    }
+    setTxSubmitting(true);
     try {
-      const token = getToken();
-      const res = await fetch(`${API_BASE}/payments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({
-          orderId,
-          amount,
-          paymentMethod: method,
-          paymentStatus: "paid",
-          paymentDate: new Date().toISOString()
-        })
+      await updateFinanceBalance({
+        userId: txUser.userId,
+        amount,
+        transactionType: txType,
+        note: txNote.trim() || undefined,
       });
-      if (res.ok) {
-        loadPayments();
-        return true;
-      }
-      return false;
+      setModalOpen(false);
+      await Promise.all([loadDebtsAndHistory(), loadClientPayPending()]);
     } catch (error) {
-      console.error("[Finance] Add payment error:", error);
-      return false;
+      alert(error instanceof Error ? error.message : "Əməliyyat alınmadı");
+    } finally {
+      setTxSubmitting(false);
     }
   };
 
@@ -177,9 +211,11 @@ export default function FinanceDashboard() {
       const user = users.find(u => u.id === String(p.userId));
       const matchesSearch = 
         p.id.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(p.orderNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         user?.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user?.username.toLowerCase().includes(searchQuery.toLowerCase());
+        user?.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(p.userFullName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(p.userUsername || "").toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
     }
     if (statusFilter !== "all" && p.paymentStatus !== statusFilter) return false;
@@ -197,12 +233,12 @@ export default function FinanceDashboard() {
 
   const stats = {
     totalRevenue: payments.filter(p => p.paymentStatus === "paid").reduce((sum, p) => sum + p.paidAmount, 0),
-    totalDebt: payments.reduce((sum, p) => sum + (p.amount - p.paidAmount), 0),
+    totalDebt: debts.reduce((sum, d) => sum + Number(d.totalDebt || 0), 0),
     pendingCount: payments.filter(p => p.paymentStatus === "pending").length,
     partialCount: payments.filter(p => p.paymentStatus === "partial").length,
     paidCount: payments.filter(p => p.paymentStatus === "paid").length,
-    avgPayment: payments.length > 0 
-      ? payments.reduce((sum, p) => sum + p.paidAmount, 0) / payments.filter(p => p.paidAmount > 0).length 
+    avgPayment: payments.filter(p => p.paidAmount > 0).length > 0
+      ? payments.reduce((sum, p) => sum + p.paidAmount, 0) / payments.filter(p => p.paidAmount > 0).length
       : 0,
   };
 
@@ -210,13 +246,14 @@ export default function FinanceDashboard() {
     const headers = ["ID", "Sifariş", "İstifadəçi", "Məbləğ", "Ödənilib", "Borc", "Status", "Tarix"];
     const rows = filteredPayments.map(p => {
       const user = users.find(u => u.id === String(p.userId));
+      const debt = Math.max(0, p.amount - p.paidAmount);
       return [
         p.id,
-        p.orderNumber,
-        user?.fullName || "-",
+        p.orderNumber || "-",
+        user?.fullName || p.userFullName || "-",
         p.amount.toFixed(2),
         p.paidAmount.toFixed(2),
-        (p.amount - p.paidAmount).toFixed(2),
+        debt.toFixed(2),
         p.paymentStatus,
         new Date(p.paymentDate || p.createdAt).toLocaleDateString("az-AZ")
       ];
@@ -309,6 +346,66 @@ export default function FinanceDashboard() {
           <p className="text-2xl font-bold text-[#1F2937]">{stats.paidCount}</p>
         </Card>
       </div>
+
+      <Card className="p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">Ümumi Borc Siyahısı</h2>
+          <span className="text-xs text-[var(--text-muted)]">Borca görə azalan sıra</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[var(--text-muted)] border-b border-[var(--border)]">
+                <th className="py-2 pr-2">Username</th>
+                <th className="py-2 pr-2">Ad Soyad</th>
+                <th className="py-2 pr-2">Ümumi Borc</th>
+                <th className="py-2">Əməliyyat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {debts.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-4 text-[var(--text-muted)]">
+                    Məlumat yoxdur
+                  </td>
+                </tr>
+              ) : (
+                debts.map((row) => (
+                  <tr key={row.userId} className="border-b border-[var(--border)]/60">
+                    <td className="py-2 pr-2 font-medium">@{row.username}</td>
+                    <td className="py-2 pr-2">{row.fullName}</td>
+                    <td className="py-2 pr-2">
+                      <span className={Number(row.totalDebt) > 0 ? "text-red-600 font-semibold" : "text-green-600 font-semibold"}>
+                        {Number(row.totalDebt).toFixed(2)} AZN
+                      </span>
+                    </td>
+                    <td className="py-2">
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-green-700 hover:bg-green-50"
+                          onClick={() => openTxModal(row, "CREDIT")}
+                        >
+                          Ödəniş Yaz
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-700 hover:bg-red-50"
+                          onClick={() => openTxModal(row, "DEBIT")}
+                        >
+                          Borc Artır
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {clientPayPending.length > 0 && (
         <Card className="p-4 mb-6 border-amber-200 bg-amber-50/50">
@@ -459,18 +556,18 @@ export default function FinanceDashboard() {
             ) : (
               filteredPayments.map((payment) => {
                 const user = users.find(u => u.id === String(payment.userId));
-                const debt = payment.amount - payment.paidAmount;
+                const debt = Math.max(0, payment.amount - payment.paidAmount);
                 
                 return (
                   <tr key={payment.id} className="border-t border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 font-medium">#{payment.id}</td>
                     <td className="py-3 px-4">
-                      <span className="text-sm text-[#6B7280]">{payment.orderNumber}</span>
+                      <span className="text-sm text-[#6B7280]">{payment.orderNumber || "-"}</span>
                     </td>
                     <td className="py-3 px-4">
                       <div>
-                        <p className="font-medium text-sm">{user?.fullName || "Naməlum"}</p>
-                        <p className="text-xs text-[#6B7280]">@{user?.username}</p>
+                        <p className="font-medium text-sm">{user?.fullName || payment.userFullName || "Naməlum"}</p>
+                        <p className="text-xs text-[#6B7280]">@{user?.username || payment.userUsername || "-"}</p>
                       </div>
                     </td>
                     <td className="py-3 px-4 font-bold text-[#1F2937]">
@@ -497,23 +594,16 @@ export default function FinanceDashboard() {
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <select
-                        value={payment.paymentStatus}
-                        onChange={(e) => updatePaymentStatus(payment.id, e.target.value)}
-                        className={`text-xs px-2 py-1 rounded border ${getStatusColor(payment.paymentStatus)}`}
-                      >
-                        <option value="pending">Gözləyir</option>
-                        <option value="partial">Qismən</option>
-                        <option value="paid">Ödənilib</option>
-                        <option value="refunded">Qaytarılıb</option>
-                      </select>
+                      <span className={`text-xs px-2 py-1 rounded border ${getStatusColor(payment.paymentStatus)}`}>
+                        {payment.paymentStatus === "paid" ? "Ödənilib" : payment.paymentStatus}
+                      </span>
                     </td>
                     <td className="py-3 px-4">
-                      {debt > 0 && payment.paymentStatus !== "refunded" && (
+                      {false && debt > 0 && payment.paymentStatus !== "refunded" && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => addPayment(payment.orderId, debt, "cash")}
+                          onClick={() => addPayment(payment.orderId || 0, debt, "cash")}
                           className="text-green-600 hover:bg-green-50"
                         >
                           <CreditCard className="w-4 h-4 mr-1" />
@@ -557,6 +647,93 @@ export default function FinanceDashboard() {
             </div>
           </div>
         </Card>
+      )}
+
+      <Card className="mt-6 p-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Transaction History</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[var(--text-muted)] border-b border-[var(--border)]">
+                <th className="py-2 pr-2">Tarix</th>
+                <th className="py-2 pr-2">İstifadəçi</th>
+                <th className="py-2 pr-2">Tip</th>
+                <th className="py-2 pr-2">Məbləğ</th>
+                <th className="py-2 pr-2">Əvvəl</th>
+                <th className="py-2 pr-2">Sonra</th>
+                <th className="py-2">Admin</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-4 text-[var(--text-muted)]">Tarixçə boşdur</td>
+                </tr>
+              ) : (
+                history.slice(0, 20).map((h) => (
+                  <tr key={h.id} className="border-b border-[var(--border)]/60">
+                    <td className="py-2 pr-2 text-[var(--text-muted)]">{new Date(h.createdAt).toLocaleString("az-AZ")}</td>
+                    <td className="py-2 pr-2">{h.fullName}</td>
+                    <td className="py-2 pr-2">
+                      <span className={h.transactionType === "DEBIT" ? "text-red-600" : "text-green-600"}>
+                        {h.transactionType}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-2 font-medium">{Number(h.amount).toFixed(2)} AZN</td>
+                    <td className="py-2 pr-2">{Number(h.balanceBefore).toFixed(2)} AZN</td>
+                    <td className="py-2 pr-2">{Number(h.balanceAfter).toFixed(2)} AZN</td>
+                    <td className="py-2 text-[var(--text-muted)]">{h.performedBy || "-"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {modalOpen && txUser && (
+        <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-[var(--text-primary)]">
+                {txType === "CREDIT" ? "Ödəniş Yaz" : "Borc Artır"} — @{txUser.username}
+              </h3>
+              <button type="button" onClick={() => setModalOpen(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-[var(--text-muted)]">Məbləğ (AZN)</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={txAmount}
+                  onChange={(e) => setTxAmount(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--text-muted)]">Qeyd (opsional)</label>
+                <input
+                  type="text"
+                  value={txNote}
+                  onChange={(e) => setTxNote(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)} disabled={txSubmitting}>
+                  Bağla
+                </Button>
+                <Button size="sm" onClick={submitTx} loading={txSubmitting}>
+                  Təsdiq et
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
