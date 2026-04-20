@@ -1,6 +1,6 @@
 package az.premiumreklam.controller;
 
-import az.premiumreklam.entity.Order;
+import az.premiumreklam.dto.order.OrderResponse;
 import az.premiumreklam.entity.Payment;
 import az.premiumreklam.service.PaymentService;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +32,7 @@ public class PaymentController {
             @RequestBody Map<String, Object> request) {
         try {
             BigDecimal amount = new BigDecimal(request.get("amount").toString());
-            Order order = paymentService.addPayment(orderId, amount);
-            return ResponseEntity.ok(order);
+            return ResponseEntity.ok(OrderResponse.fromEntity(paymentService.addPayment(orderId, amount)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

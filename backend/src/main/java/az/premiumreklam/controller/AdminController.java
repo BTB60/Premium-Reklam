@@ -1,10 +1,12 @@
 package az.premiumreklam.controller;
 
+import az.premiumreklam.dto.order.OrderResponse;
 import az.premiumreklam.entity.Order;
 import az.premiumreklam.entity.User;
 import az.premiumreklam.enums.UserRole;
 import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.UserRepository;
+import az.premiumreklam.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +17,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -24,6 +27,7 @@ public class AdminController {
 
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
+    private final OrderService orderService;
 
     @GetMapping("/dashboard")
     public Map<String, Object> getDashboardStats() {
@@ -83,7 +87,9 @@ public class AdminController {
     }
 
     @GetMapping("/orders")
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+    public List<OrderResponse> getAllOrders() {
+        return orderService.getAllOrders().stream()
+                .map(OrderResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 }

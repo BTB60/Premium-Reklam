@@ -122,7 +122,10 @@ public class OrderService {
         order.setRemainingAmount(total);
         order.setIsCredit(total.compareTo(BigDecimal.ZERO) > 0);
 
-        return orderRepository.save(order);
+        Order saved = orderRepository.save(order);
+        // Yenidən yüklə ki, items (+ item.product) sessiya içində tam init olsun; JSON/DTO xəta verməsin
+        return orderRepository.findWithDetailsById(saved.getId())
+                .orElseThrow(() -> new RuntimeException("Sifariş saxlanılmadı"));
     }
 
     @Transactional(readOnly = true)
@@ -130,12 +133,14 @@ public class OrderService {
         return orderRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public List<Order> getOrdersByUsername(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
         return orderRepository.findByUser_Id(user.getId());
     }
 
+    @Transactional(readOnly = true)
     public Order getOrderById(Long id) {
         return orderRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
@@ -143,9 +148,12 @@ public class OrderService {
 
     @Transactional
     public Order updateOrderStatus(Long id, OrderStatus status) {
-        Order order = getOrderById(id);
+        Order order = orderRepository.findWithDetailsById(id)
+                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
         order.setStatus(status);
-        return orderRepository.save(order);
+        orderRepository.save(order);
+        return orderRepository.findWithDetailsById(id)
+                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
     }
 
     @Transactional

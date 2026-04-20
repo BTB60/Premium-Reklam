@@ -29,7 +29,7 @@ public class PaymentService {
 
     @Transactional
     public Order addPayment(Long orderId, BigDecimal amount) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderRepository.findWithDetailsById(orderId)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
 
         if (order.getPaymentStatus() == PaymentStatus.CANCELLED) {
@@ -56,6 +56,8 @@ public class PaymentService {
         order.setRemainingAmount(newRemainingAmount);
         order.setPaymentStatus(newStatus);
 
-        return orderRepository.save(order);
+        orderRepository.save(order);
+        return orderRepository.findWithDetailsById(orderId)
+                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
     }
 }
