@@ -53,34 +53,34 @@ export default function DashboardPage() {
           localStorage.removeItem("premium_session_type");
         }
       }
-      
-      if (sessionType === "admin" || !sessionType) {
-        if (adminSession) {
-          try {
-            const parsed = JSON.parse(adminSession);
-            console.log("[Dashboard] Parsed admin session:", parsed);
-            if (parsed?.token && parsed?.role) {
-              if (parsed.role === "ADMIN") {
-                console.log("[Dashboard] Loading as ADMIN:", parsed.fullName);
-                setUser(parsed);
-                setLoading(false);
-                return;
-              } else {
-                console.warn("[Dashboard] Admin session has wrong role:", parsed.role);
-              }
+
+      // Admin: must run even when premium_session_type was "subadmin" but invalid / cleared above
+      if (adminSession) {
+        try {
+          const parsed = JSON.parse(adminSession);
+          console.log("[Dashboard] Parsed admin session:", parsed);
+          if (parsed?.token && parsed?.role) {
+            if (parsed.role === "ADMIN") {
+              console.log("[Dashboard] Loading as ADMIN:", parsed.fullName);
+              setUser(parsed);
+              setLoading(false);
+              return;
             }
-          } catch (e) {
-            console.error("[Dashboard] Admin parse error:", e);
-            localStorage.removeItem("decor_current_user");
-            localStorage.removeItem("premium_session_type");
+            console.warn("[Dashboard] Admin session has wrong role:", parsed.role);
           }
+        } catch (e) {
+          console.error("[Dashboard] Admin parse error:", e);
+          localStorage.removeItem("decor_current_user");
+          localStorage.removeItem("premium_session_type");
         }
       }
 
       console.warn("[Dashboard] No valid session, redirecting to login");
+      setLoading(false);
       router.push("/admin/login");
     } catch (error) {
       console.error("[Dashboard] Init error:", error);
+      setLoading(false);
       router.push("/admin/login");
     }
   }, [router]);
