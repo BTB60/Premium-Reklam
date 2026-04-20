@@ -33,14 +33,14 @@ export function Input({
   return (
     <div className={cn("w-full", className)}>
       {label && (
-        <label className="block text-sm font-medium text-[#1F2937] mb-2">
+        <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
           {label}
-          {required && <span className="text-[#D90429] ml-1">*</span>}
+          {required && <span className="text-[#ff6600] ml-1">*</span>}
         </label>
       )}
       <div className="relative">
         {icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280]">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
             {icon}
           </div>
         )}
@@ -55,11 +55,11 @@ export function Input({
             "focus:outline-none focus:ring-0",
             icon && "pl-12",
             error
-              ? "border-[#DC2626] focus:border-[#DC2626]"
+              ? "border-[#DC2626] focus:border-[#DC2626] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.1)]"
               : success
-              ? "border-[#16A34A] focus:border-[#16A34A]"
-              : "border-[#E5E7EB] focus:border-[#D90429]",
-            disabled && "bg-gray-50 cursor-not-allowed"
+              ? "border-[#16A34A] focus:border-[#16A34A] focus:shadow-[0_0_0_4px_rgba(22,163,74,0.1)]"
+              : "border-[var(--border)] bg-white/85 focus:border-[#ff6600] focus:shadow-[0_0_0_4px_rgba(255,102,0,0.16)]",
+            disabled && "bg-gray-50 cursor-not-allowed opacity-70"
           )}
         />
         {success && !error && (
@@ -103,9 +103,9 @@ export function TextArea({
   return (
     <div className={cn("w-full", className)}>
       {label && (
-        <label className="block text-sm font-medium text-[#1F2937] mb-2">
+        <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
           {label}
-          {required && <span className="text-[#D90429] ml-1">*</span>}
+          {required && <span className="text-[#ff6600] ml-1">*</span>}
         </label>
       )}
       <textarea
@@ -118,9 +118,9 @@ export function TextArea({
           "w-full rounded-[14px] border px-4 py-3 text-base transition-all duration-300 resize-none",
           "focus:outline-none focus:ring-0",
           error
-            ? "border-[#DC2626] focus:border-[#DC2626]"
-            : "border-[#E5E7EB] focus:border-[#D90429]",
-          disabled && "bg-gray-50 cursor-not-allowed"
+            ? "border-[#DC2626] focus:border-[#DC2626] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.1)]"
+            : "border-[var(--border)] bg-white/85 focus:border-[#ff6600] focus:shadow-[0_0_0_4px_rgba(255,102,0,0.16)]",
+          disabled && "bg-gray-50 cursor-not-allowed opacity-70"
         )}
       />
       {error && (
@@ -156,9 +156,9 @@ export function Select({
   return (
     <div className={cn("w-full", className)}>
       {label && (
-        <label className="block text-sm font-medium text-[#1F2937] mb-2">
+        <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
           {label}
-          {required && <span className="text-[#D90429] ml-1">*</span>}
+          {required && <span className="text-[#ff6600] ml-1">*</span>}
         </label>
       )}
       <select
@@ -167,11 +167,11 @@ export function Select({
         disabled={disabled}
         className={cn(
           "w-full h-12 rounded-[14px] border px-4 text-base transition-all duration-300",
-          "focus:outline-none focus:ring-0 appearance-none bg-white",
+          "focus:outline-none focus:ring-0 appearance-none bg-white/85",
           error
-            ? "border-[#DC2626] focus:border-[#DC2626]"
-            : "border-[#E5E7EB] focus:border-[#D90429]",
-          disabled && "bg-gray-50 cursor-not-allowed"
+            ? "border-[#DC2626] focus:border-[#DC2626] focus:shadow-[0_0_0_4px_rgba(220,38,38,0.1)]"
+            : "border-[var(--border)] focus:border-[#ff6600] focus:shadow-[0_0_0_4px_rgba(255,102,0,0.16)]",
+          disabled && "bg-gray-50 cursor-not-allowed opacity-70"
         )}
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
+import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNotificationsMarkAllButton";
 import { Button } from "@/components/ui/Button";
 import { 
   LogOut, RefreshCw, User, ShoppingBag, Package, Store, Headphones 
@@ -81,20 +83,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB]">
+    <div className="min-h-screen bg-[var(--background)]">
       {/* Header */}
-      <header className="bg-white border-b border-[#E5E7EB] px-6 py-4 sticky top-0 z-50">
+      <header className="bg-[var(--card-glass)] backdrop-blur-md border-b border-[var(--border)] px-6 py-4 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#D90429] to-[#EF476F] rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#ff6600] to-[#dc5500] shadow-[0_0_18px_rgba(255,102,0,0.3)] rounded-xl flex items-center justify-center">
               <span className="text-white font-bold text-lg">P</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-[#1F2937]">Premium Reklam</h1>
-              <p className="text-xs text-[#6B7280]">Xoş gəldin, {user.fullName}</p>
+              <h1 className="text-lg font-bold text-[var(--text-primary)]">Premium Reklam</h1>
+              <p className="text-xs text-[var(--text-muted)]">Xoş gəldin, {user.fullName}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ServerNotificationsMarkAllButton className="hidden sm:inline" />
             <NotificationBell />
             <Button variant="ghost" size="sm" onClick={handleRefresh} icon={<RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />}>
               <span className="sr-only">Yenilə</span>
@@ -107,7 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="bg-white border-b border-[#E5E7EB] px-6">
+      <nav className="bg-[var(--card-glass)] border-b border-[var(--border)] px-6">
         <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto">
           {TABS.map((tab) => {
             const isActive = pathname === tab.href || (tab.href === "/dashboard" && pathname === "/dashboard");
@@ -117,8 +120,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onClick={() => router.push(tab.href)}
                 className={`flex items-center gap-2 px-5 py-4 border-b-2 whitespace-nowrap text-sm font-medium transition-colors ${
                   isActive
-                    ? "border-[#D90429] text-[#D90429]"
-                    : "border-transparent text-[#6B7280] hover:text-[#1F2937]"
+                    ? "border-[#ff6600] text-[#ff6600]"
+                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -133,6 +136,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className="max-w-6xl mx-auto p-6">
         {children}
       </main>
+      <RealtimeNotificationsHost />
     </div>
   );
 }

@@ -57,6 +57,10 @@ public class User {
     @Column(name = "discount_percent", precision = 5, scale = 2, nullable = false)
     private BigDecimal discountPercent = BigDecimal.ZERO;
 
+    /** Ümumi borc (daxili valyuta, məs. AZN). Ödəniş təsdiqi ilə azalır. */
+    @Column(name = "total_debt", precision = 12, scale = 2, nullable = false)
+    private BigDecimal totalDebt = BigDecimal.ZERO;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -82,6 +86,7 @@ public class User {
         if (monthlyTarget == null) monthlyTarget = BigDecimal.valueOf(500);
         if (monthlySalesTotal == null) monthlySalesTotal = BigDecimal.ZERO;
         if (discountPercent == null) discountPercent = BigDecimal.ZERO;
+        if (totalDebt == null) totalDebt = BigDecimal.ZERO;
         if (role == null) role = UserRole.DECORCU;
         if (status == null) status = UserStatus.ACTIVE;
     }

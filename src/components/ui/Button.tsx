@@ -28,13 +28,17 @@ export function Button({
   type = "button",
   icon,
 }: ButtonProps) {
-  const baseStyles = "relative font-semibold transition-all duration-300 rounded-[14px] flex items-center justify-center gap-2 whitespace-nowrap";
+  const baseStyles =
+    "relative font-semibold transition-all duration-300 rounded-xl flex items-center justify-center gap-2 whitespace-nowrap hover:scale-[1.02] active:scale-[0.98]";
   
   const variants: Record<string, string> = {
-    primary: "bg-[#D90429] text-white hover:bg-[#b80323] hover:shadow-lg hover:shadow-[#D90429]/25 active:scale-95",
-    secondary: "bg-white text-[#D90429] border-2 border-[#D90429] hover:bg-[#D90429] hover:text-white active:scale-95",
-    ghost: "bg-transparent text-[#1F2937] hover:bg-gray-100 active:scale-95",
-    danger: "bg-[#DC2626] text-white hover:bg-[#b91c1c] active:scale-95",
+    primary:
+      "bg-gradient-to-br from-[#ff6600] to-[#d95500] text-white border border-[#ff7d2b] shadow-[0_10px_26px_rgba(255,102,0,0.34)] hover:shadow-[0_0_24px_rgba(255,102,0,0.58)]",
+    secondary:
+      "bg-white/80 text-[#131313] border border-[#ffd2b5] hover:border-[#ff6600] hover:text-[#ff6600] hover:bg-[#fff4ec] shadow-[0_8px_20px_rgba(15,23,42,0.08)]",
+    ghost: "bg-transparent text-[#1f2937] hover:bg-black/5",
+    danger:
+      "bg-[#111111] text-[#ff8b45] border border-[#2a2a2a] hover:bg-[#1b1b1b] hover:shadow-[0_0_16px_rgba(255,102,0,0.25)]",
   };
 
   const sizes: Record<string, string> = {

@@ -79,17 +79,17 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#1F2937] flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-[var(--background)] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md">
-        <Card className="p-8 border-2 border-[#D90429]">
+        <Card className="p-8 border-2 border-[#ff6600] shadow-[0_0_26px_rgba(255,102,0,0.2)]">
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#D90429]/10 rounded-full flex items-center justify-center">
-                <Shield className="w-6 h-6 text-[#D90429]" />
+              <div className="w-12 h-12 bg-[#ff6600]/12 rounded-full flex items-center justify-center border border-[#ffd1b4]">
+                <Shield className="w-6 h-6 text-[#ff6600]" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-[#1F2937]">{ui.title}</h1>
-                <p className="text-sm text-[#6B7280]">{ui.subtitle}</p>
+                <h1 className="text-xl font-bold text-[var(--text-primary)]">{ui.title}</h1>
+                <p className="text-sm text-[var(--text-muted)]">{ui.subtitle}</p>
               </div>
             </div>
             <Button
@@ -103,7 +103,7 @@ export default function AdminLoginPage() {
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               {error}
             </div>

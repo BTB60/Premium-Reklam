@@ -39,7 +39,9 @@ public class AdminController {
         long adminCount = users.stream().filter(u -> u.getRole() == UserRole.ADMIN).count();
         long kassirCount = users.stream().filter(u -> u.getRole() == UserRole.KASSIR).count();
         long muhasibCount = users.stream().filter(u -> u.getRole() == UserRole.MUHASIB).count();
-        long decorcuCount = users.stream().filter(u -> u.getRole() == UserRole.DECORCU).count();
+        long decorcuCount = users.stream()
+                .filter(u -> u.getRole() == UserRole.DECORCU || u.getRole() == UserRole.DECORATOR)
+                .count();
 
         stats.put("totalUsers", totalUsers);
         stats.put("adminCount", adminCount);
@@ -50,6 +52,10 @@ public class AdminController {
         // Sifariş statistikası
         List<Order> orders = orderRepository.findAll();
         int totalOrders = orders.size();
+        long pendingOrders = orders.stream()
+                .filter(o -> o.getStatus() != null)
+                .filter(o -> "PENDING".equalsIgnoreCase(String.valueOf(o.getStatus())))
+                .count();
         BigDecimal totalRevenue = orders.stream()
                 .map(Order::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -61,6 +67,7 @@ public class AdminController {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         stats.put("totalOrders", totalOrders);
+        stats.put("pendingOrders", pendingOrders);
         stats.put("totalRevenue", totalRevenue);
         stats.put("totalPaid", totalPaid);
         stats.put("totalRemaining", totalRemaining);

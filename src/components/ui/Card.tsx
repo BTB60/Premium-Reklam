@@ -15,11 +15,12 @@ export function Card({ children, className, hover = true, onClick }: CardProps) 
   return (
     <motion.div
       onClick={onClick}
-      whileHover={hover ? { y: -4, boxShadow: "0 20px 40px rgba(15, 23, 42, 0.1)" } : {}}
+      whileHover={hover ? { y: -3, boxShadow: "0 18px 38px rgba(15, 23, 42, 0.16)" } : {}}
       transition={{ duration: 0.3 }}
       className={cn(
-        "bg-white rounded-[18px] p-5 border border-[#E5E7EB]",
-        "shadow-[0_10px_30px_rgba(15,23,42,0.06)]",
+        "rounded-2xl p-5 border border-[var(--border)]",
+        "bg-[var(--card-glass)] backdrop-blur-xl",
+        "shadow-[var(--shadow-sm)]",
         onClick && "cursor-pointer",
         className
       )}
@@ -58,7 +59,7 @@ export function StatCard({ title, value, change, changeType = "neutral", icon, c
             </p>
           )}
         </div>
-        <div className="w-12 h-12 rounded-xl bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
+        <div className="w-12 h-12 rounded-xl bg-[#fff0e6] border border-[#ffd3b7] flex items-center justify-center text-[#ff6600] shadow-[0_0_14px_rgba(255,102,0,0.2)]">
           {icon}
         </div>
       </div>
@@ -124,7 +125,7 @@ export function ProductCard({ name, description, price, image, onSelect, selecte
       onClick={onSelect}
       className={cn(
         "cursor-pointer transition-all",
-        selected && "ring-2 ring-[#D90429]"
+        selected && "ring-2 ring-[#ff6600] shadow-[0_0_20px_rgba(255,102,0,0.34)]"
       )}
     >
       <div className="flex items-center gap-4">
@@ -132,7 +133,7 @@ export function ProductCard({ name, description, price, image, onSelect, selecte
           {image ? (
             <img src={image} alt={name} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-8 h-8 bg-[#D90429]/10 rounded-lg" />
+            <div className="w-8 h-8 bg-[#ff6600]/15 rounded-lg" />
           )}
         </div>
         <div className="flex-1">
@@ -140,7 +141,7 @@ export function ProductCard({ name, description, price, image, onSelect, selecte
           <p className="text-[#6B7280] text-sm line-clamp-1">{description}</p>
         </div>
         <div className="text-right">
-          <p className="font-bold text-[#D90429]">{price} AZN</p>
+          <p className="font-bold text-[#ff6600]">{price} AZN</p>
         </div>
       </div>
     </Card>

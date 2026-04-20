@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { motion, AnimatePresence } from "framer-motion";
 import ElanWidget from "@/components/ElanWidget"; // 🔥 ДОБАВЛЕНО
+import { submitClientPaymentRequest } from "@/lib/clientPaymentNotificationsApi";
 import { 
   LogOut, 
   Package, 
@@ -46,6 +47,8 @@ export default function DashboardPage() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentOrderId, setPaymentOrderId] = useState<string | number | null>(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [clientPayAmount, setClientPayAmount] = useState("");
+  const [clientPayBusy, setClientPayBusy] = useState(false);
 
   // New order form state
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -139,6 +142,24 @@ export default function DashboardPage() {
     setPaymentOrderId(orderId);
     setPaymentAmount("");
     setShowPaymentModal(true);
+  };
+
+  const submitClientPaymentNotification = async () => {
+    const amount = parseFloat(clientPayAmount.replace(",", "."));
+    if (Number.isNaN(amount) || amount <= 0) {
+      alert("Düzgün məbləğ daxil edin");
+      return;
+    }
+    setClientPayBusy(true);
+    try {
+      await submitClientPaymentRequest(amount);
+      setClientPayAmount("");
+      alert("Ödəniş bildirişi göndərildi. Admin təsdiqləyəndə borc yenilənəcək.");
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "Göndərilmədi");
+    } finally {
+      setClientPayBusy(false);
+    }
   };
 
   const handlePaymentSubmit = async () => {
@@ -344,6 +365,34 @@ export default function DashboardPage() {
                 </div>
               </Card>
             </div>
+
+            <Card className="p-5 mb-6 border border-dashed border-[#D90429]/40 bg-[#FFF5F5]">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-[#1F2937] flex items-center gap-2">
+                    <Banknote className="w-5 h-5 text-[#D90429]" />
+                    Ödəniş bildirişi
+                  </h3>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    Ödədiyiniz məbləği qeyd edin. Borc yalnız admin təsdiqlədikdən sonra azalır.
+                  </p>
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    placeholder="Məbləğ (AZN)"
+                    value={clientPayAmount}
+                    onChange={(e) => setClientPayAmount(e.target.value)}
+                  />
+                  <Button size="sm" onClick={() => void submitClientPaymentNotification()} disabled={clientPayBusy}>
+                    {clientPayBusy ? "…" : "Göndər"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
 
             {/* Monthly Summary */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">

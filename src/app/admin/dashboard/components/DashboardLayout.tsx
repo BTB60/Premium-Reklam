@@ -18,6 +18,8 @@ import ElanManager from "./ElanManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import AuditLogsPanel from "./AuditLogsPanel";
+import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
+import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNotificationsMarkAllButton";
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
@@ -90,21 +92,22 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB]">
-      <header className="bg-[#1F2937] text-white sticky top-0 z-50">
+    <div className="min-h-screen bg-[var(--background)]">
+      <header className="bg-[#0e0f13]/92 text-white sticky top-0 z-50 border-b border-[#2a2d34] backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-white/10 rounded-lg">
+              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden p-2 hover:bg-white/10 rounded-xl">
                 <Menu className="w-6 h-6" />
               </button>
-              <Shield className="w-6 h-6 text-[#D90429]" />
+              <Shield className="w-6 h-6 text-[#ff6600]" />
               <span className="font-bold text-lg">Admin Panel</span>
               <span className="text-xs text-gray-400">
                 {user?.role} {subadminSession && `(${subadminSession.login})`}
               </span>
             </div>
             <div className="flex items-center gap-4">
+              <ServerNotificationsMarkAllButton className="hidden sm:inline text-[#ffb383] hover:text-[#ff6600]" />
               <Button variant="ghost" size="sm" onClick={() => setLang(lang === "az" ? "en" : "az")} icon={<Key className="w-4 h-4" />}>
                 {lang.toUpperCase()}
               </Button>
@@ -121,7 +124,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
         )}
-        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white min-h-screen border-r border-gray-200 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <aside className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-[var(--card-glass)] min-h-screen border-r border-[var(--border)] backdrop-blur-xl transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
           <div className="flex items-center justify-between p-4 lg:hidden">
             <span className="font-bold text-lg">Menyu</span>
             <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg">
@@ -133,8 +136,10 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
               <button
                 key={item.id}
                 onClick={() => { onTabChange(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeTab === item.id ? "bg-[#D90429] text-white" : "text-[#6B7280] hover:bg-gray-100"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  activeTab === item.id
+                    ? "bg-gradient-to-r from-[#ff6600] to-[#de5800] text-white shadow-[0_0_18px_rgba(255,102,0,0.32)]"
+                    : "text-[var(--text-secondary)] hover:bg-[#fff1e9] hover:text-[#101010]"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
@@ -224,6 +229,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
           </AnimatePresence>
         </main>
       </div>
+      <RealtimeNotificationsHost />
     </div>
   );
 }

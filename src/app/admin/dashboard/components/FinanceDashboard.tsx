@@ -9,6 +9,12 @@ import {
   Wallet, CreditCard, AlertCircle, CheckCircle, Clock, Filter
 } from "lucide-react";
 import { getAdminBearerToken } from "./admin-dashboard-api";
+import {
+  approveClientPaymentRequest,
+  fetchPendingClientPayments,
+  rejectClientPaymentRequest,
+  type ClientPaymentRequestRow,
+} from "@/lib/clientPaymentNotificationsApi";
 
 interface Payment {
   id: number;
@@ -39,6 +45,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL
 export default function FinanceDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [clientPayPending, setClientPayPending] = useState<ClientPaymentRequestRow[]>([]);
+  const [isFullAdmin, setIsFullAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -48,6 +56,34 @@ export default function FinanceDashboard() {
   useEffect(() => {
     loadPayments();
     loadUsers();
+    try {
+      const sub = localStorage.getItem("premium_session_type") === "subadmin";
+      if (sub) {
+        setIsFullAdmin(false);
+      } else {
+        const raw = localStorage.getItem("decor_current_user");
+        const p = raw ? (JSON.parse(raw) as { role?: string }) : {};
+        setIsFullAdmin(p.role === "ADMIN");
+      }
+    } catch {
+      setIsFullAdmin(false);
+    }
+  }, []);
+
+  const loadClientPayPending = async () => {
+    try {
+      const list = await fetchPendingClientPayments();
+      setClientPayPending(list);
+    } catch {
+      setClientPayPending([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadClientPayPending();
+    const onRefresh = () => void loadClientPayPending();
+    window.addEventListener("premium:refresh-client-payment-requests", onRefresh);
+    return () => window.removeEventListener("premium:refresh-client-payment-requests", onRefresh);
   }, []);
 
   const getToken = () => getAdminBearerToken();
@@ -273,6 +309,81 @@ export default function FinanceDashboard() {
           <p className="text-2xl font-bold text-[#1F2937]">{stats.paidCount}</p>
         </Card>
       </div>
+
+      {clientPayPending.length > 0 && (
+        <Card className="p-4 mb-6 border-amber-200 bg-amber-50/50">
+          <h2 className="text-sm font-bold text-[#1F2937] mb-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+            Müştəri ödəniş bildirişləri (gözləyir)
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-[#6B7280] border-b border-amber-100">
+                  <th className="py-2 pr-2">ID</th>
+                  <th className="py-2 pr-2">Müştəri</th>
+                  <th className="py-2 pr-2">Məbləğ</th>
+                  <th className="py-2 pr-2">Tarix</th>
+                  <th className="py-2">Əməliyyat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientPayPending.map((row) => (
+                  <tr key={row.id} className="border-b border-amber-100/80">
+                    <td className="py-2 pr-2 font-medium">#{row.id}</td>
+                    <td className="py-2 pr-2">
+                      <div>{row.userFullName}</div>
+                      <div className="text-xs text-[#6B7280]">@{row.username}</div>
+                    </td>
+                    <td className="py-2 pr-2 font-semibold">{Number(row.amount).toFixed(2)} AZN</td>
+                    <td className="py-2 pr-2 text-[#6B7280]">
+                      {row.createdAt ? new Date(row.createdAt).toLocaleString("az-AZ") : "—"}
+                    </td>
+                    <td className="py-2">
+                      {isFullAdmin ? (
+                        <div className="flex gap-2 flex-wrap">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-green-700 hover:bg-green-50"
+                            onClick={async () => {
+                              try {
+                                await approveClientPaymentRequest(row.id);
+                                await loadClientPayPending();
+                              } catch (e) {
+                                alert(e instanceof Error ? e.message : "Xəta");
+                              }
+                            }}
+                          >
+                            Təsdiq
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-700 hover:bg-red-50"
+                            onClick={async () => {
+                              try {
+                                await rejectClientPaymentRequest(row.id);
+                                await loadClientPayPending();
+                              } catch (e) {
+                                alert(e instanceof Error ? e.message : "Xəta");
+                              }
+                            }}
+                          >
+                            Rədd
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[#6B7280]">Yalnız tam admin təsdiq edə bilər</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Фильтры */}
       <Card className="p-4 mb-6">

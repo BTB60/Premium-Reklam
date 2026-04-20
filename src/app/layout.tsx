@@ -1,8 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 import { WhatsAppChat } from "@/components/ui/WhatsAppChat";
+import { PageTransition } from "@/components/ui/PageTransition";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics, FacebookPixel } from "@/lib/analytics";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -65,7 +79,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#C41E3A",
+  themeColor: "#FF6600",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -78,10 +92,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="az" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className="antialiased font-sans bg-white text-gray-900">
+      <body className={`${inter.variable} ${montserrat.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300`}>
         <GoogleAnalytics />
         <FacebookPixel />
-        {children}
+        <PageTransition>{children}</PageTransition>
         <WhatsAppChat />
         <SpeedInsights />
       </body>

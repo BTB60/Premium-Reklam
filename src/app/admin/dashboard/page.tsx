@@ -106,8 +106,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1F2937] flex items-center justify-center">
-        <div className="text-white text-lg">Yüklənir...</div>
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center">
+        <div className="text-[var(--text-primary)] text-lg animate-pulse">Yüklənir...</div>
       </div>
     );
   }
