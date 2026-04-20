@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
+import { notifyVendorStoreRequestSubmitted } from "@/lib/vendorStoreNotifyApi";
 import { storeRequests, vendorStores, vendorProducts, type StoreRequest, type VendorStore, type VendorProduct } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -220,7 +221,7 @@ export default function MyStorePage() {
     setFormError("");
 
     try {
-      storeRequests.create({
+      const created = storeRequests.create({
         vendorId: user.id,
         vendorName: user.fullName,
         vendorPhone: user.phone || "",
@@ -230,6 +231,11 @@ export default function MyStorePage() {
         phone: formData.phone.trim(),
         email: formData.email.trim() || user.email || "",
         category: formData.categories,
+      });
+
+      void notifyVendorStoreRequestSubmitted({
+        requestId: created.id,
+        storeName: created.name,
       });
 
       const request = storeRequests.getByVendorId(user.id);

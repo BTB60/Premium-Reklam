@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { getAdminBearerToken, getAdminDashboardApiBase } from "./admin-dashboard-api";
 import type { DashboardShop, ShopUserOption } from "./shops-manager/types";
@@ -34,6 +34,8 @@ export default function ShopsManager() {
     status: "active",
   });
 
+  const loadShopsRef = useRef<() => Promise<void>>(async () => {});
+
   useEffect(() => {
     loadShops();
     loadUsers();
@@ -45,6 +47,14 @@ export default function ShopsManager() {
       loadShops();
     }
   }, [users.length]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void loadShopsRef.current();
+    };
+    window.addEventListener("premium:refresh-store-requests", onRefresh);
+    return () => window.removeEventListener("premium:refresh-store-requests", onRefresh);
+  }, []);
 
   const getToken = () => getAdminBearerToken();
 
@@ -101,6 +111,8 @@ export default function ShopsManager() {
       setLoading(false);
     }
   };
+
+  loadShopsRef.current = loadShops;
 
   const loadUsers = async () => {
     try {

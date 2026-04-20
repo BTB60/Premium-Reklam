@@ -1,4 +1,5 @@
 import { getAdminBearerToken } from "@/app/admin/dashboard/components/admin-dashboard-api";
+import { authApi } from "@/lib/authApi";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
@@ -7,6 +8,16 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 function authHeaders(): HeadersInit {
   const t = getAdminBearerToken();
   return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+/** Müştəri ödəniş sorğusu — JWT admin yox, `decor_current_user` sessiyasından gəlir */
+function userPaymentRequestHeaders(): Record<string, string> {
+  const u = authApi.getCurrentUser();
+  const t = u?.token;
+  if (!t || String(t).startsWith("mock.")) {
+    throw new Error("Ödəniş bildirişi üçün hesaba daxil olun (mock sessiya ilə serverə sorğu göndərilmir).");
+  }
+  return { Authorization: `Bearer ${t}` };
 }
 
 export type ClientPaymentRequestRow = {
@@ -62,12 +73,15 @@ export async function submitClientPaymentRequest(
 ): Promise<ClientPaymentRequestRow> {
   const res = await fetch(`${BASE_URL}/payment-requests`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: {
+      "Content-Type": "application/json",
+      ...userPaymentRequestHeaders(),
+    },
     body: JSON.stringify({ amount, receiptImageData, receiptFileName }),
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message || "Sorğu göndərilmədi");
+    throw new Error(err.message || `Sorğu göndərilmədi (${res.status})`);
   }
   return res.json() as Promise<ClientPaymentRequestRow>;
 }

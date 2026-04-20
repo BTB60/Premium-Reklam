@@ -137,6 +137,9 @@ export function RealtimeNotificationsHost() {
       if (p.event === "PAYMENT_PENDING") {
         window.dispatchEvent(new CustomEvent("premium:refresh-client-payment-requests"));
       }
+      if (p.event === "STORE_REQUEST_PENDING") {
+        window.dispatchEvent(new CustomEvent("premium:refresh-store-requests"));
+      }
       if (p.event === "PAYMENT_APPROVED" || p.event === "PAYMENT_ACCEPTED" || p.event === "DEBT_INCREASED") {
         window.dispatchEvent(new CustomEvent("premium:user-balance-updated"));
       }

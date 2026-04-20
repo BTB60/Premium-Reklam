@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -22,6 +25,18 @@ public class AnnouncementService {
             if (p.name().equalsIgnoreCase(input)) return p;
         }
         return Announcement.Priority.NORMAL;
+    }
+
+    /**
+     * @param raw {@code yyyy-MM-dd} və ya ISO {@code LocalDateTime} mətni; boş → {@code null}
+     */
+    private LocalDateTime parseExpiresAt(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        String s = raw.trim();
+        if (s.length() == 10 && s.charAt(4) == '-' && s.charAt(7) == '-') {
+            return LocalDate.parse(s).atTime(LocalTime.of(23, 59, 59));
+        }
+        return LocalDateTime.parse(s);
     }
 
     public List<Announcement> getAll() {
@@ -44,7 +59,7 @@ public class AnnouncementService {
                 .message(request.getMessage())
                 .isActive(request.getIsActive() != null ? request.getIsActive() : true)
                 .priority(parsePriority(request.getPriority()))
-                .expiresAt(request.getExpiresAt())
+                .expiresAt(parseExpiresAt(request.getExpiresAt()))
                 .createdBy("Admin")
                 .build();
         return announcementRepository.save(announcement);
@@ -57,7 +72,9 @@ public class AnnouncementService {
         if (request.getMessage() != null) announcement.setMessage(request.getMessage());
         if (request.getIsActive() != null) announcement.setIsActive(request.getIsActive());
         if (request.getPriority() != null) announcement.setPriority(parsePriority(request.getPriority()));
-        if (request.getExpiresAt() != null) announcement.setExpiresAt(request.getExpiresAt());
+        if (request.getExpiresAt() != null) {
+            announcement.setExpiresAt(parseExpiresAt(request.getExpiresAt()));
+        }
         return announcementRepository.save(announcement);
     }
 
