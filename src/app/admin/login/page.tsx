@@ -81,11 +81,11 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-[var(--background)] flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md">
-        <Card className="p-8 border-2 border-[#ff6600] shadow-[0_0_26px_rgba(255,102,0,0.2)]">
+        <Card className="p-8 border-2 border-[#C41E3A] shadow-[0_0_26px_rgba(196,30,58,0.22)]">
           <div className="flex justify-between items-start mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-[#ff6600]/12 rounded-full flex items-center justify-center border border-[#ffd1b4]">
-                <Shield className="w-6 h-6 text-[#ff6600]" />
+              <div className="w-12 h-12 bg-[#C41E3A]/12 rounded-full flex items-center justify-center border border-[#f5c3cc]">
+                <Shield className="w-6 h-6 text-[#C41E3A]" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-[var(--text-primary)]">{ui.title}</h1>
@@ -133,7 +133,7 @@ export default function AdminLoginPage() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full !bg-gradient-to-r !from-[#C41E3A] !to-[#8F1025] !text-white !border-[#B11A33] hover:!shadow-[0_0_24px_rgba(196,30,58,0.38)]"
               loading={loading}
               icon={<ArrowRight className="w-5 h-5" />}
             >

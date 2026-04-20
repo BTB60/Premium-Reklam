@@ -183,7 +183,7 @@ export default function LoginPage() {
             style={{
               width: "100%",
               padding: "14px",
-              background: loading ? "#9CA3AF" : "linear-gradient(135deg, #D90429 0%, #EF476F 100%)",
+              background: loading ? "#9CA3AF" : "linear-gradient(135deg, #C41E3A 0%, #8F1025 100%)",
               color: "white",
               border: "none",
               borderRadius: 10,
@@ -195,7 +195,7 @@ export default function LoginPage() {
             onMouseOver={(e) => {
               if (!loading) {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 10px 15px -3px rgba(217, 4, 41, 0.3)";
+                e.currentTarget.style.boxShadow = "0 10px 18px -3px rgba(196, 30, 58, 0.45)";
               }
             }}
             onMouseOut={(e) => {
