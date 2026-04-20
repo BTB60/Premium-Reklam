@@ -98,14 +98,19 @@ export default function NotificationsPage() {
 
   const markAsRead = (id: string) => {
     notificationsStore.markAsRead(id);
+    window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: [id] } }));
     // Oxunan bildirişi siyahıdan çıxarırıq ki yenidən görünməsin.
     setNotifications((prev) => prev.filter((n: Notification) => n.id !== id));
   };
 
   const markAllAsRead = () => {
+    const idsToDismiss = notifications.filter((n: Notification) => !n.isRead).map((n) => n.id);
     notifications.forEach((n: Notification) => {
       if (!n.isRead) notificationsStore.markAsRead(n.id);
     });
+    if (idsToDismiss.length > 0) {
+      window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: idsToDismiss } }));
+    }
     setNotifications([]);
   };
 

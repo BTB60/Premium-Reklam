@@ -15,6 +15,7 @@ public class OrderRequest {
     private String customerWhatsapp;
     private String customerAddress;
     private String note;
+    private String couponCode;
     private PaymentMethod paymentMethod;
     private BigDecimal discountPercent;
     private List<OrderItemRequest> items;

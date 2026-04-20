@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { orderApi, productApi, authApi, type Order, type Product, type OrderSummary } from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { OrderTimeline } from "@/components/ui/OrderTimeline";
+import { InvoiceGenerator } from "@/components/ui/InvoiceGenerator";
 import { motion, AnimatePresence } from "framer-motion";
 import ElanWidget from "@/components/ElanWidget"; // 🔥 ДОБАВЛЕНО
 import { submitClientPaymentRequest } from "@/lib/clientPaymentNotificationsApi";
@@ -29,7 +32,13 @@ import {
   Wallet,
   CreditCard,
   Banknote,
-  X
+  X,
+  Repeat,
+  Receipt,
+  MessageCircle,
+  Route,
+  Calculator,
+  ImagePlus
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -38,6 +47,8 @@ export default function DashboardPage() {
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [orderBlocked, setOrderBlocked] = useState(false);
+  const [nextWeeklyDueDate, setNextWeeklyDueDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "products" | "orders">("home");
@@ -48,6 +59,8 @@ export default function DashboardPage() {
   const [paymentOrderId, setPaymentOrderId] = useState<string | number | null>(null);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [clientPayAmount, setClientPayAmount] = useState("");
+  const [clientPayReceiptData, setClientPayReceiptData] = useState<string>("");
+  const [clientPayReceiptName, setClientPayReceiptName] = useState<string>("");
   const [clientPayBusy, setClientPayBusy] = useState(false);
 
   // New order form state
@@ -61,8 +74,11 @@ export default function DashboardPage() {
     customerPhone: "",
     customerAddress: "",
     note: "",
+    couponCode: "",
   });
   const [orderLoading, setOrderLoading] = useState(false);
+  const [selectedTimelineOrder, setSelectedTimelineOrder] = useState<any | null>(null);
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
@@ -129,11 +145,15 @@ export default function DashboardPage() {
       
       setOrderSummary(summary);
       setProducts(productsData);
+      setOrderBlocked(Boolean((profile as any)?.orderBlocked));
+      setNextWeeklyDueDate((profile as any)?.nextWeeklyDueDate ? String((profile as any).nextWeeklyDueDate) : null);
     } catch (error) {
       console.error("Data load error:", error);
       setUserOrders([]);
       setOrderSummary(null);
       setProducts([]);
+      setOrderBlocked(false);
+      setNextWeeklyDueDate(null);
     } finally {
       setLoading(false);
     }
@@ -164,8 +184,10 @@ export default function DashboardPage() {
     }
     setClientPayBusy(true);
     try {
-      await submitClientPaymentRequest(amount);
+      await submitClientPaymentRequest(amount, clientPayReceiptData || undefined, clientPayReceiptName || undefined);
       setClientPayAmount("");
+      setClientPayReceiptData("");
+      setClientPayReceiptName("");
       alert("Ödəniş bildirişi göndərildi. Admin təsdiqləyəndə borc yenilənəcək.");
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Göndərilmədi");
@@ -210,6 +232,10 @@ export default function DashboardPage() {
       alert("Zəhmət olmasa bütün məlumatları doldurun");
       return;
     }
+    if (orderBlocked) {
+      alert("Həftəlik ödəniş gecikməsi səbəbi ilə sifariş bloklanıb. Admin bloku açmalıdır.");
+      return;
+    }
 
     setOrderLoading(true);
     try {
@@ -225,6 +251,7 @@ export default function DashboardPage() {
         customerPhone: orderForm.customerPhone,
         customerAddress: orderForm.customerAddress,
         note: orderForm.note,
+        couponCode: orderForm.couponCode,
         discountPercent: 0,
         items: [{
           productId: selectedProduct.id,
@@ -249,6 +276,7 @@ export default function DashboardPage() {
         customerPhone: "",
         customerAddress: "",
         note: "",
+        couponCode: "",
       });
       loadData();
     } catch (error: any) {
@@ -256,6 +284,48 @@ export default function DashboardPage() {
     } finally {
       setOrderLoading(false);
     }
+  };
+
+  const normalizeOrderStatus = (status: string) => {
+    const s = String(status || "").toLowerCase();
+    if (["pending", "approved", "design", "printing", "production", "ready", "delivering", "completed", "cancelled"].includes(s)) {
+      return s as "pending" | "approved" | "design" | "printing" | "production" | "ready" | "delivering" | "completed" | "cancelled";
+    }
+    if (s === "təsdiq") return "pending";
+    if (s === "ödəniş") return "approved";
+    if (s === "istehsal") return "production";
+    if (s === "bitdi") return "completed";
+    return "pending";
+  };
+
+  const handleReorder = (order: any) => {
+    const firstItem = order?.items?.[0];
+    if (!firstItem) {
+      alert("Təkrar sifariş üçün məhsul məlumatı tapılmadı");
+      return;
+    }
+    const itemProductId = String(firstItem.productId || firstItem.product_id || "");
+    const byId = products.find((p) => String(p.id) === itemProductId);
+    const byName = products.find((p) => p.name === (firstItem.productName || firstItem.product_name));
+    const matched = byId || byName || null;
+    if (!matched) {
+      alert("Məhsul artıq katalogda yoxdur.");
+      return;
+    }
+
+    setSelectedProduct(matched);
+    setOrderForm({
+      width: String(firstItem.width || ""),
+      height: String(firstItem.height || ""),
+      quantity: String(firstItem.quantity || 1),
+      customerName: order.customerName || order.customer_name || "",
+      customerPhone: order.customerPhone || order.customer_phone || "",
+      customerAddress: order.customerAddress || order.customer_address || "",
+      note: `Təkrar sifariş: #${order.orderNumber || order.order_number || order.id}`,
+      couponCode: "",
+    });
+    setShowNewOrder(true);
+    setActiveTab("products");
   };
 
   if (loading) {
@@ -399,12 +469,46 @@ export default function DashboardPage() {
                     value={clientPayAmount}
                     onChange={(e) => setClientPayAmount(e.target.value)}
                   />
+                  <label className="inline-flex items-center gap-2 text-xs px-3 py-2 border border-gray-200 rounded-lg cursor-pointer bg-white">
+                    <ImagePlus className="w-4 h-4" />
+                    {clientPayReceiptName ? "Qəbz seçildi" : "Qəbz əlavə et"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setClientPayReceiptData(String(reader.result || ""));
+                          setClientPayReceiptName(file.name);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
                   <Button size="sm" onClick={() => void submitClientPaymentNotification()} disabled={clientPayBusy}>
                     {clientPayBusy ? "…" : "Göndər"}
                   </Button>
                 </div>
               </div>
+              {clientPayReceiptName && (
+                <p className="text-xs text-[#6B7280] mt-2">Qəbz: {clientPayReceiptName}</p>
+              )}
             </Card>
+
+            {orderBlocked && (
+              <Card className="p-4 mb-6 border border-red-200 bg-red-50">
+                <p className="text-sm font-semibold text-red-700">
+                  Sifariş müvəqqəti bloklanıb (həftəlik ödəniş gecikməsi).
+                </p>
+                <p className="text-xs text-red-600 mt-1">
+                  Yalnız admin bloku açdıqdan sonra yeni sifariş verə bilərsiniz.
+                  {nextWeeklyDueDate ? ` Son ödəniş tarixi: ${nextWeeklyDueDate}` : ""}
+                </p>
+              </Card>
+            )}
 
             {/* Monthly Summary */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -447,6 +551,71 @@ export default function DashboardPage() {
               </div>
             </Card>
 
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <Card className="p-4">
+                <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
+                  <Calculator className="w-4 h-4 text-[#D90429]" />
+                  Ödəniş Planı
+                </h3>
+                <p className="text-xs text-[#6B7280] mb-3">Borc 1 aya planlanır və həftəlik ödəniş göstərilir.</p>
+                <p className="text-xs text-[#6B7280] mt-2">1 ay (4 həftə)</p>
+                <p className="text-lg font-bold text-[#D90429] mt-1">
+                  {((orderSummary?.totalDebt || 0) / 4).toFixed(2)} AZN/həftə
+                </p>
+              </Card>
+
+              <Card className="p-4">
+                <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
+                  <Award className="w-4 h-4 text-[#16A34A]" />
+                  Bonus Proqresi
+                </h3>
+                <p className="text-xs text-[#6B7280] mb-2">Növbəti bonus həddi: 1000 AZN</p>
+                <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E]"
+                    style={{ width: `${Math.min(((orderSummary?.monthOrderAmount || 0) / 1000) * 100, 100)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-[#6B7280] mt-2">
+                  Qalan: {(Math.max(0, 1000 - (orderSummary?.monthOrderAmount || 0))).toFixed(2)} AZN
+                </p>
+              </Card>
+
+              <Card className="p-4">
+                <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
+                  <MessageCircle className="w-4 h-4 text-[#3B82F6]" />
+                  Sürətli Dəstək
+                </h3>
+                <p className="text-xs text-[#6B7280] mb-3">Sifarişə aid sualınız varsa dərhal yazın.</p>
+                <Link href="/dashboard/support">
+                  <Button size="sm" className="w-full">Dəstəyə Yaz</Button>
+                </Link>
+              </Card>
+            </div>
+
+            <Card className="p-5 mb-6">
+              <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-3">
+                <Route className="w-4 h-4 text-[#D90429]" />
+                Borc Detalları
+              </h3>
+              <div className="space-y-2">
+                {userOrders.slice(0, 4).map((order) => {
+                  const total = Number(order.totalAmount || 0);
+                  const paid = Number(order.paidAmount || order.paid_amount || 0);
+                  const remaining = Number(order.remainingAmount || order.remaining_amount || 0);
+                  return (
+                    <div key={order.id} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
+                      <span className="text-[#1F2937] font-medium">#{order.orderNumber || order.order_number || order.id}</span>
+                      <span className="text-[#6B7280]">Ümumi: {total.toFixed(2)} AZN</span>
+                      <span className="text-[#16A34A]">Ödənilib: {paid.toFixed(2)} AZN</span>
+                      <span className="text-[#DC2626]">Qalıq: {remaining.toFixed(2)} AZN</span>
+                    </div>
+                  );
+                })}
+                {userOrders.length === 0 && <p className="text-sm text-[#6B7280]">Borc detalı üçün sifariş yoxdur.</p>}
+              </div>
+            </Card>
+
             {/* Recent Orders */}
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -480,6 +649,9 @@ export default function DashboardPage() {
                           <p className="text-xs text-[#6B7280]">{order.items?.length || 0} məhsul</p>
                         </div>
                         <StatusBadge status={order.status?.toLowerCase() || "pending"} />
+                        <Button size="sm" variant="ghost" onClick={() => handleReorder(order)} icon={<Repeat className="w-4 h-4" />}>
+                          Təkrar
+                        </Button>
                       </div>
                     </Card>
                   ))}
@@ -669,6 +841,17 @@ export default function DashboardPage() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm text-[#6B7280] mb-2">Kupon kodu (opsional)</label>
+                    <input
+                      type="text"
+                      value={orderForm.couponCode}
+                      onChange={(e) => setOrderForm({...orderForm, couponCode: e.target.value.toUpperCase()})}
+                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
+                      placeholder="Məs: WELCOME10"
+                    />
+                  </div>
+
                   <Button 
                     onClick={handleCreateOrder} 
                     className="w-full"
@@ -779,6 +962,27 @@ export default function DashboardPage() {
                             <span className="text-sm font-semibold text-green-700">Tam Ödənilib</span>
                           </div>
                         )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => handleReorder(order)} icon={<Repeat className="w-4 h-4" />}>
+                          Təkrar sifariş
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSelectedTimelineOrder(order)}
+                          icon={<Route className="w-4 h-4" />}
+                        >
+                          Timeline
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSelectedInvoiceOrder(order)}
+                          icon={<Receipt className="w-4 h-4" />}
+                        >
+                          Qəbz/Faktura
+                        </Button>
                       </div>
                     </div>
                   </Card>
@@ -904,6 +1108,59 @@ export default function DashboardPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedTimelineOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedTimelineOrder(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              className="bg-white rounded-2xl w-full max-w-xl p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-[#1F2937]">Sifariş Timeline</h3>
+                <button onClick={() => setSelectedTimelineOrder(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              <p className="text-sm text-[#6B7280] mb-4">
+                #{selectedTimelineOrder.orderNumber || selectedTimelineOrder.order_number || selectedTimelineOrder.id}
+              </p>
+              <OrderTimeline currentStatus={normalizeOrderStatus(selectedTimelineOrder.status)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {selectedInvoiceOrder && (
+        <InvoiceGenerator
+          order={{
+            id: String(selectedInvoiceOrder.id),
+            orderNumber: selectedInvoiceOrder.orderNumber || selectedInvoiceOrder.order_number,
+            customerName: selectedInvoiceOrder.customerName || selectedInvoiceOrder.customer_name,
+            customerPhone: selectedInvoiceOrder.customerPhone || selectedInvoiceOrder.customer_phone,
+            customerAddress: selectedInvoiceOrder.customerAddress || selectedInvoiceOrder.customer_address,
+            status: selectedInvoiceOrder.status,
+            totalAmount: Number(selectedInvoiceOrder.totalAmount || 0),
+            createdAt: selectedInvoiceOrder.createdAt,
+            items: (selectedInvoiceOrder.items || []).map((item: any) => ({
+              productName: item.productName || item.product_name,
+              quantity: Number(item.quantity || 1),
+              unitPrice: Number(item.unitPrice || item.unit_price || 0),
+              lineTotal: Number(item.lineTotal || item.line_total || 0),
+            })),
+          }}
+          onClose={() => setSelectedInvoiceOrder(null)}
+        />
+      )}
     </div>
   );
 }

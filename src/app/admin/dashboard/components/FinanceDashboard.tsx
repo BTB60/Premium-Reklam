@@ -10,11 +10,15 @@ import {
 import { getAdminBearerToken } from "./admin-dashboard-api";
 import {
   approveClientPaymentRequest,
+  createAdminCoupon,
+  fetchAdminCoupons,
   fetchFinanceDebts,
   fetchFinanceTransactions,
   fetchPendingClientPayments,
+  requestFinanceOtp,
   rejectClientPaymentRequest,
   updateFinanceBalance,
+  type AdminCouponRow,
   type ClientPaymentRequestRow,
   type FinanceTransactionHistoryRow,
   type FinanceTransactionType,
@@ -71,6 +75,12 @@ export default function FinanceDashboard() {
   const [txNote, setTxNote] = useState("");
   const [txType, setTxType] = useState<FinanceTransactionType>("CREDIT");
   const [txSubmitting, setTxSubmitting] = useState(false);
+  const [txOtpCode, setTxOtpCode] = useState("");
+  const [coupons, setCoupons] = useState<AdminCouponRow[]>([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponPercent, setCouponPercent] = useState("10");
+  const [couponMinAmount, setCouponMinAmount] = useState("");
+  const [couponMaxUses, setCouponMaxUses] = useState("");
   const [financeKpis, setFinanceKpis] = useState<FinanceKpis>({
     totalRevenue: 0,
     pendingPayments: 0,
@@ -82,6 +92,7 @@ export default function FinanceDashboard() {
     loadUsers();
     void loadDebtsAndHistory();
     void loadFinanceKpis();
+    void loadCoupons();
     try {
       const sub = localStorage.getItem("premium_session_type") === "subadmin";
       if (sub) {
@@ -115,6 +126,14 @@ export default function FinanceDashboard() {
       setClientPayPending(list);
     } catch {
       setClientPayPending([]);
+    }
+  };
+
+  const loadCoupons = async () => {
+    try {
+      setCoupons(await fetchAdminCoupons());
+    } catch {
+      setCoupons([]);
     }
   };
 
@@ -243,13 +262,36 @@ export default function FinanceDashboard() {
         amount,
         transactionType: txType,
         note: txNote.trim() || undefined,
+        otpCode: txOtpCode.trim() || undefined,
       });
       setModalOpen(false);
+      setTxOtpCode("");
       await Promise.all([loadDebtsAndHistory(), loadClientPayPending(), loadFinanceKpis()]);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Əməliyyat alınmadı");
     } finally {
       setTxSubmitting(false);
+    }
+  };
+
+  const createCoupon = async () => {
+    try {
+      if (!couponCode.trim()) {
+        alert("Kupon kodu yazın");
+        return;
+      }
+      await createAdminCoupon({
+        code: couponCode.trim().toUpperCase(),
+        discountPercent: Number(couponPercent),
+        minOrderAmount: couponMinAmount ? Number(couponMinAmount) : undefined,
+        maxUses: couponMaxUses ? Number(couponMaxUses) : undefined,
+      });
+      setCouponCode("");
+      setCouponMinAmount("");
+      setCouponMaxUses("");
+      await loadCoupons();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Kupon yaradılmadı");
     }
   };
 
@@ -404,6 +446,16 @@ export default function FinanceDashboard() {
       </div>
 
       <Card className="p-6 mb-6">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Promo Kuponlar</h2>
+        <div className="grid md:grid-cols-5 gap-2 mb-3">
+          <input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Kod" className="px-3 py-2 border rounded-lg" />
+          <input value={couponPercent} onChange={(e) => setCouponPercent(e.target.value)} placeholder="Faiz %" type="number" className="px-3 py-2 border rounded-lg" />
+          <input value={couponMinAmount} onChange={(e) => setCouponMinAmount(e.target.value)} placeholder="Min sifariş" type="number" className="px-3 py-2 border rounded-lg" />
+          <input value={couponMaxUses} onChange={(e) => setCouponMaxUses(e.target.value)} placeholder="Max istifadə" type="number" className="px-3 py-2 border rounded-lg" />
+          <Button size="sm" onClick={createCoupon}>Yarat</Button>
+        </div>
+        <div className="text-xs text-[#6B7280] mb-6">Aktiv kuponlar: {coupons.map(c => `${c.code} (${c.discountPercent}%)`).join(", ") || "yoxdur"}</div>
+
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-[var(--text-primary)]">Ümumi Borc Siyahısı</h2>
           <span className="text-xs text-[var(--text-muted)]">Borca görə azalan sıra</span>
@@ -476,6 +528,7 @@ export default function FinanceDashboard() {
                   <th className="py-2 pr-2">ID</th>
                   <th className="py-2 pr-2">Müştəri</th>
                   <th className="py-2 pr-2">Məbləğ</th>
+                  <th className="py-2 pr-2">Qəbz</th>
                   <th className="py-2 pr-2">Tarix</th>
                   <th className="py-2">Əməliyyat</th>
                 </tr>
@@ -489,6 +542,30 @@ export default function FinanceDashboard() {
                       <div className="text-xs text-[#6B7280]">@{row.username}</div>
                     </td>
                     <td className="py-2 pr-2 font-semibold">{Number(row.amount).toFixed(2)} AZN</td>
+                    <td className="py-2 pr-2">
+                      {row.receiptImageData ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            const w = window.open("", "_blank");
+                            if (!w) return;
+                            w.document.write(`
+                              <html><head><title>Qəbz #${row.id}</title></head>
+                              <body style="margin:0;padding:16px;font-family:sans-serif;background:#111;color:#fff;">
+                                <h3>Qəbz #${row.id} ${row.receiptFileName ? `- ${row.receiptFileName}` : ""}</h3>
+                                <img src="${row.receiptImageData}" alt="receipt" style="max-width:100%;height:auto;border-radius:8px;" />
+                              </body></html>
+                            `);
+                            w.document.close();
+                          }}
+                        >
+                          Bax
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-[#6B7280]">Yoxdur</span>
+                      )}
+                    </td>
                     <td className="py-2 pr-2 text-[#6B7280]">
                       {row.createdAt ? new Date(row.createdAt).toLocaleString("az-AZ") : "—"}
                     </td>
@@ -780,12 +857,32 @@ export default function FinanceDashboard() {
                 />
               </div>
               <div className="pt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={async () => {
+                  try {
+                    await requestFinanceOtp();
+                    alert("OTP göndərildi (server log/email/SMS kanalına baxın)");
+                  } catch (e) {
+                    alert(e instanceof Error ? e.message : "OTP göndərilmədi");
+                  }
+                }} disabled={txSubmitting}>
+                  OTP al
+                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)} disabled={txSubmitting}>
                   Bağla
                 </Button>
                 <Button size="sm" onClick={submitTx} loading={txSubmitting}>
                   Təsdiq et
                 </Button>
+              </div>
+              <div>
+                <label className="text-xs text-[var(--text-muted)]">OTP kod</label>
+                <input
+                  type="text"
+                  value={txOtpCode}
+                  onChange={(e) => setTxOtpCode(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]"
+                  placeholder="6 rəqəm"
+                />
               </div>
             </div>
           </div>

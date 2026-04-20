@@ -21,6 +21,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final OtpService otpService;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -58,6 +59,17 @@ public class AuthService {
 
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+
+        boolean isAdmin = user.getRole() == UserRole.ADMIN;
+        if (isAdmin) {
+            if (request.getOtpCode() == null || request.getOtpCode().isBlank()) {
+                otpService.sendOtp(user.getUsername(), "LOGIN_ADMIN");
+                return AuthResponse.otpRequired(user, "OTP kod göndərildi. Daxil etmək üçün yenidən login edin.");
+            }
+            if (!otpService.verifyOtp(user.getUsername(), "LOGIN_ADMIN", request.getOtpCode())) {
+                throw new RuntimeException("OTP kod yanlışdır və ya müddəti bitib");
+            }
+        }
 
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);

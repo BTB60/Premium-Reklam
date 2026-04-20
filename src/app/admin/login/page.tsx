@@ -12,6 +12,8 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpRequired, setOtpRequired] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lang, setLang] = useState<"az" | "en">("az");
@@ -45,7 +47,13 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const user = await authApi.login(username, password);
+      const user = await authApi.login(username, password, otpRequired ? otpCode : undefined);
+
+      if ((user as any).requiresOtp) {
+        setOtpRequired(true);
+        setError((user as any).message || (lang === "az" ? "OTP kod daxil edin" : "Enter OTP code"));
+        return;
+      }
 
       if (user.role !== "ADMIN") {
         setError(
@@ -130,6 +138,18 @@ export default function AdminLoginPage() {
               required
               disabled={loading}
             />
+
+            {otpRequired && (
+              <Input
+                label="OTP kod"
+                placeholder="6 rəqəmli kod"
+                value={otpCode}
+                onChange={setOtpCode}
+                icon={<Key className="w-5 h-5" />}
+                required
+                disabled={loading}
+              />
+            )}
 
             <Button
               type="submit"

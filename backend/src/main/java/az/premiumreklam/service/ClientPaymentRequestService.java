@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -27,7 +28,12 @@ public class ClientPaymentRequestService {
     private final RealtimePushService realtimePushService;
 
     @Transactional
-    public ClientPaymentRequestResponse createForCustomer(String username, BigDecimal amount) {
+    public ClientPaymentRequestResponse createForCustomer(
+            String username,
+            BigDecimal amount,
+            String receiptImageData,
+            String receiptFileName
+    ) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Məbləğ müsbət olmalıdır");
         }
@@ -37,6 +43,8 @@ public class ClientPaymentRequestService {
         ClientPaymentRequest pr = ClientPaymentRequest.builder()
                 .user(user)
                 .amount(amount)
+                .receiptImageData(receiptImageData)
+                .receiptFileName(receiptFileName)
                 .status(ClientPaymentRequestStatus.PENDING)
                 .build();
         pr = paymentRequestRepository.save(pr);
@@ -91,6 +99,12 @@ public class ClientPaymentRequestService {
             newDebt = BigDecimal.ZERO;
         }
         user.setTotalDebt(newDebt);
+        if (newDebt.compareTo(BigDecimal.ZERO) == 0) {
+            user.setOrderBlocked(false);
+            user.setNextWeeklyDueDate(null);
+        } else {
+            user.setNextWeeklyDueDate(LocalDate.now().plusDays(7));
+        }
         userRepository.save(user);
 
         InAppNotification n = InAppNotification.builder()

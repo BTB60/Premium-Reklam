@@ -16,6 +16,8 @@ public class ClientPaymentRequestResponse {
     private String userFullName;
     private String username;
     private BigDecimal amount;
+    private String receiptImageData;
+    private String receiptFileName;
     private ClientPaymentRequestStatus status;
     private LocalDateTime createdAt;
 
@@ -26,6 +28,8 @@ public class ClientPaymentRequestResponse {
                 .userFullName(e.getUser().getFullName())
                 .username(e.getUser().getUsername())
                 .amount(e.getAmount())
+                .receiptImageData(e.getReceiptImageData())
+                .receiptFileName(e.getReceiptFileName())
                 .status(e.getStatus())
                 .createdAt(e.getCreatedAt())
                 .build();

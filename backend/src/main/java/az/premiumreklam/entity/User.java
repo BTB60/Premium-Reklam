@@ -8,6 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -61,6 +62,14 @@ public class User {
     @Column(name = "total_debt", precision = 12, scale = 2, nullable = false)
     private BigDecimal totalDebt = BigDecimal.ZERO;
 
+    /** Həftəlik ödəniş gecikməsinə görə sifariş bloku. */
+    @Column(name = "order_blocked", nullable = false)
+    private Boolean orderBlocked = false;
+
+    /** Növbəti həftəlik ödəniş üçün son tarix. */
+    @Column(name = "next_weekly_due_date")
+    private LocalDate nextWeeklyDueDate;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -87,6 +96,7 @@ public class User {
         if (monthlySalesTotal == null) monthlySalesTotal = BigDecimal.ZERO;
         if (discountPercent == null) discountPercent = BigDecimal.ZERO;
         if (totalDebt == null) totalDebt = BigDecimal.ZERO;
+        if (orderBlocked == null) orderBlocked = false;
         if (role == null) role = UserRole.DECORCU;
         if (status == null) status = UserStatus.ACTIVE;
     }

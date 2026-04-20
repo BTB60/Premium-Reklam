@@ -11,6 +11,28 @@ const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL
   : "https://premium-reklam-backend.onrender.com";
 
 export type ToastItem = { id: string; message: string; event: string };
+const DISMISSED_KEY = "premium_dismissed_toast_ids";
+
+function loadDismissedIds(): Set<string> {
+  if (typeof window === "undefined") return new Set<string>();
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (!raw) return new Set<string>();
+    const list = JSON.parse(raw) as string[];
+    return new Set(Array.isArray(list) ? list : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function persistDismissedIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(Array.from(ids).slice(-500)));
+  } catch {
+    /* ignore */
+  }
+}
 
 function resolveSubs(): { adminTopic: boolean; userQueue: boolean } {
   if (typeof window === "undefined") return { adminTopic: false, userQueue: false };
@@ -50,6 +72,7 @@ export function RealtimeNotificationsHost() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const visibleDedupeRef = useRef(new Set<string>());
   const lastEmitRef = useRef<Record<string, number>>({});
+  const dismissedRef = useRef<Set<string>>(new Set<string>());
   const soundAllowedRef = useRef(false);
   const playingRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -57,9 +80,12 @@ export function RealtimeNotificationsHost() {
   const removeToast = useCallback((id: string) => {
     setToasts((t) => t.filter((x) => x.id !== id));
     visibleDedupeRef.current.delete(id);
-  }, []);
+  }, [toasts]);
 
   const dismissAll = useCallback(() => {
+    const nextDismissed = dismissedRef.current;
+    toasts.forEach((t) => nextDismissed.add(t.id));
+    persistDismissedIds(nextDismissed);
     setToasts([]);
     visibleDedupeRef.current.clear();
     if (playingRef.current) {
@@ -71,6 +97,7 @@ export function RealtimeNotificationsHost() {
 
   const pushToast = useCallback(
     (dedupeKey: string, message: string, event: string) => {
+      if (dismissedRef.current.has(dedupeKey)) return;
       const now = Date.now();
       if (visibleDedupeRef.current.has(dedupeKey)) return;
       const last = lastEmitRef.current[dedupeKey] ?? 0;
@@ -137,9 +164,26 @@ export function RealtimeNotificationsHost() {
   }, []);
 
   useEffect(() => {
+    dismissedRef.current = loadDismissedIds();
+  }, []);
+
+  useEffect(() => {
     const onDismissAll = () => dismissAll();
+    const onMarkRead = (e: Event) => {
+      const custom = e as CustomEvent<{ ids?: string[] }>;
+      const ids = custom.detail?.ids || [];
+      if (ids.length === 0) return;
+      ids.forEach((id) => dismissedRef.current.add(id));
+      persistDismissedIds(dismissedRef.current);
+      setToasts((prev) => prev.filter((t) => !ids.includes(t.id)));
+      ids.forEach((id) => visibleDedupeRef.current.delete(id));
+    };
     window.addEventListener("premium:inapp-dismiss-all", onDismissAll);
-    return () => window.removeEventListener("premium:inapp-dismiss-all", onDismissAll);
+    window.addEventListener("premium:inapp-mark-read", onMarkRead as EventListener);
+    return () => {
+      window.removeEventListener("premium:inapp-dismiss-all", onDismissAll);
+      window.removeEventListener("premium:inapp-mark-read", onMarkRead as EventListener);
+    };
   }, [dismissAll]);
 
   useEffect(() => {

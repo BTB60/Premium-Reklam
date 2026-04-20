@@ -29,7 +29,12 @@ public class ClientPaymentRequestController {
             Authentication authentication) {
         assertCustomerRole(authentication);
         try {
-            return clientPaymentRequestService.createForCustomer(authentication.getName(), body.getAmount());
+            return clientPaymentRequestService.createForCustomer(
+                    authentication.getName(),
+                    body.getAmount(),
+                    body.getReceiptImageData(),
+                    body.getReceiptFileName()
+            );
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
         }

@@ -3,6 +3,7 @@ package az.premiumreklam.controller;
 import az.premiumreklam.dto.auth.*;
 import az.premiumreklam.entity.Subadmin;
 import az.premiumreklam.service.AuthService;
+import az.premiumreklam.service.OtpService;
 import az.premiumreklam.service.SubadminService;
 import az.premiumreklam.security.JwtService;
 import jakarta.validation.Valid;
@@ -23,6 +24,7 @@ public class AuthController {
     private final AuthService authService;
     private final SubadminService subadminService;
     private final JwtService jwtService;
+    private final OtpService otpService;
 
     @PostMapping("/register")
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
@@ -32,6 +34,15 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/otp/finance/request")
+    public Map<String, String> requestFinanceOtp(org.springframework.security.core.Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.UNAUTHORIZED, "Token tələb olunur");
+        }
+        otpService.sendOtp(authentication.getName(), "FINANCE_ACTION");
+        return Map.of("message", "OTP kod göndərildi");
     }
 
     @PostMapping("/forgot-password")

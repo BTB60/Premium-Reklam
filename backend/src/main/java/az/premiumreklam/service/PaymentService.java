@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -74,6 +75,12 @@ public class PaymentService {
                     newDebt = BigDecimal.ZERO;
                 }
                 user.setTotalDebt(newDebt);
+                if (newDebt.compareTo(BigDecimal.ZERO) == 0) {
+                    user.setOrderBlocked(false);
+                    user.setNextWeeklyDueDate(null);
+                } else {
+                    user.setNextWeeklyDueDate(LocalDate.now().plusDays(7));
+                }
                 userRepository.save(user);
             }
         }

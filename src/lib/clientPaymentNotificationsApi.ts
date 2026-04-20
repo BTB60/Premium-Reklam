@@ -15,6 +15,8 @@ export type ClientPaymentRequestRow = {
   userFullName: string;
   username: string;
   amount: number;
+  receiptImageData?: string;
+  receiptFileName?: string;
   status: string;
   createdAt: string;
 };
@@ -42,11 +44,26 @@ export type FinanceTransactionHistoryRow = {
   createdAt: string;
 };
 
-export async function submitClientPaymentRequest(amount: number): Promise<ClientPaymentRequestRow> {
+export type AdminCouponRow = {
+  id: number;
+  code: string;
+  discountPercent: number;
+  minOrderAmount?: number;
+  maxUses?: number;
+  usedCount?: number;
+  active: boolean;
+  expiresAt?: string;
+};
+
+export async function submitClientPaymentRequest(
+  amount: number,
+  receiptImageData?: string,
+  receiptFileName?: string
+): Promise<ClientPaymentRequestRow> {
   const res = await fetch(`${BASE_URL}/payment-requests`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify({ amount, receiptImageData, receiptFileName }),
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
@@ -125,10 +142,15 @@ export async function updateFinanceBalance(input: {
   amount: number;
   transactionType: FinanceTransactionType;
   note?: string;
+  otpCode?: string;
 }): Promise<FinanceTransactionHistoryRow> {
   const res = await fetch(`${BASE_URL}/admin/finance/update-balance`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: {
+      "Content-Type": "application/json",
+      ...(input.otpCode ? { "X-OTP-Code": input.otpCode } : {}),
+      ...authHeaders()
+    },
     body: JSON.stringify(input),
   });
   if (!res.ok) {
@@ -136,4 +158,41 @@ export async function updateFinanceBalance(input: {
     throw new Error(err.message || "Balans yenilənmədi");
   }
   return res.json() as Promise<FinanceTransactionHistoryRow>;
+}
+
+export async function requestFinanceOtp(): Promise<void> {
+  const res = await fetch(`${BASE_URL}/auth/otp/finance/request`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(err.message || "OTP göndərilmədi");
+  }
+}
+
+export async function createAdminCoupon(input: {
+  code: string;
+  discountPercent: number;
+  minOrderAmount?: number;
+  maxUses?: number;
+  expiresAt?: string;
+}): Promise<AdminCouponRow> {
+  const res = await fetch(`${BASE_URL}/admin/coupons`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(err.message || "Kupon yaradılmadı");
+  }
+  return res.json() as Promise<AdminCouponRow>;
+}
+
+export async function fetchAdminCoupons(): Promise<AdminCouponRow[]> {
+  const res = await fetch(`${BASE_URL}/admin/coupons`, { headers: { ...authHeaders() } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data as AdminCouponRow[] : [];
 }

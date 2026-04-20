@@ -26,11 +26,14 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final UserPriceRepository userPriceRepository;
+    private final PromoCouponService promoCouponService;
 
     @Transactional
     public Order createOrder(OrderRequest request, String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+
+        enforceOrderEligibility(user);
 
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
@@ -113,6 +116,11 @@ public class OrderService {
 
         BigDecimal discountPercent = defaultBigDecimal(order.getDiscountPercent());
         BigDecimal discountAmount = subtotal.multiply(discountPercent).divide(BigDecimal.valueOf(100));
+        BigDecimal couponDiscount = promoCouponService.calculateAndConsumeDiscount(request.getCouponCode(), subtotal);
+        discountAmount = discountAmount.add(couponDiscount);
+        if (discountAmount.compareTo(subtotal) > 0) {
+            discountAmount = subtotal;
+        }
         BigDecimal total = subtotal.subtract(discountAmount);
 
         order.setSubtotal(subtotal);
@@ -128,6 +136,9 @@ public class OrderService {
         if (total.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal currentDebt = user.getTotalDebt() == null ? BigDecimal.ZERO : user.getTotalDebt();
             user.setTotalDebt(currentDebt.add(total));
+            if (user.getNextWeeklyDueDate() == null) {
+                user.setNextWeeklyDueDate(LocalDate.now().plusDays(7));
+            }
             userRepository.save(user);
         }
 
@@ -182,5 +193,21 @@ public class OrderService {
 
     private BigDecimal defaultBigDecimal(BigDecimal value, BigDecimal defaultValue) {
         return value == null ? defaultValue : value;
+    }
+
+    private void enforceOrderEligibility(User user) {
+        BigDecimal totalDebt = user.getTotalDebt() == null ? BigDecimal.ZERO : user.getTotalDebt();
+        LocalDate dueDate = user.getNextWeeklyDueDate();
+        boolean manuallyBlocked = Boolean.TRUE.equals(user.getOrderBlocked());
+
+        if (manuallyBlocked) {
+            throw new RuntimeException("Sifariş müvəqqəti bloklanıb. Yalnız admin blokdan çıxara bilər.");
+        }
+
+        if (totalDebt.compareTo(BigDecimal.ZERO) > 0 && dueDate != null && dueDate.isBefore(LocalDate.now())) {
+            user.setOrderBlocked(true);
+            userRepository.save(user);
+            throw new RuntimeException("Həftəlik ödəniş gecikib. Yeni sifariş üçün admin blokunu açmalıdır.");
+        }
     }
 }

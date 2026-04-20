@@ -102,6 +102,7 @@ export function Header({ variant = "public", userName, notifications: propNotifi
 
   const handleMarkAsRead = (id: string) => {
     notifications.markAsRead(id);
+    window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: [id] } }));
     const uid = getSessionUserId();
     const all = uid ? notifications.getByUserId(uid) : [];
     const unread = all.filter(n => !n.isRead);

@@ -70,6 +70,8 @@ public class UserController {
         map.put("phone", u.getPhone() != null ? u.getPhone() : "");
         map.put("role", u.getRole().getValue());
         map.put("totalDebt", u.getTotalDebt());
+        map.put("orderBlocked", Boolean.TRUE.equals(u.getOrderBlocked()));
+        map.put("nextWeeklyDueDate", u.getNextWeeklyDueDate());
         return map;
     }
 }

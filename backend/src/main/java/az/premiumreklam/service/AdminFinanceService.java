@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 
@@ -88,6 +89,12 @@ public class AdminFinanceService {
         }
 
         user.setTotalDebt(after);
+        if (after.compareTo(BigDecimal.ZERO) == 0) {
+            user.setOrderBlocked(false);
+            user.setNextWeeklyDueDate(null);
+        } else {
+            user.setNextWeeklyDueDate(LocalDate.now().plusDays(7));
+        }
         userRepository.save(user);
 
         TransactionHistory tx = transactionHistoryRepository.save(TransactionHistory.builder()
@@ -121,6 +128,19 @@ public class AdminFinanceService {
     private boolean isClientRole(User user) {
         UserRole role = user.getRole();
         return role == UserRole.DECORCU || role == UserRole.DECORATOR || role == UserRole.VENDOR;
+    }
+
+    @Transactional
+    public void unblockOrderForUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+        user.setOrderBlocked(false);
+        if ((user.getTotalDebt() == null ? BigDecimal.ZERO : user.getTotalDebt()).compareTo(BigDecimal.ZERO) > 0) {
+            user.setNextWeeklyDueDate(LocalDate.now().plusDays(7));
+        } else {
+            user.setNextWeeklyDueDate(null);
+        }
+        userRepository.save(user);
     }
 }
 

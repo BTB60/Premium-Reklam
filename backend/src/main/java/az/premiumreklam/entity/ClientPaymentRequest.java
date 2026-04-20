@@ -32,6 +32,14 @@ public class ClientPaymentRequest {
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
 
+    /** Müştərinin təqdim etdiyi qəbz şəkli (base64 data URL). */
+    @Lob
+    @Column(name = "receipt_image_data")
+    private String receiptImageData;
+
+    @Column(name = "receipt_file_name", length = 255)
+    private String receiptFileName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

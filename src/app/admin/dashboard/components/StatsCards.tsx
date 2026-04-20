@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
-import { Users, Package, TrendingUp, Award, RefreshCw, Wallet, Bell } from "lucide-react";
+import { Users, Package, TrendingUp, Award, RefreshCw, Wallet, Bell, TicketPercent, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { getAdminBearerToken, getAdminDashboardApiBase } from "./admin-dashboard-api";
 
@@ -248,6 +248,40 @@ export default function StatsCards({ onNavigate }: StatsCardsProps) {
             <p className="text-xs text-[var(--text-muted)]">Aktivlik göstəricisi</p>
             <p className="text-xl font-semibold text-[var(--text-primary)]">
               {loading ? "..." : recentOrders.length > 0 ? "Yüksək" : "Aşağı"}
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 mt-6 border-[#ffd2b6] bg-[#fff8f3]">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-semibold text-[var(--text-primary)]">Son Yeniliklər</h3>
+            <p className="text-sm text-[var(--text-muted)] mt-1">
+              Admin dashboard-a əlavə olunan son funksiyalar
+            </p>
+          </div>
+          <Button size="sm" variant="secondary" icon={<Wallet className="w-4 h-4" />} onClick={() => onNavigate?.("finance")}>
+            Maliyyəyə keç
+          </Button>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TicketPercent className="w-4 h-4 text-[#ff6600]" />
+              <p className="font-medium text-[var(--text-primary)]">Promo/Kupon Sistemi</p>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              Admin kupon yaradır, user checkout-da kupon kodu tətbiq edir.
+            </p>
+          </div>
+          <div className="rounded-xl border border-[var(--border)] bg-white p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="w-4 h-4 text-[#16A34A]" />
+              <p className="font-medium text-[var(--text-primary)]">OTP 2FA Təhlükəsizliyi</p>
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">
+              Admin login və maliyyə əməliyyatları üçün OTP yoxlaması aktivdir.
             </p>
           </div>
         </div>
