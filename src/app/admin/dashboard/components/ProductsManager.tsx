@@ -35,6 +35,7 @@ export default function ProductsManager() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
   const [width, setWidth] = useState("");
   const [height, setHeight] = useState("");
   const [status, setStatus] = useState("active");
@@ -62,6 +63,10 @@ export default function ProductsManager() {
           id: normalizeProductId(p.id),
           unitPrice:
             p.salePrice !== undefined && p.salePrice !== null ? Number(p.salePrice as number) : 0,
+          purchasePrice:
+            p.purchasePrice !== undefined && p.purchasePrice !== null
+              ? Number(p.purchasePrice as number)
+              : undefined,
           status: (p.status ? String(p.status).toLowerCase() : "active") as DashboardProduct["status"],
         })) as DashboardProduct[];
 
@@ -81,6 +86,7 @@ export default function ProductsManager() {
     setName("");
     setCategory("");
     setUnitPrice("0");
+    setPurchasePrice("0");
     setWidth("");
     setHeight("");
     setStatus("active");
@@ -95,6 +101,11 @@ export default function ProductsManager() {
     setCategory(product.category || "");
     setUnitPrice(
       product.unitPrice !== undefined && product.unitPrice !== null ? String(product.unitPrice) : "0"
+    );
+    setPurchasePrice(
+      product.purchasePrice !== undefined && product.purchasePrice !== null
+        ? String(product.purchasePrice)
+        : "0"
     );
     setWidth(product.width !== undefined && product.width !== null ? String(product.width) : "");
     setHeight(product.height !== undefined && product.height !== null ? String(product.height) : "");
@@ -115,6 +126,8 @@ export default function ProductsManager() {
 
     const priceValue = parseFloat(unitPrice);
     const finalPrice = Number.isNaN(priceValue) || priceValue < 0 ? 0 : priceValue;
+    const purchaseVal = parseFloat(purchasePrice);
+    const finalPurchase = Number.isNaN(purchaseVal) || purchaseVal < 0 ? 0 : purchaseVal;
     const widthValue = width === "" ? undefined : parseFloat(width);
     const heightValue = height === "" ? undefined : parseFloat(height);
 
@@ -122,6 +135,7 @@ export default function ProductsManager() {
       name: name.trim(),
       description: description.trim() || "",
       category: category.trim() || "Banner",
+      purchasePrice: finalPurchase,
       salePrice: finalPrice,
       width: widthValue,
       height: heightValue,
@@ -163,6 +177,7 @@ export default function ProductsManager() {
                   description: requestBody.description,
                   category: requestBody.category,
                   unitPrice: requestBody.salePrice,
+                  purchasePrice: requestBody.purchasePrice,
                   width: requestBody.width,
                   height: requestBody.height,
                   status: requestBody.status.toLowerCase() as DashboardProduct["status"],
@@ -178,6 +193,7 @@ export default function ProductsManager() {
             description: requestBody.description,
             category: requestBody.category,
             unitPrice: requestBody.salePrice,
+            purchasePrice: requestBody.purchasePrice,
             width: requestBody.width,
             height: requestBody.height,
             status: requestBody.status.toLowerCase() as DashboardProduct["status"],
@@ -210,6 +226,7 @@ export default function ProductsManager() {
                 ...p,
                 name: requestBody.name,
                 unitPrice: requestBody.salePrice,
+                purchasePrice: requestBody.purchasePrice,
                 status: requestBody.status.toLowerCase() as DashboardProduct["status"],
                 updatedAt: new Date().toISOString(),
               }
@@ -222,6 +239,7 @@ export default function ProductsManager() {
             id: Date.now(),
             name: requestBody.name,
             unitPrice: requestBody.salePrice,
+            purchasePrice: requestBody.purchasePrice,
             status: requestBody.status.toLowerCase() as DashboardProduct["status"],
             category: requestBody.category,
             createdAt: new Date().toISOString(),
@@ -308,6 +326,8 @@ export default function ProductsManager() {
           setCategory={setCategory}
           unitPrice={unitPrice}
           setUnitPrice={setUnitPrice}
+          purchasePrice={purchasePrice}
+          setPurchasePrice={setPurchasePrice}
           width={width}
           setWidth={setWidth}
           height={height}

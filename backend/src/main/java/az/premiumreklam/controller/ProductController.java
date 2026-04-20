@@ -1,5 +1,6 @@
 package az.premiumreklam.controller;
 
+import az.premiumreklam.dto.product.ProductPublicResponse;
 import az.premiumreklam.dto.product.ProductRequest;
 import az.premiumreklam.dto.product.UserPriceRequest;
 import az.premiumreklam.entity.Product;
@@ -9,10 +10,13 @@ import az.premiumreklam.service.UserPriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/products")
@@ -23,13 +27,35 @@ public class ProductController {
     private final UserPriceService userPriceService;
 
     @GetMapping
-    public List<Product> getAll() {
-        return productService.getAll();
+    public List<?> getAll(Authentication authentication) {
+        List<Product> all = productService.getAll();
+        if (canSeePurchasePrices(authentication)) {
+            return all;
+        }
+        return all.stream().map(ProductPublicResponse::fromEntity).collect(Collectors.toList());
     }
 
     @GetMapping("/{id}")
-    public Product getById(@PathVariable Long id) {
-        return productService.getById(id);
+    public Object getById(@PathVariable Long id, Authentication authentication) {
+        Product p = productService.getById(id);
+        if (canSeePurchasePrices(authentication)) {
+            return p;
+        }
+        return ProductPublicResponse.fromEntity(p);
+    }
+
+    /** Alış qiyməti yalnız admin və subadmin üçün tam entity-də qaytarılır. */
+    private boolean canSeePurchasePrices(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        for (GrantedAuthority a : authentication.getAuthorities()) {
+            String r = a.getAuthority();
+            if ("ROLE_ADMIN".equals(r) || "ROLE_SUBADMIN".equals(r)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @GetMapping("/{id}/price")

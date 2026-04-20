@@ -14,6 +14,8 @@ export function ProductForm({
   setCategory,
   unitPrice,
   setUnitPrice,
+  purchasePrice,
+  setPurchasePrice,
   width,
   setWidth,
   height,
@@ -35,6 +37,8 @@ export function ProductForm({
   setCategory: (v: string) => void;
   unitPrice: string;
   setUnitPrice: (v: string) => void;
+  purchasePrice: string;
+  setPurchasePrice: (v: string) => void;
   width: string;
   setWidth: (v: string) => void;
   height: string;
@@ -90,7 +94,7 @@ export function ProductForm({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#6B7280] mb-1">Qiymət (AZN) *</label>
+            <label className="block text-sm font-medium text-[#6B7280] mb-1">Satış qiyməti (AZN) *</label>
             <input
               type="number"
               step="0.01"
@@ -100,6 +104,19 @@ export function ProductForm({
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#6B7280] mb-1">Alış qiyməti (AZN)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={purchasePrice}
+              onChange={(e) => setPurchasePrice(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
+              placeholder="0.00"
+            />
+            <p className="text-xs text-[#9CA3AF] mt-1">İstifadəçi tərəfində göstərilmir</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-[#6B7280] mb-1">Status</label>

@@ -22,7 +22,8 @@ export function ProductsTable({
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Məhsul</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Kateqoriya</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Ölçü</th>
-            <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Qiymət</th>
+            <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Satış</th>
+            <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Alış</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Status</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Əməliyyat</th>
           </tr>
@@ -30,7 +31,7 @@ export function ProductsTable({
         <tbody>
           {products.length === 0 ? (
             <tr>
-              <td colSpan={6} className="py-12 text-center text-[#6B7280]">
+              <td colSpan={7} className="py-12 text-center text-[#6B7280]">
                 Məhsul tapılmadı
               </td>
             </tr>
@@ -60,6 +61,11 @@ export function ProductsTable({
                 </td>
                 <td className="py-3 px-4 font-bold text-[#1F2937]">
                   {(product.unitPrice || 0).toFixed(2)} AZN
+                </td>
+                <td className="py-3 px-4 text-sm text-[#6B7280]">
+                  {product.purchasePrice !== undefined && product.purchasePrice !== null
+                    ? `${product.purchasePrice.toFixed(2)} AZN`
+                    : "—"}
                 </td>
                 <td className="py-3 px-4">
                   <StatusBadge status={product.status} />

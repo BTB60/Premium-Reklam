@@ -105,7 +105,8 @@ export interface Product {
   category: string;
   description: string;
   unit: string;
-  purchasePrice: number;
+  /** Yalnız admin API cavabında ola bilər; istifadəçi kataloqunda göndərilmir. */
+  purchasePrice?: number;
   salePrice: number;
   stockQuantity: number;
   minStockLevel: number;
