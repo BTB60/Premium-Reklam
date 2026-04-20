@@ -5,6 +5,11 @@ import { Card } from "@/components/ui/Card";
 import { getAdminBearerToken, getAdminDashboardApiBase } from "./admin-dashboard-api";
 import type { DashboardShop, ShopUserOption } from "./shops-manager/types";
 import { storeRequests, vendorStores } from "@/lib/db/vendor";
+import {
+  approveVendorStoreApplication,
+  fetchAdminVendorStoreApplications,
+  rejectVendorStoreApplication,
+} from "@/lib/vendorStoreRequestApi";
 import { ShopsHeaderBar } from "./shops-manager/ShopsHeaderBar";
 import { ShopsStatsCards } from "./shops-manager/ShopsStatsCards";
 import { ShopsFilterBar } from "./shops-manager/ShopsFilterBar";
@@ -60,26 +65,84 @@ export default function ShopsManager() {
 
   const loadShops = async () => {
     try {
-      // 1) Vendor store müraciətləri (pending/approved/rejected)
-      const requestRows = storeRequests.getAll().map((r) => ({
-        id: r.id,
-        userId: r.vendorId,
-        userFullName: r.vendorName,
-        userUsername: r.vendorName,
-        name: r.name,
-        description: r.description,
-        address: r.address,
-        phone: r.phone,
-        email: r.email,
-        status:
-          r.status === "approved"
-            ? ("active" as const)
-            : r.status === "rejected"
-              ? ("inactive" as const)
-              : ("pending" as const),
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-      })) as DashboardShop[];
+      const token = getToken();
+      let requestRows: DashboardShop[] = [];
+      let loadedStoreRequestsFromApi = false;
+
+      if (token) {
+        try {
+          const apiRows = await fetchAdminVendorStoreApplications(token);
+          loadedStoreRequestsFromApi = true;
+          requestRows = apiRows.map((r) => ({
+            id: `api-${r.id}`,
+            userId: r.userId,
+            userFullName: r.userFullName || r.vendorDisplayName,
+            userUsername: r.username || String(r.userId),
+            name: r.storeName,
+            description: r.description,
+            address: r.address,
+            phone: r.phone,
+            email: r.email || "",
+            status:
+              r.status === "approved"
+                ? ("active" as const)
+                : r.status === "rejected"
+                  ? ("inactive" as const)
+                  : ("pending" as const),
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt || r.createdAt,
+          })) as DashboardShop[];
+        } catch (e) {
+          console.warn("[Shops] API store-requests:", e);
+        }
+      }
+
+      if (!loadedStoreRequestsFromApi) {
+        requestRows = storeRequests.getAll().map((r) => ({
+          id: r.id,
+          userId: r.vendorId,
+          userFullName: r.vendorName,
+          userUsername: r.vendorName,
+          name: r.name,
+          description: r.description,
+          address: r.address,
+          phone: r.phone,
+          email: r.email,
+          status:
+            r.status === "approved"
+              ? ("active" as const)
+              : r.status === "rejected"
+                ? ("inactive" as const)
+                : ("pending" as const),
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt,
+        })) as DashboardShop[];
+      } else {
+        const apiUserIds = new Set(requestRows.map((x) => String(x.userId)));
+        const localExtra = storeRequests
+          .getAll()
+          .filter((r) => !apiUserIds.has(String(r.vendorId)))
+          .map((r) => ({
+            id: r.id,
+            userId: r.vendorId,
+            userFullName: r.vendorName,
+            userUsername: r.vendorName,
+            name: r.name,
+            description: r.description,
+            address: r.address,
+            phone: r.phone,
+            email: r.email,
+            status:
+              r.status === "approved"
+                ? ("active" as const)
+                : r.status === "rejected"
+                  ? ("inactive" as const)
+                  : ("pending" as const),
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt,
+          })) as DashboardShop[];
+        requestRows = [...requestRows, ...localExtra];
+      }
 
       // 2) Təsdiq edilmiş real mağazalar
       const storeRows = vendorStores.getAllIncludingInactive().map((s) => ({
@@ -254,6 +317,32 @@ export default function ShopsManager() {
 
   const updateShopStatus = async (shopId: string | number, status: string) => {
     try {
+      const sid = String(shopId);
+      const token = getToken();
+
+      if (token && sid.startsWith("api-")) {
+        const numericId = Number(sid.replace(/^api-/, ""));
+        if (Number.isFinite(numericId) && numericId > 0) {
+          try {
+            if (status === "active") {
+              await approveVendorStoreApplication(token, numericId);
+            } else if (status === "inactive") {
+              await rejectVendorStoreApplication(
+                token,
+                numericId,
+                "Admin tərəfindən qeyri-aktiv / rədd edildi"
+              );
+            }
+            await loadShops();
+            return;
+          } catch (err) {
+            console.error("[Shops] API approve/reject:", err);
+            alert(err instanceof Error ? err.message : "Əməliyyat alınmadı");
+            return;
+          }
+        }
+      }
+
       const target = shops.find((s) => String(s.id) === String(shopId));
       if (target) {
         // Local vendor flow: pending müraciət təsdiqi/rəddi
@@ -280,7 +369,6 @@ export default function ShopsManager() {
         }
       }
 
-      const token = getToken();
       const res = await fetch(`${API_BASE}/shops/${shopId}`, {
         method: "PATCH",
         headers: {

@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
-import { notifyVendorStoreRequestSubmitted } from "@/lib/vendorStoreNotifyApi";
-import { storeRequests, vendorStores, vendorProducts, type StoreRequest, type VendorStore, type VendorProduct } from "@/lib/db";
+import { fetchMyVendorStoreApplications, submitVendorStoreApplication } from "@/lib/vendorStoreRequestApi";
+import { storeRequests, vendorStores, vendorProducts, auth, type StoreRequest, type VendorStore, type VendorProduct } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -29,6 +29,11 @@ import {
   Eye
 } from "lucide-react";
 import Link from "next/link";
+
+function vendorKey(u: { userId?: string | number; id?: string | number } | null): string {
+  if (!u) return "";
+  return String(u.userId ?? u.id ?? "");
+}
 
 export default function MyStorePage() {
   const router = useRouter();
@@ -81,12 +86,12 @@ export default function MyStorePage() {
     }
 
     setUser(currentUser);
-    
-    // Check if user already has a store
-    const existingStore = vendorStores.getByVendorId(currentUser.id);
+    const vk = vendorKey(currentUser);
+
+    const existingStore = vendorStores.getByVendorId(vk);
     if (existingStore?.isApproved) {
       setMyStore(existingStore);
-      setMyProducts(vendorProducts.getByVendorId(currentUser.id));
+      setMyProducts(vendorProducts.getByVendorId(vk));
       setEditData({
         name: existingStore.name,
         description: existingStore.description,
@@ -98,14 +103,106 @@ export default function MyStorePage() {
         categories: existingStore.category || [],
       });
     }
-    
-    // Check if user has a pending request
-    const existingRequest = storeRequests.getByVendorId(currentUser.id);
+
+    const existingRequest = storeRequests.getByVendorId(vk);
     if (existingRequest && existingRequest.status === "pending") {
       setMyRequest(existingRequest);
     }
-    
-    setLoading(false);
+
+    const token = currentUser.token;
+    if (!token || String(token).startsWith("mock.")) {
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const list = await fetchMyVendorStoreApplications();
+        const approved = list.find((x) => x.status === "approved");
+        if (approved) {
+          let store = vendorStores.getByVendorId(vk);
+          if (!store?.isApproved) {
+            store = vendorStores.create({
+              vendorId: vk,
+              name: approved.storeName,
+              description: approved.description,
+              address: approved.address,
+              phone: approved.phone,
+              email: approved.email || "",
+              category: approved.categories || [],
+              isActive: true,
+              isApproved: true,
+              commissionRate: 5,
+            });
+            auth.update(vk, { isVendor: true, storeId: store.id });
+            const sess = authApi.getCurrentUser();
+            if (sess) {
+              authApi.saveCurrentUser({
+                ...sess,
+                isVendor: true,
+                storeId: store.id,
+              } as any);
+            }
+          }
+          if (store) {
+            setMyStore(store);
+            setMyProducts(vendorProducts.getByVendorId(vk));
+            setEditData({
+              name: store.name,
+              description: store.description,
+              address: store.address,
+              phone: store.phone,
+              email: store.email || "",
+              logo: store.logo || "",
+              banner: store.banner || "",
+              categories: store.category || [],
+            });
+            setMyRequest(null);
+          }
+        } else {
+          const pending = list.find((x) => x.status === "pending");
+          const rejected = list.find((x) => x.status === "rejected");
+          if (pending) {
+            setMyRequest({
+              id: String(pending.id),
+              vendorId: vk,
+              vendorName: pending.vendorDisplayName,
+              vendorPhone: pending.vendorPhone || "",
+              name: pending.storeName,
+              description: pending.description,
+              address: pending.address,
+              phone: pending.phone,
+              email: pending.email || "",
+              category: pending.categories || [],
+              status: "pending",
+              createdAt: pending.createdAt,
+              updatedAt: pending.updatedAt || pending.createdAt,
+            });
+          } else if (rejected) {
+            setMyRequest({
+              id: String(rejected.id),
+              vendorId: vk,
+              vendorName: rejected.vendorDisplayName,
+              vendorPhone: rejected.vendorPhone || "",
+              name: rejected.storeName,
+              description: rejected.description,
+              address: rejected.address,
+              phone: rejected.phone,
+              email: rejected.email || "",
+              category: rejected.categories || [],
+              status: "rejected",
+              rejectionReason: rejected.rejectionReason || undefined,
+              createdAt: rejected.createdAt,
+              updatedAt: rejected.updatedAt || rejected.createdAt,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[store] server sync", e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
   const categories = [
@@ -184,7 +281,7 @@ export default function MyStorePage() {
       });
 
       // Refresh store
-      const updated = vendorStores.getByVendorId(user.id);
+      const updated = vendorStores.getByVendorId(vendorKey(user));
       setMyStore(updated || null);
       setShowEditForm(false);
       alert("Mağaza məlumatları yeniləndi!");
@@ -221,25 +318,50 @@ export default function MyStorePage() {
     setFormError("");
 
     try {
-      const created = storeRequests.create({
-        vendorId: user.id,
-        vendorName: user.fullName,
-        vendorPhone: user.phone || "",
-        name: formData.name.trim(),
-        description: formData.description.trim(),
-        address: formData.address.trim(),
-        phone: formData.phone.trim(),
-        email: formData.email.trim() || user.email || "",
-        category: formData.categories,
-      });
+      const vk = vendorKey(user);
+      const token = user.token;
 
-      void notifyVendorStoreRequestSubmitted({
-        requestId: created.id,
-        storeName: created.name,
-      });
-
-      const request = storeRequests.getByVendorId(user.id);
-      setMyRequest(request || null);
+      if (token && !String(token).startsWith("mock.")) {
+        const row = await submitVendorStoreApplication({
+          storeName: formData.name.trim(),
+          description: formData.description.trim(),
+          address: formData.address.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim() || user.email || "",
+          vendorDisplayName: user.fullName,
+          vendorPhone: user.phone || "",
+          categories: formData.categories,
+        });
+        setMyRequest({
+          id: String(row.id),
+          vendorId: vk,
+          vendorName: row.vendorDisplayName,
+          vendorPhone: row.vendorPhone || "",
+          name: row.storeName,
+          description: row.description,
+          address: row.address,
+          phone: row.phone,
+          email: row.email || "",
+          category: row.categories || [],
+          status: "pending",
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt || row.createdAt,
+        });
+      } else {
+        const created = storeRequests.create({
+          vendorId: vk,
+          vendorName: user.fullName,
+          vendorPhone: user.phone || "",
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          address: formData.address.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim() || user.email || "",
+          category: formData.categories,
+        });
+        const request = storeRequests.getByVendorId(vk);
+        setMyRequest(request || null);
+      }
       setShowForm(false);
       
       alert("Mağaza müraciətiniz uğurla göndərildi! Admin təsdiqlədikdən sonra mağazanız aktiv olacaq.");
