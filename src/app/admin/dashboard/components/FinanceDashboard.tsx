@@ -43,6 +43,12 @@ interface User {
   username: string;
 }
 
+interface FinanceKpis {
+  totalRevenue: number;
+  pendingPayments: number;
+  paidPayments: number;
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL 
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
@@ -65,11 +71,17 @@ export default function FinanceDashboard() {
   const [txNote, setTxNote] = useState("");
   const [txType, setTxType] = useState<FinanceTransactionType>("CREDIT");
   const [txSubmitting, setTxSubmitting] = useState(false);
+  const [financeKpis, setFinanceKpis] = useState<FinanceKpis>({
+    totalRevenue: 0,
+    pendingPayments: 0,
+    paidPayments: 0,
+  });
 
   useEffect(() => {
     loadPayments();
     loadUsers();
     void loadDebtsAndHistory();
+    void loadFinanceKpis();
     try {
       const sub = localStorage.getItem("premium_session_type") === "subadmin";
       if (sub) {
@@ -114,6 +126,41 @@ export default function FinanceDashboard() {
   }, []);
 
   const getToken = () => getAdminBearerToken();
+
+  const loadFinanceKpis = async () => {
+    try {
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const [dashboardRes, ordersRes] = await Promise.all([
+        fetch(`${API_BASE}/admin/dashboard`, { headers }),
+        fetch(`${API_BASE}/admin/orders`, { headers }),
+      ]);
+
+      let totalRevenue = 0;
+      if (dashboardRes.ok) {
+        const d = (await dashboardRes.json()) as { totalPaid?: number; totalRevenue?: number };
+        totalRevenue = Number(d.totalPaid ?? d.totalRevenue ?? 0);
+      }
+
+      let pendingPayments = 0;
+      let paidPayments = 0;
+      if (ordersRes.ok) {
+        const orders = (await ordersRes.json()) as Array<{ paymentStatus?: string }>;
+        const list = Array.isArray(orders) ? orders : [];
+        pendingPayments = list.filter((o) => {
+          const s = String(o.paymentStatus || "").toUpperCase();
+          return s === "PENDING" || s === "PARTIAL";
+        }).length;
+        paidPayments = list.filter(
+          (o) => String(o.paymentStatus || "").toUpperCase() === "PAID"
+        ).length;
+      }
+
+      setFinanceKpis({ totalRevenue, pendingPayments, paidPayments });
+    } catch (error) {
+      console.error("[Finance] KPI load error:", error);
+    }
+  };
 
   const loadPayments = async () => {
     try {
@@ -198,7 +245,7 @@ export default function FinanceDashboard() {
         note: txNote.trim() || undefined,
       });
       setModalOpen(false);
-      await Promise.all([loadDebtsAndHistory(), loadClientPayPending()]);
+      await Promise.all([loadDebtsAndHistory(), loadClientPayPending(), loadFinanceKpis()]);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Əməliyyat alınmadı");
     } finally {
@@ -232,11 +279,20 @@ export default function FinanceDashboard() {
   });
 
   const stats = {
-    totalRevenue: payments.filter(p => p.paymentStatus === "paid").reduce((sum, p) => sum + p.paidAmount, 0),
+    totalRevenue:
+      financeKpis.totalRevenue > 0
+        ? financeKpis.totalRevenue
+        : payments.filter(p => p.paymentStatus === "paid").reduce((sum, p) => sum + p.paidAmount, 0),
     totalDebt: debts.reduce((sum, d) => sum + Number(d.totalDebt || 0), 0),
-    pendingCount: payments.filter(p => p.paymentStatus === "pending").length,
-    partialCount: payments.filter(p => p.paymentStatus === "partial").length,
-    paidCount: payments.filter(p => p.paymentStatus === "paid").length,
+    pendingCount:
+      financeKpis.pendingPayments > 0
+        ? financeKpis.pendingPayments
+        : payments.filter(p => p.paymentStatus === "pending" || p.paymentStatus === "partial").length,
+    partialCount: 0,
+    paidCount:
+      financeKpis.paidPayments > 0
+        ? financeKpis.paidPayments
+        : payments.filter(p => p.paymentStatus === "paid").length,
     avgPayment: payments.filter(p => p.paidAmount > 0).length > 0
       ? payments.reduce((sum, p) => sum + p.paidAmount, 0) / payments.filter(p => p.paidAmount > 0).length
       : 0,
