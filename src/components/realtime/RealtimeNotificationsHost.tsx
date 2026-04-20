@@ -43,7 +43,10 @@ function resolveSubs(): { adminTopic: boolean; userQueue: boolean } {
   if (!raw) return { adminTopic: false, userQueue: false };
   try {
     const p = JSON.parse(raw) as { role?: string };
-    if (p.role === "ADMIN") return { adminTopic: true, userQueue: false };
+    const role = String(p.role || "").trim().toUpperCase();
+    if (role === "ADMIN" || role === "ROLE_ADMIN" || role === "SUBADMIN" || role === "ROLE_SUBADMIN") {
+      return { adminTopic: true, userQueue: false };
+    }
     return { adminTopic: false, userQueue: true };
   } catch {
     return { adminTopic: false, userQueue: false };

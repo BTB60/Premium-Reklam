@@ -46,6 +46,12 @@ interface DashboardLayoutProps {
   onLogout: () => void;
 }
 
+function normalizeRole(raw?: string): string {
+  const role = String(raw || "").trim().toUpperCase();
+  if (role.startsWith("ROLE_")) return role.slice(5);
+  return role;
+}
+
 const ALL_NAV_ITEMS: { id: ActiveTab; labelAz: string; labelEn: string; icon: any; permission?: keyof SubadminSession["permissions"]; adminOnly?: boolean }[] = [
   { id: "dashboard", labelAz: "Dashboard", labelEn: "Dashboard", icon: TrendingUp },
   { id: "users", labelAz: "İstifadəçilər", labelEn: "Users", icon: Users, permission: "users" },
@@ -80,7 +86,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
     return saved === "en" ? "en" : "az";
   });
 
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = normalizeRole(user?.role) === "ADMIN";
   const permissions = subadminSession?.permissions;
   const ui = {
     az: {

@@ -41,25 +41,25 @@ public class AnnouncementController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUBADMIN')")
     public Announcement create(@RequestBody AnnouncementRequest request) {
         return announcementService.create(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUBADMIN')")
     public Announcement update(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
         return announcementService.update(id, request);
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUBADMIN')")
     public Announcement patch(@PathVariable Long id, @RequestBody AnnouncementRequest request) {
         return announcementService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUBADMIN')")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         announcementService.delete(id);
         return ResponseEntity.ok().build();

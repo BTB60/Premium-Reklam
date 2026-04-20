@@ -61,7 +61,7 @@ export default function SupportManager() {
   const loadUsers = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/users`, {
+      const res = await fetch(`${API_BASE}/admin/users`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (res.ok) {

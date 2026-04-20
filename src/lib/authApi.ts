@@ -396,15 +396,23 @@ export const authApi = {
 
   async getAllUsers(): Promise<any[]> {
     try {
-      const user = getCurrentUser();
-      const token = user?.token;
+      const token = getToken();
       
-      const response = await fetch(`${BASE_URL}/users`, {
+      let response = await fetch(`${BASE_URL}/admin/users`, {
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
       });
+
+      if (response.status === 404) {
+        response = await fetch(`${BASE_URL}/users`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          },
+        });
+      }
       
       if (!response.ok) {
         console.warn("[API] getAllUsers error:", response.status);
