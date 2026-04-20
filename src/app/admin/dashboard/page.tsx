@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import DashboardLayout from "./components/DashboardLayout";
+import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 // 🔥 ДОБАВЛЕНО: "elan" в тип ActiveTab
 type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
@@ -28,6 +30,7 @@ export default function DashboardPage() {
   const [subadminSession, setSubadminSession] = useState<SubadminSession | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState<string>("");
 
   useEffect(() => {
     try {
@@ -83,10 +86,12 @@ export default function DashboardPage() {
       }
 
       console.warn("[Dashboard] No valid session, redirecting to login");
+      setAuthError("Sessiya tapılmadı və ya etibarsızdır. Yenidən daxil olun.");
       setLoading(false);
       router.push("/admin/login");
     } catch (error) {
       console.error("[Dashboard] Init error:", error);
+      setAuthError("Sessiya yoxlanışı zamanı xəta baş verdi. Yenidən daxil olun.");
       setLoading(false);
       router.push("/admin/login");
     }
@@ -119,7 +124,23 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 text-center shadow-lg">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Admin sessiyası aktiv deyil</h2>
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            {authError || "Dashboard-a daxil olmaq üçün yenidən login edin."}
+          </p>
+          <div className="mt-5 flex justify-center">
+            <Link href="/admin/login">
+              <Button size="sm">Admin login səhifəsinə keç</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout

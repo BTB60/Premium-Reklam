@@ -7,6 +7,20 @@ export function getAdminDashboardApiBase(): string {
 const SUBADMIN_JWT_KEY = "premium_subadmin_jwt";
 const SUBADMIN_SESSION_KEY = "premium_subadmin_session";
 
+function extractToken(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = JSON.parse(trimmed) as { token?: string };
+    if (parsed?.token && typeof parsed.token === "string") return parsed.token;
+  } catch {
+    // Backward compatibility: older sessions may store plain JWT string.
+  }
+  if (trimmed.includes(".") && !trimmed.startsWith("{")) return trimmed;
+  return null;
+}
+
 function normalizeRole(raw?: string): string {
   const role = String(raw || "").trim().toUpperCase();
   if (role.startsWith("ROLE_")) return role.slice(5);
@@ -29,20 +43,14 @@ export function getAdminBearerToken(): string | null {
     /* ignore */
   }
   try {
-    const raw = sessionStorage.getItem(SUBADMIN_JWT_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { token?: string };
-      if (parsed?.token) return parsed.token;
-    }
+    const token = extractToken(sessionStorage.getItem(SUBADMIN_JWT_KEY));
+    if (token) return token;
   } catch {
     /* ignore */
   }
   try {
-    const raw = sessionStorage.getItem(SUBADMIN_SESSION_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { token?: string };
-      if (parsed?.token) return parsed.token;
-    }
+    const token = extractToken(sessionStorage.getItem(SUBADMIN_SESSION_KEY));
+    if (token) return token;
   } catch {
     /* ignore */
   }

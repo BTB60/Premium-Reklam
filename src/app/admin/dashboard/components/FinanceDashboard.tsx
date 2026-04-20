@@ -100,7 +100,8 @@ export default function FinanceDashboard() {
       } else {
         const raw = localStorage.getItem("decor_current_user");
         const p = raw ? (JSON.parse(raw) as { role?: string }) : {};
-        setIsFullAdmin(p.role === "ADMIN");
+        const role = String(p.role || "").trim().toUpperCase();
+        setIsFullAdmin(role === "ADMIN" || role === "ROLE_ADMIN");
       }
     } catch {
       setIsFullAdmin(false);

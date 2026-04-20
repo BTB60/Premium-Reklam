@@ -171,10 +171,16 @@ function getToken(): string | null {
   if (user?.token) return user.token;
   try {
     const raw = sessionStorage.getItem("premium_subadmin_jwt");
-    if (raw) {
-      const s = JSON.parse(raw) as { token?: string };
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      const s = JSON.parse(trimmed) as { token?: string };
       if (s?.token) return s.token;
+    } catch {
+      // Backward compatibility: older sessions may store plain JWT string.
     }
+    if (trimmed.includes(".") && !trimmed.startsWith("{")) return trimmed;
   } catch {
     /* ignore */
   }
