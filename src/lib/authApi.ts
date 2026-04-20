@@ -10,6 +10,7 @@ const API_URL_FROM_ENV = process.env.NEXT_PUBLIC_API_URL || "(not set)";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? `${process.env.NEXT_PUBLIC_API_URL}/api`
   : "https://premium-reklam-backend.onrender.com/api";
+const HEALTH_URL = `${BASE_URL}/health`;
 
 if (process.env.NODE_ENV === "development") {
   console.log("[API Config] NEXT_PUBLIC_API_URL:", API_URL_FROM_ENV);
@@ -198,6 +199,17 @@ function getCurrentUser(): UserData | null {
   }
 }
 
+async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(HEALTH_URL, { method: "GET" });
+    if (!res.ok) return false;
+    const data = (await res.json().catch(() => ({}))) as { status?: string };
+    return String(data.status || "").toUpperCase() === "UP";
+  } catch {
+    return false;
+  }
+}
+
 async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -250,7 +262,11 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
     }
   } catch (error: any) {
     if (error.message === "Failed to fetch" || error.message.includes("fetch") || error.message.includes("NetworkError")) {
-      throw new Error("Server bağlantısı yoxdur. Backend işləyirmi?");
+      const isHealthy = await checkBackendHealth();
+      if (isHealthy) {
+        throw new Error("Server işləyir, amma şəbəkə/CORS səbəbindən sorğu alınmadı.");
+      }
+      throw new Error(`Server bağlantısı yoxdur. Backend işləyirmi? ${HEALTH_URL} ünvanını yoxlayın.`);
     }
     throw error;
   }
@@ -353,8 +369,12 @@ export const authApi = {
           console.warn("[authApi] Şəbəkə xətası; lokal mock sessiya istifadə olunur");
           return mockUser;
         }
+        const isHealthy = await checkBackendHealth();
+        if (isHealthy) {
+          throw new Error("Server UP-dır, amma giriş sorğusu şəbəkə/CORS səbəbi ilə alınmadı.");
+        }
         throw new Error(
-          "Server bağlantısı yoxdur. Backend işləyirmi? " + BASE_URL + " ünvanını yoxlayın."
+          "Server bağlantısı yoxdur. Backend işləyirmi? " + HEALTH_URL + " ünvanını yoxlayın."
         );
       }
       throw new Error(msg || "Giriş uğursuz oldu");
