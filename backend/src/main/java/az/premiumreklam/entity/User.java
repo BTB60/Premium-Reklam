@@ -63,7 +63,7 @@ public class User {
     private BigDecimal totalDebt = BigDecimal.ZERO;
 
     /** Həftəlik ödəniş gecikməsinə görə sifariş bloku. */
-    @Column(name = "order_blocked", nullable = false)
+    @Column(name = "order_blocked")
     private Boolean orderBlocked = false;
 
     /** Növbəti həftəlik ödəniş üçün son tarix. */

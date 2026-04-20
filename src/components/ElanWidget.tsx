@@ -16,6 +16,45 @@ interface Announcement {
   expiresAt?: string;
 }
 
+const READ_KEY_PREFIX = "premium_read_announcements";
+
+function getSessionUserKey(): string {
+  if (typeof window === "undefined") return "guest";
+  try {
+    const raw = localStorage.getItem("decor_current_user");
+    if (!raw) return "guest";
+    const parsed = JSON.parse(raw) as { userId?: string | number; id?: string | number; username?: string };
+    if (parsed.userId != null) return String(parsed.userId);
+    if (parsed.id != null) return String(parsed.id);
+    if (parsed.username) return parsed.username;
+  } catch {
+    /* ignore */
+  }
+  return "guest";
+}
+
+function loadReadAnnouncementIds(): Set<number> {
+  if (typeof window === "undefined") return new Set<number>();
+  const key = `${READ_KEY_PREFIX}:${getSessionUserKey()}`;
+  try {
+    const raw = localStorage.getItem(key);
+    const arr = raw ? (JSON.parse(raw) as number[]) : [];
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch {
+    return new Set<number>();
+  }
+}
+
+function saveReadAnnouncementIds(ids: Set<number>) {
+  if (typeof window === "undefined") return;
+  const key = `${READ_KEY_PREFIX}:${getSessionUserKey()}`;
+  try {
+    localStorage.setItem(key, JSON.stringify(Array.from(ids).slice(-500)));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function ElanWidget() {
   const [showElan, setShowElan] = useState(false);
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
@@ -66,17 +105,25 @@ export default function ElanWidget() {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )[0];
     const isExpired = latest.expiresAt && new Date(latest.expiresAt) < new Date();
-    // 🔥 Упрощено: показываем, если активно и не истекло (без трекинга прочтений для этой задачи)
-    if (!isExpired) {
+    const readIds = loadReadAnnouncementIds();
+    const isRead = readIds.has(Number(latest.id));
+    if (!isExpired && !isRead) {
       setAnnouncement(latest);
       setHasUnread(true);
       setShowElan(true);
+    } else {
+      setHasUnread(false);
+      setShowElan(false);
     }
     setIsLoading(false);
   };
 
   const handleMarkAsRead = () => {
-    // 🔥 Просто закрываем — трекинг прочтений отключён для этой задачи
+    if (announcement?.id != null) {
+      const ids = loadReadAnnouncementIds();
+      ids.add(Number(announcement.id));
+      saveReadAnnouncementIds(ids);
+    }
     setShowElan(false);
     setHasUnread(false);
   };

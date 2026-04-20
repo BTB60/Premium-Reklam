@@ -16,6 +16,12 @@ interface SubadminSession {
   lastLogin?: string;
 }
 
+function normalizeRole(raw?: string): string {
+  const role = String(raw || "").trim().toUpperCase();
+  if (role.startsWith("ROLE_")) return role.slice(5);
+  return role;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -57,10 +63,11 @@ export default function DashboardPage() {
       // Admin: must run even when premium_session_type was "subadmin" but invalid / cleared above
       if (adminSession) {
         try {
-          const parsed = JSON.parse(adminSession);
+          const parsed = JSON.parse(adminSession) as { token?: string; role?: string; fullName?: string };
+          const normalizedRole = normalizeRole(parsed?.role);
           console.log("[Dashboard] Parsed admin session:", parsed);
           if (parsed?.token && parsed?.role) {
-            if (parsed.role === "ADMIN") {
+            if (normalizedRole === "ADMIN") {
               console.log("[Dashboard] Loading as ADMIN:", parsed.fullName);
               setUser(parsed);
               setLoading(false);

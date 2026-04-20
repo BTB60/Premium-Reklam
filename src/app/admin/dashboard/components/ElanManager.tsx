@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Plus, Save, X, AlertCircle, CheckCircle } from "lucide-react";
+import { Plus, Save, X, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
 import { getAdminBearerToken, getAdminDashboardApiBase } from "./admin-dashboard-api";
 
 interface Announcement {
@@ -22,6 +22,7 @@ export default function ElanManager() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ title: "", message: "", priority: "normal", isActive: true, expiresAt: "" });
 
   useEffect(() => { loadAnnouncements(); }, []);
@@ -86,6 +87,45 @@ export default function ElanManager() {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    const confirmed = window.confirm("Bu elanı silmək istədiyinizə əminsiniz?");
+    if (!confirmed) return;
+
+    setError(null);
+    setSuccess(null);
+    setDeletingId(id);
+    try {
+      const token = getAdminBearerToken();
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(`${getAdminDashboardApiBase()}/announcements/${id}`, {
+        method: "DELETE",
+        headers
+      });
+
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(
+            res.status === 403
+              ? "Elanı silmək üçün ADMIN hüququ lazımdır."
+              : "Sessiya etibarsızdır — yenidən daxil olun."
+          );
+        }
+        const txt = await res.text();
+        throw new Error(txt || `HTTP ${res.status}`);
+      }
+
+      setAnnouncements(prev => prev.filter(item => item.id !== id));
+      setSuccess("Elan silindi");
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (e: any) {
+      setError("Silmə xətası: " + e.message);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading && announcements.length === 0) return <Card className="p-8 text-center">Yüklənir...</Card>;
 
   return (
@@ -119,10 +159,26 @@ export default function ElanManager() {
           <p className="p-4 text-gray-500">Elan yoxdur</p>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50"><tr><th className="p-3 text-left">Başlıq</th><th className="p-3 text-left">Prioritet</th><th className="p-3 text-left">Tarix</th></tr></thead>
+            <thead className="bg-gray-50"><tr><th className="p-3 text-left">Başlıq</th><th className="p-3 text-left">Prioritet</th><th className="p-3 text-left">Tarix</th><th className="p-3 text-right">Əməliyyat</th></tr></thead>
             <tbody>
               {announcements.map(a => (
-                <tr key={a.id} className="border-t"><td className="p-3 font-medium">{a.title}</td><td className="p-3">{a.priority}</td><td className="p-3 text-gray-500">{new Date(a.createdAt).toLocaleDateString("az-AZ")}</td></tr>
+                <tr key={a.id} className="border-t">
+                  <td className="p-3 font-medium">{a.title}</td>
+                  <td className="p-3">{a.priority}</td>
+                  <td className="p-3 text-gray-500">{new Date(a.createdAt).toLocaleDateString("az-AZ")}</td>
+                  <td className="p-3 text-right">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="danger"
+                      onClick={() => void handleDelete(a.id)}
+                      disabled={deletingId === a.id}
+                      icon={<Trash2 className="w-4 h-4" />}
+                    >
+                      {deletingId === a.id ? "Silinir..." : "Sil"}
+                    </Button>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>

@@ -67,6 +67,7 @@ export default function AdminLoginPage() {
       // 🔥 КЛЮЧЕВОЕ: очищаем subadmin-сессию и ставим флаг admin
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("premium_subadmin_session");
+        sessionStorage.removeItem("premium_subadmin_jwt");
         localStorage.setItem("premium_session_type", "admin");
         localStorage.setItem("decor_current_user", JSON.stringify(user));
         console.log("[Login] Saved admin user:", user);

@@ -32,6 +32,15 @@ public class PostgresSchemaHotfixRunner implements CommandLineRunner {
                 ADD COLUMN IF NOT EXISTS order_blocked BOOLEAN NOT NULL DEFAULT FALSE
                 """);
         jdbcTemplate.execute("""
+                UPDATE users
+                SET order_blocked = FALSE
+                WHERE order_blocked IS NULL
+                """);
+        jdbcTemplate.execute("""
+                ALTER TABLE IF EXISTS users
+                ALTER COLUMN order_blocked SET DEFAULT FALSE
+                """);
+        jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS users
                 ADD COLUMN IF NOT EXISTS next_weekly_due_date DATE
                 """);
