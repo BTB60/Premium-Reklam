@@ -308,7 +308,7 @@ export const authApi = {
     };
   },
 
-  async login(username: string, password: string, otpCode?: string): Promise<UserData & { requiresOtp?: boolean; message?: string }> {
+  async login(username: string, password: string): Promise<UserData> {
     const tryLocalMock = async (): Promise<UserData | null> => {
       if (!MOCK_AUTH_ENABLED) return null;
       const mockAuth = await getMockAuth();
@@ -332,7 +332,7 @@ export const authApi = {
       const res = await fetch(`${BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, otpCode }),
+        body: JSON.stringify({ username, password }),
       });
 
       const text = await res.text();
@@ -356,19 +356,6 @@ export const authApi = {
       }
 
       if (res.ok) {
-        if (data.requiresOtp === true) {
-          return {
-            token: "",
-            userId: (data.userId ?? data.id ?? "") as string | number,
-            username: String(data.username ?? username),
-            fullName: String(data.fullName ?? ""),
-            email: String(data.email ?? ""),
-            phone: String(data.phone ?? ""),
-            role: mapRole(String(data.role ?? "")),
-            requiresOtp: true,
-            message: String(data.message ?? "OTP tələb olunur"),
-          };
-        }
         const token = typeof data.token === "string" ? data.token : "";
         const userId = (data.userId ?? data.id) as string | number;
         const roleRaw = typeof data.role === "string" ? data.role : "";

@@ -9,8 +9,6 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpRequired, setOtpRequired] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,12 +19,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const result = await authApi.login(username, password, otpRequired ? otpCode : undefined);
-      if ((result as any).requiresOtp) {
-        setOtpRequired(true);
-        setError((result as any).message || "OTP kod daxil edin");
-        return;
-      }
+      const result = await authApi.login(username, password);
       authApi.saveCurrentUser(result);
 
       if (result.role === "ADMIN") {
@@ -183,37 +176,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-
-          {otpRequired && (
-            <div style={{ marginBottom: 24 }}>
-              <label style={{
-                display: "block",
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#374151",
-                marginBottom: 8
-              }}>
-                OTP kod
-              </label>
-              <input
-                type="text"
-                placeholder="6 rəqəmli kod"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
-                required
-                style={{
-                  width: "100%",
-                  padding: "14px 16px",
-                  border: "1px solid #E5E7EB",
-                  borderRadius: 10,
-                  fontSize: 15,
-                  outline: "none",
-                  transition: "border-color 0.2s",
-                  boxSizing: "border-box"
-                }}
-              />
-            </div>
-          )}
 
           <button
             type="submit"

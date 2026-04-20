@@ -15,7 +15,6 @@ import {
   fetchFinanceDebts,
   fetchFinanceTransactions,
   fetchPendingClientPayments,
-  requestFinanceOtp,
   rejectClientPaymentRequest,
   updateFinanceBalance,
   type AdminCouponRow,
@@ -75,7 +74,6 @@ export default function FinanceDashboard() {
   const [txNote, setTxNote] = useState("");
   const [txType, setTxType] = useState<FinanceTransactionType>("CREDIT");
   const [txSubmitting, setTxSubmitting] = useState(false);
-  const [txOtpCode, setTxOtpCode] = useState("");
   const [coupons, setCoupons] = useState<AdminCouponRow[]>([]);
   const [couponCode, setCouponCode] = useState("");
   const [couponPercent, setCouponPercent] = useState("10");
@@ -263,10 +261,8 @@ export default function FinanceDashboard() {
         amount,
         transactionType: txType,
         note: txNote.trim() || undefined,
-        otpCode: txOtpCode.trim() || undefined,
       });
       setModalOpen(false);
-      setTxOtpCode("");
       await Promise.all([loadDebtsAndHistory(), loadClientPayPending(), loadFinanceKpis()]);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Əməliyyat alınmadı");
@@ -858,32 +854,12 @@ export default function FinanceDashboard() {
                 />
               </div>
               <div className="pt-2 flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={async () => {
-                  try {
-                    await requestFinanceOtp();
-                    alert("OTP göndərildi (server log/email/SMS kanalına baxın)");
-                  } catch (e) {
-                    alert(e instanceof Error ? e.message : "OTP göndərilmədi");
-                  }
-                }} disabled={txSubmitting}>
-                  OTP al
-                </Button>
                 <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)} disabled={txSubmitting}>
                   Bağla
                 </Button>
                 <Button size="sm" onClick={submitTx} loading={txSubmitting}>
                   Təsdiq et
                 </Button>
-              </div>
-              <div>
-                <label className="text-xs text-[var(--text-muted)]">OTP kod</label>
-                <input
-                  type="text"
-                  value={txOtpCode}
-                  onChange={(e) => setTxOtpCode(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--background)]"
-                  placeholder="6 rəqəm"
-                />
               </div>
             </div>
           </div>

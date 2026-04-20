@@ -142,13 +142,11 @@ export async function updateFinanceBalance(input: {
   amount: number;
   transactionType: FinanceTransactionType;
   note?: string;
-  otpCode?: string;
 }): Promise<FinanceTransactionHistoryRow> {
   const res = await fetch(`${BASE_URL}/admin/finance/update-balance`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(input.otpCode ? { "X-OTP-Code": input.otpCode } : {}),
       ...authHeaders()
     },
     body: JSON.stringify(input),
@@ -158,17 +156,6 @@ export async function updateFinanceBalance(input: {
     throw new Error(err.message || "Balans yenilənmədi");
   }
   return res.json() as Promise<FinanceTransactionHistoryRow>;
-}
-
-export async function requestFinanceOtp(): Promise<void> {
-  const res = await fetch(`${BASE_URL}/auth/otp/finance/request`, {
-    method: "POST",
-    headers: { ...authHeaders() },
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message || "OTP göndərilmədi");
-  }
 }
 
 export async function createAdminCoupon(input: {

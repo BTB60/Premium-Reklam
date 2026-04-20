@@ -278,10 +278,10 @@ export default function StatsCards({ onNavigate }: StatsCardsProps) {
           <div className="rounded-xl border border-[var(--border)] bg-white p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="w-4 h-4 text-[#16A34A]" />
-              <p className="font-medium text-[var(--text-primary)]">OTP 2FA Təhlükəsizliyi</p>
+              <p className="font-medium text-[var(--text-primary)]">Giriş Təhlükəsizliyi</p>
             </div>
             <p className="text-xs text-[var(--text-muted)]">
-              Admin login və maliyyə əməliyyatları üçün OTP yoxlaması aktivdir.
+              Admin və subadmin giriş axını rol əsaslı təhlükəsizlik ilə qorunur.
             </p>
           </div>
         </div>
