@@ -11,11 +11,11 @@ function authHeaders(): HeadersInit {
 }
 
 /** Müştəri ödəniş sorğusu — JWT admin yox, `decor_current_user` sessiyasından gəlir */
-function userPaymentRequestHeaders(): Record<string, string> {
+function userAuthHeaders(): Record<string, string> {
   const u = authApi.getCurrentUser();
   const t = u?.token;
   if (!t || String(t).startsWith("mock.")) {
-    throw new Error("Ödəniş bildirişi üçün hesaba daxil olun (mock sessiya ilə serverə sorğu göndərilmir).");
+    throw new Error("Sessiya etibarsızdır (mock sessiya ilə server sorğusu dəstəklənmir).");
   }
   return { Authorization: `Bearer ${t}` };
 }
@@ -75,7 +75,7 @@ export async function submitClientPaymentRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...userPaymentRequestHeaders(),
+      ...userAuthHeaders(),
     },
     body: JSON.stringify({ amount, receiptImageData, receiptFileName }),
   });
@@ -88,7 +88,7 @@ export async function submitClientPaymentRequest(
 
 export async function fetchMyClientPaymentRequests(): Promise<ClientPaymentRequestRow[]> {
   const res = await fetch(`${BASE_URL}/payment-requests/my`, {
-    headers: { ...userPaymentRequestHeaders() },
+    headers: { ...userAuthHeaders() },
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { message?: string };
@@ -96,6 +96,23 @@ export async function fetchMyClientPaymentRequests(): Promise<ClientPaymentReque
   }
   const data = await res.json();
   return Array.isArray(data) ? data : [];
+}
+
+export type InAppNotificationRow = {
+  id: number;
+  message: string;
+  isRead: boolean;
+  type: string;
+  createdAt: string;
+};
+
+export async function fetchMyInAppNotifications(): Promise<InAppNotificationRow[]> {
+  const res = await fetch(`${BASE_URL}/notifications`, {
+    headers: { ...userAuthHeaders() },
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? (data as InAppNotificationRow[]) : [];
 }
 
 export async function fetchPendingClientPayments(): Promise<ClientPaymentRequestRow[]> {

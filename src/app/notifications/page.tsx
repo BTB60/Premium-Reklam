@@ -28,6 +28,11 @@ import {
 } from "@/lib/db/messages";
 import type { SupportNotification } from "@/lib/db/types";
 import { cn } from "@/lib/utils";
+import {
+  fetchMyInAppNotifications,
+  markAllInAppNotificationsRead,
+  type InAppNotificationRow,
+} from "@/lib/clientPaymentNotificationsApi";
 
 function getSessionUserId(): string | null {
   const u = auth.getCurrentUser();
@@ -51,19 +56,31 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [supportUnread, setSupportUnread] = useState<SupportNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [serverNotificationIds, setServerNotificationIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const uid = getSessionUserId();
     try {
-      const [activeList, personal] = await Promise.all([
+      const [activeList, personal, serverRows] = await Promise.all([
         announcementApi.getActive(),
         Promise.resolve(uid ? notificationsStore.getByUserId(uid) : []),
+        fetchMyInAppNotifications().catch(() => [] as InAppNotificationRow[]),
       ]);
-      const sorted = [...personal].sort(
+      const mappedServer: Notification[] = serverRows.map((r) => ({
+        id: `srv-${r.id}`,
+        userId: uid || "0",
+        type: String(r.type || "system").toLowerCase(),
+        title: String(r.type || "SYSTEM"),
+        message: r.message,
+        isRead: Boolean(r.isRead),
+        createdAt: r.createdAt,
+      }));
+      const sorted = [...mappedServer, ...personal].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setAnnouncements(Array.isArray(activeList) ? activeList : []);
       setNotifications(sorted);
+      setServerNotificationIds(new Set(mappedServer.map((n) => n.id)));
       if (uid) {
         setSupportUnread(getUnreadSupportNotifications(uid));
       } else {
@@ -97,17 +114,26 @@ export default function NotificationsPage() {
   }, [router, load]);
 
   const markAsRead = (id: string) => {
-    notificationsStore.markAsRead(id);
+    if (!id.startsWith("srv-")) {
+      notificationsStore.markAsRead(id);
+    }
     window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: [id] } }));
     // Oxunan bildirişi siyahıdan çıxarırıq ki yenidən görünməsin.
     setNotifications((prev) => prev.filter((n: Notification) => n.id !== id));
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     const idsToDismiss = notifications.filter((n: Notification) => !n.isRead).map((n) => n.id);
     notifications.forEach((n: Notification) => {
-      if (!n.isRead) notificationsStore.markAsRead(n.id);
+      if (!n.isRead && !n.id.startsWith("srv-")) notificationsStore.markAsRead(n.id);
     });
+    if (notifications.some((n) => !n.isRead && serverNotificationIds.has(n.id))) {
+      try {
+        await markAllInAppNotificationsRead();
+      } catch {
+        // local fallback onsuz da tətbiq edilir
+      }
+    }
     if (idsToDismiss.length > 0) {
       window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: idsToDismiss } }));
     }
@@ -115,7 +141,9 @@ export default function NotificationsPage() {
   };
 
   const deleteNotification = (id: string) => {
-    notificationsStore.delete(id);
+    if (!id.startsWith("srv-")) {
+      notificationsStore.delete(id);
+    }
     setNotifications((prev) => prev.filter((n: Notification) => n.id !== id));
   };
 
@@ -177,7 +205,7 @@ export default function NotificationsPage() {
               </div>
             </div>
             {unreadPersonal > 0 && (
-              <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+              <Button variant="ghost" size="sm" onClick={() => void markAllAsRead()}>
                 Şəxsi bildirişləri oxu
               </Button>
             )}

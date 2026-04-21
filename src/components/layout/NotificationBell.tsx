@@ -8,6 +8,7 @@ import { getUnreadSupportNotifications } from "@/lib/db/messages";
 import type { Notification } from "@/lib/db/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { fetchMyInAppNotifications } from "@/lib/clientPaymentNotificationsApi";
 
 function getSessionUserId(): string | null {
   if (typeof window === "undefined") return null;
@@ -42,7 +43,13 @@ export function NotificationBell() {
       const list = await announcementApi.getActive();
       const active = Array.isArray(list) ? list.filter((a: { isActive?: boolean }) => a.isActive !== false) : [];
       const personal: Notification[] = uid ? notificationsStore.getByUserId(uid) : [];
-      const unreadP = personal.filter((n) => !n.isRead);
+      const unreadServer = await fetchMyInAppNotifications().catch(() => []);
+      const unreadP = [
+        ...unreadServer
+          .filter((n) => !n.isRead)
+          .map((n) => ({ id: `srv-${n.id}`, title: String(n.type || "SYSTEM") })),
+        ...personal.filter((n) => !n.isRead).map((n) => ({ id: n.id, title: n.title })),
+      ];
       const sup = uid ? getUnreadSupportNotifications(uid) : [];
 
       setAnnouncementCount(active.length);
