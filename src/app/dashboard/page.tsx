@@ -11,7 +11,11 @@ import { OrderTimeline } from "@/components/ui/OrderTimeline";
 import { InvoiceGenerator } from "@/components/ui/InvoiceGenerator";
 import { motion, AnimatePresence } from "framer-motion";
 import ElanWidget from "@/components/ElanWidget"; // 🔥 ДОБАВЛЕНО
-import { submitClientPaymentRequest } from "@/lib/clientPaymentNotificationsApi";
+import {
+  fetchMyClientPaymentRequests,
+  submitClientPaymentRequest,
+  type ClientPaymentRequestRow,
+} from "@/lib/clientPaymentNotificationsApi";
 import { 
   LogOut, 
   Package, 
@@ -62,6 +66,7 @@ export default function DashboardPage() {
   const [clientPayReceiptData, setClientPayReceiptData] = useState<string>("");
   const [clientPayReceiptName, setClientPayReceiptName] = useState<string>("");
   const [clientPayBusy, setClientPayBusy] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState<ClientPaymentRequestRow[]>([]);
 
   // New order form state
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -105,10 +110,11 @@ export default function DashboardPage() {
     try {
       const user = authApi.getCurrentUser();
       
-      const [ordersResponse, productsData, profile] = await Promise.all([
+      const [ordersResponse, productsData, profile, myPayments] = await Promise.all([
         orderApi.getMyOrders(),
         productApi.getActiveCatalog(),
         authApi.getMyProfile().catch(() => null),
+        fetchMyClientPaymentRequests().catch(() => []),
       ]);
       const ordersData = ordersResponse as any;
       const orders = ordersData.orders || [];
@@ -147,6 +153,7 @@ export default function DashboardPage() {
       setProducts(productsData);
       setOrderBlocked(Boolean((profile as any)?.orderBlocked));
       setNextWeeklyDueDate((profile as any)?.nextWeeklyDueDate ? String((profile as any).nextWeeklyDueDate) : null);
+      setPaymentHistory(myPayments);
     } catch (error) {
       console.error("Data load error:", error);
       setUserOrders([]);
@@ -154,6 +161,7 @@ export default function DashboardPage() {
       setProducts([]);
       setOrderBlocked(false);
       setNextWeeklyDueDate(null);
+      setPaymentHistory([]);
     } finally {
       setLoading(false);
     }
@@ -188,6 +196,7 @@ export default function DashboardPage() {
       setClientPayAmount("");
       setClientPayReceiptData("");
       setClientPayReceiptName("");
+      await loadData();
       alert("Ödəniş bildirişi göndərildi. Admin təsdiqləyəndə borc yenilənəcək.");
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Göndərilmədi");
@@ -615,6 +624,46 @@ export default function DashboardPage() {
                 {userOrders.length === 0 && <p className="text-sm text-[#6B7280]">Borc detalı üçün sifariş yoxdur.</p>}
               </div>
             </Card>
+
+            <div className="grid lg:grid-cols-2 gap-4 mb-6">
+              <Card className="p-5">
+                <h3 className="font-semibold text-[#1F2937] mb-3">Sifariş tarixçəsi</h3>
+                <div className="space-y-2">
+                  {userOrders.slice(0, 6).map((order) => (
+                    <div key={order.id} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
+                      <span className="font-medium text-[#1F2937]">#{order.orderNumber || order.order_number || order.id}</span>
+                      <span className="text-[#6B7280]">{new Date(order.createdAt).toLocaleDateString("az-AZ")}</span>
+                      <span className="text-[#D90429] font-semibold">{Number(order.totalAmount || 0).toFixed(2)} AZN</span>
+                    </div>
+                  ))}
+                  {userOrders.length === 0 && <p className="text-sm text-[#6B7280]">Hələ sifariş tarixçəsi yoxdur.</p>}
+                </div>
+              </Card>
+
+              <Card className="p-5">
+                <h3 className="font-semibold text-[#1F2937] mb-3">Ödəniş tarixçəsi</h3>
+                <div className="space-y-2">
+                  {paymentHistory.slice(0, 6).map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
+                      <span className="font-medium text-[#1F2937]">{Number(p.amount || 0).toFixed(2)} AZN</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs ${
+                          p.status === "APPROVED"
+                            ? "bg-green-100 text-green-700"
+                            : p.status === "REJECTED"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {p.status === "APPROVED" ? "Təsdiqlənib" : p.status === "REJECTED" ? "Rədd edilib" : "Gözləyir"}
+                      </span>
+                      <span className="text-[#6B7280]">{new Date(p.createdAt).toLocaleDateString("az-AZ")}</span>
+                    </div>
+                  ))}
+                  {paymentHistory.length === 0 && <p className="text-sm text-[#6B7280]">Hələ ödəniş tarixçəsi yoxdur.</p>}
+                </div>
+              </Card>
+            </div>
 
             {/* Recent Orders */}
             <div>

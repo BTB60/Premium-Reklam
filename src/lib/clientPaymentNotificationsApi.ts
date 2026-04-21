@@ -86,6 +86,18 @@ export async function submitClientPaymentRequest(
   return res.json() as Promise<ClientPaymentRequestRow>;
 }
 
+export async function fetchMyClientPaymentRequests(): Promise<ClientPaymentRequestRow[]> {
+  const res = await fetch(`${BASE_URL}/payment-requests/my`, {
+    headers: { ...userPaymentRequestHeaders() },
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(err.message || "Ödəniş tarixçəsi alınmadı");
+  }
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
 export async function fetchPendingClientPayments(): Promise<ClientPaymentRequestRow[]> {
   const res = await fetch(`${BASE_URL}/admin/payments/pending`, {
     headers: { ...authHeaders() },
