@@ -23,36 +23,37 @@ public class PostgresSchemaHotfixRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        jdbcTemplate.execute("""
+        try {
+            jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS users
                 ADD COLUMN IF NOT EXISTS total_debt NUMERIC(12,2) NOT NULL DEFAULT 0
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS users
                 ADD COLUMN IF NOT EXISTS order_blocked BOOLEAN NOT NULL DEFAULT FALSE
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 UPDATE users
                 SET order_blocked = FALSE
                 WHERE order_blocked IS NULL
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS users
                 ALTER COLUMN order_blocked SET DEFAULT FALSE
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS users
                 ADD COLUMN IF NOT EXISTS next_weekly_due_date DATE
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS client_payment_requests
                 ADD COLUMN IF NOT EXISTS receipt_image_data TEXT
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 ALTER TABLE IF EXISTS client_payment_requests
                 ADD COLUMN IF NOT EXISTS receipt_file_name VARCHAR(255)
                 """);
-        jdbcTemplate.execute("""
+            jdbcTemplate.execute("""
                 CREATE TABLE IF NOT EXISTS promo_coupons (
                     id BIGSERIAL PRIMARY KEY,
                     code VARCHAR(64) UNIQUE NOT NULL,
@@ -66,7 +67,12 @@ public class PostgresSchemaHotfixRunner implements CommandLineRunner {
                     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
                 )
                 """);
-        log.info("Schema hotfix checked: users.total_debt");
+            log.info("Schema hotfix checked: users.total_debt");
+        } catch (Exception ex) {
+            // Legacy schema düzəlişi uğursuz olsa da servis startup etməlidir.
+            log.warn("Schema hotfix skipped due to SQL/runtime error: {}", ex.getMessage());
+            log.debug("Schema hotfix stacktrace", ex);
+        }
     }
 }
 

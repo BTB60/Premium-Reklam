@@ -61,10 +61,10 @@ public class ProductionDataSourceConfig {
                 "No database URL could be resolved from the environment.",
                 "",
                 "Set one of the following in Render → Environment (then redeploy):",
-                "  • SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/DBNAME  (+ SPRING_DATASOURCE_USERNAME / SPRING_DATASOURCE_PASSWORD),",
-                "  • DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME",
-                "  • Or libpq-style: PGHOST, PGDATABASE, PGPORT (optional), PGUSER, PGPASSWORD",
+                "  • SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/DBNAME",
+                "  • SPRING_DATASOURCE_USERNAME=...",
+                "  • SPRING_DATASOURCE_PASSWORD=...",
                 "",
-                "Tip: Link the Render PostgreSQL instance to the web service, or paste the connection string from the DB dashboard.");
+                "Tip: Link the Render PostgreSQL instance to the web service, or paste values from the DB dashboard.");
     }
 }

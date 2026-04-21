@@ -5,20 +5,24 @@ import az.premiumreklam.entity.User;
 import az.premiumreklam.repository.SubadminRepository;
 import az.premiumreklam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final SubadminRepository subadminRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -37,15 +41,24 @@ public class CustomUserDetailsService implements UserDetailsService {
         );
     }
 
-    /**
-     * Subadmin JWT uses login as subject; passwords in entity are stored as plain text today — use {noop} for Spring Security compatibility.
-     */
     private UserDetails subadminToUserDetails(Subadmin subadmin) {
-        String raw = subadmin.getPassword() != null ? subadmin.getPassword() : "";
+        String stored = subadmin.getPassword() != null ? subadmin.getPassword() : "";
+        String encoded = stored;
+        if (!looksLikeBcrypt(stored)) {
+            // Legacy plain passwords are migrated at read time.
+            encoded = passwordEncoder.encode(stored);
+            subadmin.setPassword(encoded);
+            subadminRepository.save(subadmin);
+            log.info("Migrated legacy plain subadmin password hash for login={}", subadmin.getLogin());
+        }
         return new org.springframework.security.core.userdetails.User(
                 subadmin.getLogin(),
-                "{noop}" + raw,
+                encoded,
                 List.of(new SimpleGrantedAuthority("ROLE_SUBADMIN"))
         );
+    }
+
+    private static boolean looksLikeBcrypt(String value) {
+        return value != null && (value.startsWith("$2a$") || value.startsWith("$2b$") || value.startsWith("$2y$"));
     }
 }
