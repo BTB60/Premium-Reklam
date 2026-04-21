@@ -3,6 +3,7 @@ package az.premiumreklam.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -33,6 +34,13 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.badRequest()
                 .body(errorBody(HttpStatus.BAD_REQUEST, "Validation failed", validationErrors));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthentication(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(errorBody(HttpStatus.UNAUTHORIZED, "İstifadəçi adı və ya şifrə yanlışdır", null));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
