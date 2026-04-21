@@ -82,7 +82,9 @@ public class VendorStoreRequestService {
                     .user(admin)
                     .message(msg)
                     .isRead(false)
-                    .type(InAppNotificationType.STORE_REQUEST_PENDING)
+                    // Postgres check constraint köhnə deploylarda STORE_REQUEST_PENDING qəbul etməyə bilər.
+                    // Realtime event ayrı qalır, DB üçün SYSTEM saxlayırıq.
+                    .type(InAppNotificationType.SYSTEM)
                     .build());
         }
     }
