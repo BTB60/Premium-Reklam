@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { getVendorStoreCategoryOptions, normalizeVendorStoreCategories } from "@/lib/vendorStoreCategories";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -31,10 +32,10 @@ export default function ApprovedStoreView({
     email: store.email || "",
     logo: store.logo || "",
     banner: store.banner || "",
-    categories: store.category || [],
+    categories: normalizeVendorStoreCategories(store.category),
   });
 
-  const categories = ["Vinil Banner", "Orakal", "Laminasiya", "Karton", "Plexi", "Dizayn", "UV Çap", "Loqotip", "Banner", "İşıqlı Qutu"];
+  const categories = getVendorStoreCategoryOptions();
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, field: "logo" | "banner") => {
     const file = e.target.files?.[0];
@@ -46,7 +47,10 @@ export default function ApprovedStoreView({
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    const success = await onUpdate(editData);
+    const success = await onUpdate({
+      ...editData,
+      categories: normalizeVendorStoreCategories(editData.categories),
+    });
     if (success) setShowEditForm(false);
     setSubmitting(false);
   };

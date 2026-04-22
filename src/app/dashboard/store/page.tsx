@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import { fetchMyVendorStoreApplications, submitVendorStoreApplication } from "@/lib/vendorStoreRequestApi";
+import { getVendorStoreCategoryOptions, normalizeVendorStoreCategories } from "@/lib/vendorStoreCategories";
 import { storeRequests, vendorStores, vendorProducts, auth, type StoreRequest, type VendorStore, type VendorProduct } from "@/lib/db";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -100,7 +101,7 @@ export default function MyStorePage() {
         email: existingStore.email || "",
         logo: existingStore.logo || "",
         banner: existingStore.banner || "",
-        categories: existingStore.category || [],
+        categories: normalizeVendorStoreCategories(existingStore.category),
       });
     }
 
@@ -129,7 +130,7 @@ export default function MyStorePage() {
               address: approved.address,
               phone: approved.phone,
               email: approved.email || "",
-              category: approved.categories || [],
+              category: normalizeVendorStoreCategories(approved.categories),
               isActive: true,
               isApproved: true,
               commissionRate: 5,
@@ -155,7 +156,7 @@ export default function MyStorePage() {
               email: store.email || "",
               logo: store.logo || "",
               banner: store.banner || "",
-              categories: store.category || [],
+              categories: normalizeVendorStoreCategories(store.category),
             });
             setMyRequest(null);
           }
@@ -173,7 +174,7 @@ export default function MyStorePage() {
               address: pending.address,
               phone: pending.phone,
               email: pending.email || "",
-              category: pending.categories || [],
+              category: normalizeVendorStoreCategories(pending.categories),
               status: "pending",
               createdAt: pending.createdAt,
               updatedAt: pending.updatedAt || pending.createdAt,
@@ -189,7 +190,7 @@ export default function MyStorePage() {
               address: rejected.address,
               phone: rejected.phone,
               email: rejected.email || "",
-              category: rejected.categories || [],
+              category: normalizeVendorStoreCategories(rejected.categories),
               status: "rejected",
               rejectionReason: rejected.rejectionReason || undefined,
               createdAt: rejected.createdAt,
@@ -205,18 +206,7 @@ export default function MyStorePage() {
     })();
   }, [router]);
 
-  const categories = [
-    "Vinil Banner",
-    "Orakal",
-    "Laminasiya",
-    "Karton",
-    "Plexi",
-    "Dizayn",
-    "UV Çap",
-    "Loqotip",
-    "Banner",
-    "İşıqlı Qutu",
-  ];
+  const categories = getVendorStoreCategoryOptions();
 
   const toggleCategory = (category: string, isEditForm: boolean = false) => {
     if (isEditForm) {
@@ -277,7 +267,7 @@ export default function MyStorePage() {
         email: editData.email.trim(),
         logo: editData.logo,
         banner: editData.banner,
-        category: editData.categories,
+        category: normalizeVendorStoreCategories(editData.categories),
       });
 
       // Refresh store
@@ -330,7 +320,7 @@ export default function MyStorePage() {
           email: formData.email.trim() || user.email || "",
           vendorDisplayName: user.fullName,
           vendorPhone: user.phone || "",
-          categories: formData.categories,
+          categories: normalizeVendorStoreCategories(formData.categories),
         });
         setMyRequest({
           id: String(row.id),
@@ -342,7 +332,7 @@ export default function MyStorePage() {
           address: row.address,
           phone: row.phone,
           email: row.email || "",
-          category: row.categories || [],
+          category: normalizeVendorStoreCategories(row.categories),
           status: "pending",
           createdAt: row.createdAt,
           updatedAt: row.updatedAt || row.createdAt,
@@ -357,7 +347,7 @@ export default function MyStorePage() {
           address: formData.address.trim(),
           phone: formData.phone.trim(),
           email: formData.email.trim() || user.email || "",
-          category: formData.categories,
+          category: normalizeVendorStoreCategories(formData.categories),
         });
         const request = storeRequests.getByVendorId(vk);
         setMyRequest(request || null);

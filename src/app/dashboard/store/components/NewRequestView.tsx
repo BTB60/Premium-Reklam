@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { getVendorStoreCategoryOptions } from "@/lib/vendorStoreCategories";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -17,7 +18,7 @@ export default function NewRequestView({
     name: "", description: "", address: "", phone: "", email: "", categories: [] as string[]
   });
 
-  const categories = ["Vinil Banner", "Orakal", "Laminasiya", "Karton", "Plexi", "Dizayn", "UV Çap", "Loqotip", "Banner", "İşıqlı Qutu"];
+  const categories = getVendorStoreCategoryOptions();
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) return setError("Mağaza adı daxil edin");

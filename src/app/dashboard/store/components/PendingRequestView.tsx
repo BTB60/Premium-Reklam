@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { getVendorStoreCategoryOptions, normalizeVendorStoreCategories } from "@/lib/vendorStoreCategories";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -21,14 +22,17 @@ export default function PendingRequestView({
     address: request.address,
     phone: request.phone,
     email: request.email || "",
-    categories: request.category || [],
+    categories: normalizeVendorStoreCategories(request.category),
   });
 
-  const categories = ["Vinil Banner", "Orakal", "Laminasiya", "Karton", "Plexi", "Dizayn", "UV Çap", "Loqotip", "Banner", "İşıqlı Qutu"];
+  const categories = getVendorStoreCategoryOptions();
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    const success = await onUpdate(formData);
+    const success = await onUpdate({
+      ...formData,
+      categories: normalizeVendorStoreCategories(formData.categories),
+    });
     if (success) setIsEditing(false);
     setSubmitting(false);
   };
