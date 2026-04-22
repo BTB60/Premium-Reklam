@@ -20,7 +20,7 @@ import {
   Users
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // Hero Section
 function HeroSection() {
@@ -514,8 +514,8 @@ function Footer() {
             © 2024 Premium Reklam. Bütün hüquqlar qorunur.
           </p>
           <div className="flex gap-6 text-sm text-gray-400">
-            <a href="#" className="hover:text-white transition-colors">Gizlilik Siyasəti</a>
-            <a href="#" className="hover:text-white transition-colors">İstifadə Şərtləri</a>
+            <a href="/privacy" className="hover:text-white transition-colors">Gizlilik Siyasəti</a>
+            <a href="/terms" className="hover:text-white transition-colors">İstifadə Şərtləri</a>
           </div>
         </div>
       </div>
@@ -525,6 +525,15 @@ function Footer() {
 
 // Main Page Component
 export default function Home() {
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    if (!hash) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#F8F9FB]">
       <PromoBanner />

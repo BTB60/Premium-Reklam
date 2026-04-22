@@ -9,6 +9,7 @@ import {
   TrendingUp, TrendingDown, Boxes, Filter, Plus, Edit, Trash2
 } from "lucide-react";
 import { getAdminBearerToken } from "./admin-dashboard-api";
+import { getRestApiBase } from "@/lib/restApiBase";
 
 interface InventoryItem {
   id: number;
@@ -28,9 +29,7 @@ interface InventoryItem {
   note?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
+const apiBase = () => getRestApiBase();
 
 export default function InventoryDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -51,7 +50,7 @@ export default function InventoryDashboard() {
   const loadInventory = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/products`, {
+      const res = await fetch(`${apiBase()}/products`, {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
       if (res.ok) {
@@ -99,7 +98,7 @@ export default function InventoryDashboard() {
   const updateStock = async (productId: number, newStock: number) => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/products/${productId}`, {
+      const res = await fetch(`${apiBase()}/products/${productId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

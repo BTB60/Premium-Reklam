@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface VendorStoreRequestRepository extends JpaRepository<VendorStoreRequest, Long> {
 
+    void deleteByUser_Id(Long userId);
+
     boolean existsByUser_IdAndStatus(Long userId, VendorStoreRequestStatus status);
 
     List<VendorStoreRequest> findAllByOrderByCreatedAtDesc();

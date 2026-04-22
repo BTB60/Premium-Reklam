@@ -46,6 +46,24 @@ public class DataLoader implements CommandLineRunner {
         admin.setPasswordHash(passwordEncoder.encode("admin123"));
         userRepository.save(admin);
         System.out.println("✅ Admin user ready: admin / admin123");
+
+        User decorator = userRepository.findByUsername("dekorator").orElse(null);
+        if (decorator == null) {
+            decorator = User.builder()
+                    .username("dekorator")
+                    .fullName("Test Dekorator")
+                    .phone("0501112233")
+                    .email("dekorator@premiumreklam.az")
+                    .role(UserRole.DECORCU)
+                    .status(UserStatus.ACTIVE)
+                    .monthlyTarget(BigDecimal.valueOf(500))
+                    .monthlySalesTotal(BigDecimal.ZERO)
+                    .discountPercent(BigDecimal.ZERO)
+                    .build();
+        }
+        decorator.setPasswordHash(passwordEncoder.encode("dekor123"));
+        userRepository.save(decorator);
+        System.out.println("✅ Test decorator ready: dekorator / dekor123");
     }
 
     private void ensureTotalDebtColumn() {

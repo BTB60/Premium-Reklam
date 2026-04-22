@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
 // 🔥 ДОБАВЛЕНО: "elan" в тип ActiveTab
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface SubadminSession {
   subadminId: string;

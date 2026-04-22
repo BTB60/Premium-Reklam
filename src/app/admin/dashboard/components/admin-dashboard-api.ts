@@ -1,7 +1,7 @@
+import { getRestApiBase } from "@/lib/restApiBase";
+
 export function getAdminDashboardApiBase(): string {
-  return process.env.NEXT_PUBLIC_API_URL
-    ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-    : "https://premium-reklam-backend.onrender.com/api";
+  return getRestApiBase();
 }
 
 const SUBADMIN_JWT_KEY = "premium_subadmin_jwt";
@@ -38,6 +38,36 @@ export function getAdminBearerToken(): string | null {
       if (parsed?.token && (role === "ADMIN" || role === "SUBADMIN")) {
         return parsed.token as string;
       }
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const token = extractToken(sessionStorage.getItem(SUBADMIN_JWT_KEY));
+    if (token) return token;
+  } catch {
+    /* ignore */
+  }
+  try {
+    const token = extractToken(sessionStorage.getItem(SUBADMIN_SESSION_KEY));
+    if (token) return token;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * WebSocket / STOMP üçün: hər hansı rol (müştəri də daxil) — `decor_current_user.token`,
+ * və ya subadmin JWT. Admin üçün `getAdminBearerToken` ilə eyni nəticə.
+ */
+export function getRealtimeBearerToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("decor_current_user");
+    if (raw) {
+      const parsed = JSON.parse(raw) as { token?: string };
+      if (parsed?.token && typeof parsed.token === "string") return parsed.token;
     }
   } catch {
     /* ignore */

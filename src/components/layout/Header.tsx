@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Bell, User, MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, type MouseEvent } from "react";
 import { notifications } from "@/lib/db";
 import type { Notification } from "@/lib/db";
 
@@ -17,10 +17,9 @@ interface HeaderProps {
 const publicNavItems = [
   { label: "Ana Səhvə", href: "/" },
   { label: "Marketplace", href: "/marketplace" },
-  { label: "Xidmətlər", href: "#services" },
-  { label: "Necə işləyir", href: "#how-it-works" },
-  { label: "Qiymət", href: "#pricing" },
-  { label: "Əlaqə", href: "#contact" },
+  { label: "Xidmətlər", href: "/#services" },
+  { label: "Necə işləyir", href: "/#how-it-works" },
+  { label: "Əlaqə", href: "/#contact" },
 ];
 
 const decoratorNavItems = [
@@ -38,6 +37,18 @@ const adminNavItems = [
   { label: "İstifadəçilər", href: "/admin/users" },
   { label: "Maliyyə", href: "/admin/finance" },
 ];
+
+/** Ana səhifədə ikən /#blok linkləri tam səhifə yeniləmədən scroll üçün */
+function handlePublicHashNav(e: MouseEvent<HTMLAnchorElement>, href: string, onDone?: () => void) {
+  if (!href.startsWith("/#")) return;
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/") return;
+  e.preventDefault();
+  const id = href.slice(2);
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.history.replaceState(null, "", href);
+  onDone?.();
+}
 
 function getSessionUserId(): string | null {
   if (typeof window === "undefined") return null;
@@ -130,6 +141,7 @@ export function Header({ variant = "public", userName, notifications: propNotifi
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={(e) => variant === "public" && handlePublicHashNav(e, item.href)}
                 className="px-4 py-2 text-[#4A4A4A] hover:text-[#C41E3A] font-medium text-sm transition-colors rounded-lg hover:bg-gray-50"
               >
                 {item.label}
@@ -291,7 +303,13 @@ export function Header({ variant = "public", userName, notifications: propNotifi
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(e) => {
+                    if (variant === "public") {
+                      handlePublicHashNav(e, item.href, () => setMobileMenuOpen(false));
+                      if (e.defaultPrevented) return;
+                    }
+                    setMobileMenuOpen(false);
+                  }}
                   className="block px-4 py-3.5 text-[#4A4A4A] hover:text-[#C41E3A] hover:bg-gray-50 rounded-xl font-medium transition-colors"
                 >
                   {item.label}

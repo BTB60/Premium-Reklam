@@ -6,10 +6,17 @@ import { Button } from "@/components/ui/Button";
 import { Search, Eye, Trash2, Award } from "lucide-react";
 import { authApi } from "@/lib/authApi";
 
-export default function UsersTable() {
+type UsersTableProps = {
+  /** Yalnız əsas ADMIN (JWT); subadmin üçün false. */
+  canDeleteUsers?: boolean;
+};
+
+export default function UsersTable({ canDeleteUsers = false }: UsersTableProps) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -33,6 +40,24 @@ export default function UsersTable() {
       (u.phone || "").includes(searchQuery)
   );
 
+  const handleDeleteUser = async (u: any) => {
+    if (!canDeleteUsers || !u?.id) return;
+    const ok = window.confirm(
+      `"${u.fullName || u.username}" istifadəçisini silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarılmır — əlaqəli sifarişlər və ödəniş qeydləri də silinəcək.`
+    );
+    if (!ok) return;
+    setActionError(null);
+    setDeletingId(u.id);
+    try {
+      await authApi.deleteUser(u.id);
+      await loadUsers();
+    } catch (e: any) {
+      setActionError(e?.message || "İstifadəçi silinə bilmədi");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -51,6 +76,10 @@ export default function UsersTable() {
           <p className="text-[#6B7280]">Ümumi: {users.length}</p>
         </div>
       </div>
+
+      {actionError && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{actionError}</div>
+      )}
 
       {loading ? (
         <Card className="p-12 text-center">
@@ -91,8 +120,14 @@ export default function UsersTable() {
                       <button className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg" title="Ətraflı bax">
                         <Eye className="w-4 h-4" />
                       </button>
-                      {u.role !== "ADMIN" && (
-                        <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="Sil">
+                      {canDeleteUsers && u.role !== "ADMIN" && (
+                        <button
+                          type="button"
+                          disabled={deletingId === u.id}
+                          onClick={() => handleDeleteUser(u)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg disabled:opacity-50"
+                          title="Sil"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}

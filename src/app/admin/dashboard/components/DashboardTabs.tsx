@@ -12,6 +12,7 @@ import ElanManager from "./ElanManager";
 import NotificationsList from "./NotificationsList";
 import AnalyticsDashboard from "./AnalyticsDashboard";
 import ProductsManager from "./ProductsManager";
+import UserPricesManager from "./UserPricesManager";
 import FinanceDashboard from "./FinanceDashboard";
 import InventoryManager from "./InventoryManager";
 import WorkerTasksManager from "./WorkerTasksManager";
@@ -36,6 +37,7 @@ export default function DashboardTabs({ activeTab }: DashboardTabsProps) {
           {activeTab === "notifications" && <NotificationsList />}
           {activeTab === "analytics" && <AnalyticsDashboard />}
           {activeTab === "products" && <ProductsManager />}
+          {activeTab === "userPrices" && <UserPricesManager />}
           {activeTab === "finance" && <FinanceDashboard />}
           {activeTab === "inventory" && <InventoryManager />}
           {activeTab === "workerTasks" && <WorkerTasksManager />}

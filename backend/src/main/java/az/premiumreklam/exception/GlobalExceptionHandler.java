@@ -55,6 +55,39 @@ public class GlobalExceptionHandler {
                 .body(errorBody(HttpStatus.CONFLICT, ex.getMessage(), null));
     }
 
+    /**
+     * Service layer throws {@link RuntimeException} for expected business rules (duplicate user, etc.).
+     * Without this handler they fell through to {@link #handleAllExceptions} as HTTP 500.
+     */
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
+        String msg = ex.getMessage();
+        if (msg != null && !msg.isBlank() && isLikelyBusinessRuleMessage(msg)) {
+            log.warn("Business rule: {}", msg);
+            return ResponseEntity.badRequest()
+                    .body(errorBody(HttpStatus.BAD_REQUEST, msg, null));
+        }
+        log.error("Unhandled runtime exception", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(errorBody(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", null));
+    }
+
+    private static boolean isLikelyBusinessRuleMessage(String msg) {
+        return msg.contains("İstifadəçi")
+                || msg.contains("istifadəçi")
+                || msg.contains("email")
+                || msg.contains("Email")
+                || msg.contains("mövcud")
+                || msg.contains("artıq")
+                || msg.contains("Keçərsiz")
+                || msg.contains("keçərsiz")
+                || msg.contains("Token")
+                || msg.contains("token")
+                || msg.contains("müddəti")
+                || msg.contains("tapılmadı")
+                || msg.contains("Subadmin");
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleAllExceptions(Exception ex) {
         log.error("Unhandled exception", ex);

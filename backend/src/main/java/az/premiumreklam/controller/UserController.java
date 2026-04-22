@@ -1,12 +1,17 @@
 package az.premiumreklam.controller;
 
+import az.premiumreklam.dto.auth.ChangePasswordRequest;
 import az.premiumreklam.dto.auth.ProfileUpdateRequest;
 import az.premiumreklam.entity.User;
 import az.premiumreklam.security.JwtService;
+import az.premiumreklam.service.AuthService;
+import az.premiumreklam.service.UserDeletionService;
 import az.premiumreklam.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -21,6 +26,8 @@ public class UserController {
 
     private final UserService userService;
     private final JwtService jwtService;
+    private final UserDeletionService userDeletionService;
+    private final AuthService authService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -43,6 +50,31 @@ public class UserController {
         try {
             User updated = userService.updateProfile(u.getId(), body.getFullName(), body.getPhone(), body.getEmail());
             return profilePayload(updated);
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+    }
+
+    @PostMapping("/profile/me/password")
+    public Map<String, String> changeMyPassword(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestBody ChangePasswordRequest body) {
+        User u = requireUserFromBearer(authorization);
+        try {
+            authService.changeOwnPassword(u.getUsername(), body.getCurrentPassword(), body.getNewPassword());
+            return Map.of("message", "Şifrə uğurla dəyişdirildi");
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication authentication) {
+        String adminName = authentication != null ? authentication.getName() : "";
+        try {
+            userDeletionService.deleteNonAdminUser(id, adminName);
+            return ResponseEntity.noContent().build();
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
         }

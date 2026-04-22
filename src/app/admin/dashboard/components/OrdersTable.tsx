@@ -41,6 +41,12 @@ export default function OrdersTable() {
     return () => clearInterval(intervalId);
   }, [pollingEnabled]);
 
+  useEffect(() => {
+    const onRealtime = () => void loadOrders(false);
+    window.addEventListener("premium:refresh-admin-orders", onRealtime);
+    return () => window.removeEventListener("premium:refresh-admin-orders", onRealtime);
+  }, []);
+
   const loadOrders = async (showLoader = true) => {
     if (showLoader) setLoading(true);
     try {

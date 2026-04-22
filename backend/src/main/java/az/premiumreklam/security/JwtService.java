@@ -11,7 +11,9 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -42,10 +44,13 @@ public class JwtService {
     }
 
     public String generateToken(String username, String role, Map<String, String> permissions) {
+        Map<String, String> claimsPerms = permissions == null || permissions.isEmpty()
+                ? Collections.emptyMap()
+                : new HashMap<>(permissions);
         return Jwts.builder()
                 .subject(username)
                 .claim("role", role)
-                .claim("permissions", permissions)
+                .claim("permissions", claimsPerms)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())

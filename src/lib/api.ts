@@ -1,9 +1,9 @@
 // API Client for Spring Boot Backend
 // Note: This file is kept for backward compatibility. Use authApi.ts for all API calls.
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : 'https://premium-reklam-backend.onrender.com/api';
+import { getRestApiBase } from "./restApiBase";
+
+const apiBase = () => getRestApiBase();
 
 // Helper function to check if response is JSON
 async function parseResponse(response: Response) {
@@ -43,7 +43,7 @@ async function parseResponse(response: Response) {
 export const api = {
   // Auth
   async login(username: string, password: string) {
-    const response = await fetch(`${API_BASE}/auth/login`, {
+    const response = await fetch(`${apiBase()}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
@@ -57,7 +57,7 @@ export const api = {
     phone?: string;
     password: string;
   }) {
-    const response = await fetch(`${API_BASE}/auth/register`, {
+    const response = await fetch(`${apiBase()}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
@@ -67,21 +67,21 @@ export const api = {
 
   // Users
   async getUsers() {
-    const response = await fetch(`${API_BASE}/users`);
+    const response = await fetch(`${apiBase()}/users`);
     const data = await parseResponse(response);
     return data || [];
   },
 
   // Orders
   async getOrders(userId?: string) {
-    const url = userId ? `${API_BASE}/orders?userId=${userId}` : `${API_BASE}/orders`;
+    const url = userId ? `${apiBase()}/orders?userId=${userId}` : `${apiBase()}/orders`;
     const response = await fetch(url);
     const data = await parseResponse(response);
     return data || [];
   },
 
   async createOrder(orderData: any) {
-    const response = await fetch(`${API_BASE}/orders`, {
+    const response = await fetch(`${apiBase()}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(orderData),
@@ -90,7 +90,7 @@ export const api = {
   },
 
   async updateOrderStatus(id: string, status: string) {
-    const response = await fetch(`${API_BASE}/orders/${id}/status?status=${status}`, {
+    const response = await fetch(`${apiBase()}/orders/${id}/status?status=${status}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
     });

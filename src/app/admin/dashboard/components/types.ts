@@ -2,7 +2,7 @@ export type PermissionLevel = "none" | "view" | "edit";
 
 export type ActiveTab = 
   | "dashboard" | "users" | "orders" | "shops" | "elan" 
-  | "notifications" | "analytics" | "products" | "finance" 
+  | "notifications" | "analytics" | "products" | "userPrices" | "finance" 
   | "inventory" | "workerTasks" | "support" | "settings" 
   | "tasks" | "accessSettings";
 

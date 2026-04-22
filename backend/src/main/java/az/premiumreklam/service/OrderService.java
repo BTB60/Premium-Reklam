@@ -2,6 +2,7 @@ package az.premiumreklam.service;
 
 import az.premiumreklam.dto.order.OrderItemRequest;
 import az.premiumreklam.dto.order.OrderRequest;
+import az.premiumreklam.dto.realtime.RealtimeEventDto;
 import az.premiumreklam.entity.*;
 import az.premiumreklam.enums.OrderStatus;
 import az.premiumreklam.enums.ProductUnit;
@@ -27,6 +28,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final UserPriceRepository userPriceRepository;
     private final PromoCouponService promoCouponService;
+    private final RealtimePushService realtimePushService;
 
     @Transactional
     public Order createOrder(OrderRequest request, String username) {
@@ -143,8 +145,18 @@ public class OrderService {
         }
 
         // Yenidən yüklə ki, items (+ item.product) sessiya içində tam init olsun; JSON/DTO xəta verməsin
-        return orderRepository.findWithDetailsById(saved.getId())
+        Order full = orderRepository.findWithDetailsById(saved.getId())
                 .orElseThrow(() -> new RuntimeException("Sifariş saxlanılmadı"));
+
+        realtimePushService.notifyAdmins(RealtimeEventDto.builder()
+                .event("NEW_ORDER")
+                .message(user.getFullName() + " — yeni sifariş: " + full.getOrderNumber()
+                        + " (" + total + " AZN)")
+                .soundProfile("admin")
+                .dedupeKey("order-new-" + full.getId())
+                .build());
+
+        return full;
     }
 
     @Transactional(readOnly = true)
@@ -171,8 +183,18 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
         order.setStatus(status);
         orderRepository.save(order);
-        return orderRepository.findWithDetailsById(id)
+        Order updated = orderRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
+        User owner = updated.getUser();
+        if (owner != null) {
+            realtimePushService.notifyUser(owner.getUsername(), RealtimeEventDto.builder()
+                    .event("ORDER_STATUS")
+                    .message("Sifariş " + updated.getOrderNumber() + " — yeni status: " + status)
+                    .soundProfile("user")
+                    .dedupeKey("order-status-" + id + "-" + status)
+                    .build());
+        }
+        return updated;
     }
 
     @Transactional

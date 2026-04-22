@@ -59,6 +59,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return () => clearTimeout(timer);
   }, [router]);
 
+  useEffect(() => {
+    const onOrderStatus = () => {
+      const fn = (window as unknown as { __userOrdersRefresh?: () => void }).__userOrdersRefresh;
+      if (typeof fn === "function") fn();
+    };
+    window.addEventListener("premium:refresh-user-orders", onOrderStatus);
+    return () => window.removeEventListener("premium:refresh-user-orders", onOrderStatus);
+  }, []);
+
   const handleRefresh = () => {
     setRefreshing(true);
     window.location.reload();

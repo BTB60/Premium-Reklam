@@ -1,4 +1,5 @@
 import { jwtDecode } from "jwt-decode";
+import { getRestApiBase } from "@/lib/restApiBase";
 
 export type PermissionLevel = "none" | "view" | "edit";
 
@@ -33,13 +34,12 @@ interface JwtPayload {
 }
 
 const STORAGE_KEY = "premium_subadmin_jwt";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
+
+const apiBase = () => getRestApiBase();
 
 export const subadminAuth = {
   async login(login: string, password: string): Promise<SubadminSession> {
-    const response = await fetch(`${API_BASE}/auth/subadmin/login`, {
+    const response = await fetch(`${apiBase()}/auth/subadmin/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ login, password }),

@@ -1,6 +1,8 @@
 // Orders API - uses Spring Boot Backend
 // Note: This file is kept for backward compatibility. Use authApi.orderApi for all order calls.
 
+import { getRestApiBase } from "./restApiBase";
+
 export interface Order {
   id: number;
   user_id: number;
@@ -14,9 +16,7 @@ export interface Order {
   user_username?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : 'https://premium-reklam-backend.onrender.com/api';
+const apiBase = () => getRestApiBase();
 
 // Helper function to check if response is JSON
 async function parseResponse(response: Response) {
@@ -55,14 +55,14 @@ async function parseResponse(response: Response) {
 export const ordersApi = {
   // Get all orders (for admin)
   async getAll(): Promise<Order[]> {
-    const response = await fetch(`${API_BASE}/orders`);
+    const response = await fetch(`${apiBase()}/orders`);
     const data = await parseResponse(response);
     return data.orders || [];
   },
 
   // Get orders for specific user
   async getByUserId(userId: string | number): Promise<Order[]> {
-    const response = await fetch(`${API_BASE}/orders?userId=${userId}`);
+    const response = await fetch(`${apiBase()}/orders?userId=${userId}`);
     const data = await parseResponse(response);
     return data.orders || [];
   },
@@ -75,7 +75,7 @@ export const ordersApi = {
     status?: string;
     totalPrice?: number;
   }): Promise<Order> {
-    const response = await fetch(`${API_BASE}/orders`, {
+    const response = await fetch(`${apiBase()}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(orderData),
@@ -86,7 +86,7 @@ export const ordersApi = {
 
   // Update order status
   async updateStatus(orderId: number, status: string): Promise<Order> {
-    const response = await fetch(`${API_BASE}/orders/${orderId}/status?status=${status}`, {
+    const response = await fetch(`${apiBase()}/orders/${orderId}/status?status=${status}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
     });

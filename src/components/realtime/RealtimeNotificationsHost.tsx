@@ -3,12 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import SockJS from "sockjs-client";
 import { Client, IMessage } from "@stomp/stompjs";
-import { getAdminBearerToken } from "@/app/admin/dashboard/components/admin-dashboard-api";
+import { getRealtimeBearerToken } from "@/app/admin/dashboard/components/admin-dashboard-api";
 import { cn } from "@/lib/utils";
-
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL
-  : "https://premium-reklam-backend.onrender.com";
+import { getBackendOrigin } from "@/lib/restApiBase";
 
 export type ToastItem = { id: string; message: string; event: string };
 const DISMISSED_KEY = "premium_dismissed_toast_ids";
@@ -53,6 +50,43 @@ function resolveSubs(): { adminTopic: boolean; userQueue: boolean } {
   }
 }
 
+/** Brauzer avtoplay siyasəti: ilk klikdən sonra işləyir. MP3 faylı olmadan Web Audio ilə iki fərqli ton. */
+function playNotificationChime(profile: string | undefined) {
+  const kind = profile === "admin" ? "admin" : "user";
+  try {
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    void ctx.resume();
+    const now = ctx.currentTime;
+    const scheduleBeep = (freq: number, start: number, dur: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.type = kind === "admin" ? "triangle" : "sine";
+      osc.frequency.setValueAtTime(freq, start);
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.start(start);
+      osc.stop(start + dur + 0.02);
+    };
+    if (kind === "admin") {
+      scheduleBeep(420, now, 0.12, 0.14);
+      scheduleBeep(520, now + 0.14, 0.12, 0.12);
+    } else {
+      scheduleBeep(740, now, 0.1, 0.12);
+      scheduleBeep(990, now + 0.11, 0.14, 0.1);
+    }
+    window.setTimeout(() => void ctx.close().catch(() => {}), 700);
+  } catch {
+    /* ignore */
+  }
+}
+
 function parsePayload(body: string): {
   event: string;
   message?: string;
@@ -77,25 +111,21 @@ export function RealtimeNotificationsHost() {
   const lastEmitRef = useRef<Record<string, number>>({});
   const dismissedRef = useRef<Set<string>>(new Set<string>());
   const soundAllowedRef = useRef(false);
-  const playingRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
   const removeToast = useCallback((id: string) => {
     setToasts((t) => t.filter((x) => x.id !== id));
     visibleDedupeRef.current.delete(id);
-  }, [toasts]);
+  }, []);
 
   const dismissAll = useCallback(() => {
-    const nextDismissed = dismissedRef.current;
-    toasts.forEach((t) => nextDismissed.add(t.id));
-    persistDismissedIds(nextDismissed);
-    setToasts([]);
-    visibleDedupeRef.current.clear();
-    if (playingRef.current) {
-      playingRef.current.pause();
-      playingRef.current.currentTime = 0;
-      playingRef.current = null;
-    }
+    setToasts((prev) => {
+      const nextDismissed = dismissedRef.current;
+      prev.forEach((t) => nextDismissed.add(t.id));
+      persistDismissedIds(nextDismissed);
+      visibleDedupeRef.current.clear();
+      return [];
+    });
   }, []);
 
   const pushToast = useCallback(
@@ -115,15 +145,7 @@ export function RealtimeNotificationsHost() {
 
   const playSound = useCallback((profile: string | undefined) => {
     if (!soundAllowedRef.current) return;
-    const src =
-      profile === "admin" ? "/audio/notification_admin.mp3" : "/audio/notification_user.mp3";
-    const audio = new Audio(src);
-    if (playingRef.current) {
-      playingRef.current.pause();
-      playingRef.current.currentTime = 0;
-    }
-    playingRef.current = audio;
-    void audio.play().catch(() => {});
+    playNotificationChime(profile);
   }, []);
 
   const latest = useRef({ onMsg: (_msg: IMessage) => {} });
@@ -142,6 +164,18 @@ export function RealtimeNotificationsHost() {
       }
       if (p.event === "PAYMENT_APPROVED" || p.event === "PAYMENT_ACCEPTED" || p.event === "DEBT_INCREASED") {
         window.dispatchEvent(new CustomEvent("premium:user-balance-updated"));
+      }
+      if (p.event === "NEW_ORDER") {
+        window.dispatchEvent(new CustomEvent("premium:refresh-admin-orders"));
+      }
+      if (p.event === "ORDER_STATUS") {
+        window.dispatchEvent(new CustomEvent("premium:refresh-user-orders"));
+      }
+      if (p.event === "SUPPORT_MESSAGE") {
+        window.dispatchEvent(new CustomEvent("premium:support-admin-refresh"));
+      }
+      if (p.event === "SUPPORT_REPLY") {
+        window.dispatchEvent(new CustomEvent("premium:support-chat-refresh"));
       }
     };
   }, [playSound, pushToast]);
@@ -193,14 +227,14 @@ export function RealtimeNotificationsHost() {
   }, [dismissAll]);
 
   useEffect(() => {
-    const token = getAdminBearerToken();
+    const token = getRealtimeBearerToken();
     const { adminTopic, userQueue } = resolveSubs();
     if (!token || (!adminTopic && !userQueue)) {
       return undefined;
     }
 
     const client = new Client({
-      webSocketFactory: () => new SockJS(`${API_ORIGIN}/ws`) as unknown as WebSocket,
+      webSocketFactory: () => new SockJS(`${getBackendOrigin()}/ws`) as unknown as WebSocket,
       connectHeaders: { Authorization: `Bearer ${token}` },
       reconnectDelay: 8000,
       heartbeatIncoming: 10000,

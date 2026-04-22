@@ -1,9 +1,8 @@
 import { getAdminBearerToken } from "@/app/admin/dashboard/components/admin-dashboard-api";
 import { authApi } from "@/lib/authApi";
+import { getRestApiBase } from "@/lib/restApiBase";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
+const apiBase = () => getRestApiBase();
 
 function authHeaders(): HeadersInit {
   const t = getAdminBearerToken();
@@ -71,7 +70,7 @@ export async function submitClientPaymentRequest(
   receiptImageData?: string,
   receiptFileName?: string
 ): Promise<ClientPaymentRequestRow> {
-  const res = await fetch(`${BASE_URL}/payment-requests`, {
+  const res = await fetch(`${apiBase()}/payment-requests`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -87,7 +86,7 @@ export async function submitClientPaymentRequest(
 }
 
 export async function fetchMyClientPaymentRequests(): Promise<ClientPaymentRequestRow[]> {
-  const res = await fetch(`${BASE_URL}/payment-requests/my`, {
+  const res = await fetch(`${apiBase()}/payment-requests/my`, {
     headers: { ...userAuthHeaders() },
   });
   if (!res.ok) {
@@ -107,7 +106,7 @@ export type InAppNotificationRow = {
 };
 
 export async function fetchMyInAppNotifications(): Promise<InAppNotificationRow[]> {
-  const res = await fetch(`${BASE_URL}/notifications`, {
+  const res = await fetch(`${apiBase()}/notifications`, {
     headers: { ...userAuthHeaders() },
   });
   if (!res.ok) return [];
@@ -116,7 +115,7 @@ export async function fetchMyInAppNotifications(): Promise<InAppNotificationRow[
 }
 
 export async function fetchPendingClientPayments(): Promise<ClientPaymentRequestRow[]> {
-  const res = await fetch(`${BASE_URL}/admin/payments/pending`, {
+  const res = await fetch(`${apiBase()}/admin/payments/pending`, {
     headers: { ...authHeaders() },
   });
   if (!res.ok) return [];
@@ -125,7 +124,7 @@ export async function fetchPendingClientPayments(): Promise<ClientPaymentRequest
 }
 
 export async function approveClientPaymentRequest(id: number): Promise<ClientPaymentRequestRow> {
-  const res = await fetch(`${BASE_URL}/admin/payments/${id}/approve`, {
+  const res = await fetch(`${apiBase()}/admin/payments/${id}/approve`, {
     method: "POST",
     headers: { ...authHeaders() },
   });
@@ -137,7 +136,7 @@ export async function approveClientPaymentRequest(id: number): Promise<ClientPay
 }
 
 export async function rejectClientPaymentRequest(id: number): Promise<ClientPaymentRequestRow> {
-  const res = await fetch(`${BASE_URL}/admin/payments/${id}/reject`, {
+  const res = await fetch(`${apiBase()}/admin/payments/${id}/reject`, {
     method: "POST",
     headers: { ...authHeaders() },
   });
@@ -149,7 +148,7 @@ export async function rejectClientPaymentRequest(id: number): Promise<ClientPaym
 }
 
 export async function markAllInAppNotificationsRead(): Promise<number> {
-  const res = await fetch(`${BASE_URL}/notifications/mark-all-as-read`, {
+  const res = await fetch(`${apiBase()}/notifications/mark-all-as-read`, {
     method: "POST",
     headers: { ...authHeaders() },
   });
@@ -162,7 +161,7 @@ export async function markAllInAppNotificationsRead(): Promise<number> {
 }
 
 export async function fetchFinanceDebts(): Promise<FinanceUserDebtRow[]> {
-  const res = await fetch(`${BASE_URL}/admin/finance/debts`, {
+  const res = await fetch(`${apiBase()}/admin/finance/debts`, {
     headers: { ...authHeaders() },
   });
   if (!res.ok) return [];
@@ -172,8 +171,8 @@ export async function fetchFinanceDebts(): Promise<FinanceUserDebtRow[]> {
 
 export async function fetchFinanceTransactions(userId?: number): Promise<FinanceTransactionHistoryRow[]> {
   const url = userId
-    ? `${BASE_URL}/admin/finance/transactions?userId=${userId}`
-    : `${BASE_URL}/admin/finance/transactions`;
+    ? `${apiBase()}/admin/finance/transactions?userId=${userId}`
+    : `${apiBase()}/admin/finance/transactions`;
   const res = await fetch(url, { headers: { ...authHeaders() } });
   if (!res.ok) return [];
   const data = await res.json();
@@ -186,7 +185,7 @@ export async function updateFinanceBalance(input: {
   transactionType: FinanceTransactionType;
   note?: string;
 }): Promise<FinanceTransactionHistoryRow> {
-  const res = await fetch(`${BASE_URL}/admin/finance/update-balance`, {
+  const res = await fetch(`${apiBase()}/admin/finance/update-balance`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -208,7 +207,7 @@ export async function createAdminCoupon(input: {
   maxUses?: number;
   expiresAt?: string;
 }): Promise<AdminCouponRow> {
-  const res = await fetch(`${BASE_URL}/admin/coupons`, {
+  const res = await fetch(`${apiBase()}/admin/coupons`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(input),
@@ -221,7 +220,7 @@ export async function createAdminCoupon(input: {
 }
 
 export async function fetchAdminCoupons(): Promise<AdminCouponRow[]> {
-  const res = await fetch(`${BASE_URL}/admin/coupons`, { headers: { ...authHeaders() } });
+  const res = await fetch(`${apiBase()}/admin/coupons`, { headers: { ...authHeaders() } });
   if (!res.ok) return [];
   const data = await res.json();
   return Array.isArray(data) ? data as AdminCouponRow[] : [];

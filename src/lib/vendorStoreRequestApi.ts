@@ -1,8 +1,7 @@
 import { authApi } from "@/lib/authApi";
+import { getRestApiBase } from "@/lib/restApiBase";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
+const apiBase = () => getRestApiBase();
 
 export type VendorStoreApplicationDto = {
   id: number;
@@ -46,7 +45,7 @@ export async function submitVendorStoreApplication(input: {
   vendorPhone: string;
   categories: string[];
 }): Promise<VendorStoreApplicationDto> {
-  const res = await fetch(`${BASE_URL}/vendor/store-requests`, {
+  const res = await fetch(`${apiBase()}/vendor/store-requests`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...userHeaders() },
     body: JSON.stringify({
@@ -69,7 +68,7 @@ export async function submitVendorStoreApplication(input: {
 }
 
 export async function fetchMyVendorStoreApplications(): Promise<VendorStoreApplicationDto[]> {
-  const res = await fetch(`${BASE_URL}/vendor/store-requests/mine`, {
+  const res = await fetch(`${apiBase()}/vendor/store-requests/mine`, {
     headers: { ...userHeaders() },
   });
   if (!res.ok) return [];
@@ -78,7 +77,7 @@ export async function fetchMyVendorStoreApplications(): Promise<VendorStoreAppli
 }
 
 export async function fetchAdminVendorStoreApplications(token: string): Promise<VendorStoreApplicationDto[]> {
-  const res = await fetch(`${BASE_URL}/admin/store-requests`, {
+  const res = await fetch(`${apiBase()}/admin/store-requests`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
@@ -89,7 +88,7 @@ export async function fetchAdminVendorStoreApplications(token: string): Promise<
 }
 
 export async function approveVendorStoreApplication(token: string, id: number): Promise<void> {
-  const res = await fetch(`${BASE_URL}/admin/store-requests/${id}/approve`, {
+  const res = await fetch(`${apiBase()}/admin/store-requests/${id}/approve`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -104,7 +103,7 @@ export async function rejectVendorStoreApplication(
   id: number,
   reason?: string
 ): Promise<void> {
-  const res = await fetch(`${BASE_URL}/admin/store-requests/${id}/reject`, {
+  const res = await fetch(`${apiBase()}/admin/store-requests/${id}/reject`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ reason: reason || null }),

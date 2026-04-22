@@ -18,18 +18,20 @@ import ElanManager from "./ElanManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import AuditLogsPanel from "./AuditLogsPanel";
+import UserPricesManager from "./UserPricesManager";
 import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
 import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNotificationsMarkAllButton";
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
-  TrendingUp, Award, Megaphone, History
+  TrendingUp, Award, Megaphone, History, Tag, Lock
 } from "lucide-react";
+import { authApi } from "@/lib/authApi";
 
 // 🔥 ТИПЫ
 type PermissionLevel = "none" | "view" | "edit";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface SubadminSession {
   subadminId: string;
@@ -61,6 +63,7 @@ const ALL_NAV_ITEMS: { id: ActiveTab; labelAz: string; labelEn: string; icon: an
   { id: "notifications", labelAz: "Bildirişlər", labelEn: "Notifications", icon: Bell, permission: "support" },
   { id: "analytics", labelAz: "Analitika", labelEn: "Analytics", icon: BarChart3, permission: "analytics" },
   { id: "products", labelAz: "Məhsullar", labelEn: "Products", icon: Store, permission: "products" },
+  { id: "userPrices", labelAz: "Müştəri qiymətləri", labelEn: "Customer prices", icon: Tag, adminOnly: true },
   { id: "finance", labelAz: "Maliyyə", labelEn: "Finance", icon: Wallet, permission: "finance" },
   { id: "inventory", labelAz: "Anbar", labelEn: "Inventory", icon: Boxes, permission: "inventory" },
   { id: "workerTasks", labelAz: "Tapşırıqlar", labelEn: "Tasks", icon: ClipboardList, permission: "tasks" },
@@ -80,6 +83,12 @@ function hasPermission(permissions: Record<string, PermissionLevel> | undefined,
 
 export default function DashboardLayout({ user, subadminSession, activeTab, onTabChange, onLogout }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [lang, setLang] = useState<"az" | "en">(() => {
     if (typeof window === "undefined") return "az";
     const saved = localStorage.getItem("premium_admin_lang");
@@ -117,6 +126,35 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
     onTabChange("dashboard");
   }
 
+  const resetPasswordForm = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError(null);
+  };
+
+  const submitPasswordChange = async () => {
+    setPasswordError(null);
+    if (newPassword.length < 6) {
+      setPasswordError(lang === "az" ? "Yeni şifrə ən azı 6 simvol olmalıdır." : "New password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError(lang === "az" ? "Yeni şifrə təkrarı uyğun gəlmir." : "New password confirmation does not match.");
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      await authApi.changeMyPassword(currentPassword, newPassword);
+      resetPasswordForm();
+      setPasswordOpen(false);
+    } catch (e: any) {
+      setPasswordError(e?.message || (lang === "az" ? "Şifrə dəyişdirilə bilmədi" : "Could not change password"));
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <header className="bg-[#0e0f13]/92 text-white sticky top-0 z-50 border-b border-[#2a2d34] backdrop-blur-md">
@@ -134,6 +172,19 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             </div>
             <div className="flex items-center gap-4">
               <ServerNotificationsMarkAllButton className="hidden sm:inline text-[#ffb383] hover:text-[#ff6600]" />
+              {isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    resetPasswordForm();
+                    setPasswordOpen(true);
+                  }}
+                  icon={<Lock className="w-4 h-4" />}
+                >
+                  <span className="hidden sm:inline">{lang === "az" ? "Şifrə" : "Password"}</span>
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -193,7 +244,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             )}
             {activeTab === "users" && (
               <motion.div key="users" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <UsersTable />
+                <UsersTable canDeleteUsers={isAdmin} />
               </motion.div>
             )}
             {activeTab === "orders" && (
@@ -224,6 +275,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             {activeTab === "products" && (
               <motion.div key="products" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <ProductsManager />
+              </motion.div>
+            )}
+            {activeTab === "userPrices" && (
+              <motion.div key="userPrices" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <UserPricesManager />
               </motion.div>
             )}
             {activeTab === "finance" && (
@@ -265,6 +321,68 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
         </main>
       </div>
       <RealtimeNotificationsHost />
+
+      {passwordOpen && isAdmin && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-xl">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              {lang === "az" ? "Şifrəni dəyiş" : "Change password"}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">
+              {lang === "az" ? "Cari və yeni şifrənizi daxil edin." : "Enter your current and new password."}
+            </p>
+            <div className="mt-4 space-y-3">
+              <label className="block text-sm text-[var(--text-secondary)]">
+                {lang === "az" ? "Cari şifrə" : "Current password"}
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[var(--text-primary)]"
+                />
+              </label>
+              <label className="block text-sm text-[var(--text-secondary)]">
+                {lang === "az" ? "Yeni şifrə" : "New password"}
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[var(--text-primary)]"
+                />
+              </label>
+              <label className="block text-sm text-[var(--text-secondary)]">
+                {lang === "az" ? "Yeni şifrə (təkrar)" : "Confirm new password"}
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-[var(--text-primary)]"
+                />
+              </label>
+            </div>
+            {passwordError && <p className="mt-3 text-sm text-red-600">{passwordError}</p>}
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  resetPasswordForm();
+                  setPasswordOpen(false);
+                }}
+                disabled={passwordBusy}
+              >
+                {lang === "az" ? "Ləğv et" : "Cancel"}
+              </Button>
+              <Button size="sm" onClick={submitPasswordChange} disabled={passwordBusy}>
+                {passwordBusy ? "…" : lang === "az" ? "Yadda saxla" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,7 +19,7 @@ import java.util.List;
 @Configuration
 public class CorsConfig {
 
-    @Value("${app.cors.allowed-origin-patterns:https://premium-reklam.vercel.app,https://*.vercel.app,https://premiumreklam.shop,https://*.premiumreklam.shop,http://localhost:3000}")
+    @Value("${app.cors.allowed-origin-patterns:https://premium-reklam.vercel.app,https://*.vercel.app,https://premiumreklam.shop,https://*.premiumreklam.shop,http://localhost:*,http://127.0.0.1:*}")
     private String allowedOriginPatternsRaw;
 
     @Bean

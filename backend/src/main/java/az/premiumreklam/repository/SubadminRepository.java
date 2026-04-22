@@ -9,5 +9,8 @@ import java.util.Optional;
 @Repository
 public interface SubadminRepository extends JpaRepository<Subadmin, Long> {
     Optional<Subadmin> findByLogin(String login);
+
+    Optional<Subadmin> findByLoginIgnoreCase(String login);
+
     boolean existsByLogin(String login);
 }

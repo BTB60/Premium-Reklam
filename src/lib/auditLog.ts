@@ -1,3 +1,5 @@
+import { getRestApiBase } from "./restApiBase";
+
 export interface AdminAuditEntry {
   id: string;
   action: string;
@@ -41,7 +43,7 @@ export async function logAdminAction(action: string, payload?: Record<string, un
   }
 
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://premium-reklam-backend.onrender.com"}/api/audit-logs`, {
+    await fetch(`${getRestApiBase()}/audit-logs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),

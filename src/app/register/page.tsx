@@ -3,12 +3,33 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Check } from "lucide-react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import {
+  User,
+  Mail,
+  Phone,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
 import authApi from "@/lib/authApi";
+import { cn } from "@/lib/utils";
+
+const easeOut = [0.16, 1, 0.3, 1] as const;
+
+const fieldClass = cn(
+  "w-full rounded-xl border border-white/10 bg-white/[0.06] py-3.5 pl-12 pr-4 text-[15px] text-white",
+  "placeholder:text-zinc-500 outline-none transition-[border-color,box-shadow,background] duration-200",
+  "focus:border-[#C41E3A]/50 focus:bg-white/[0.09] focus:shadow-[0_0_0_3px_rgba(196,30,58,0.2)]",
+  "disabled:cursor-not-allowed disabled:opacity-55"
+);
 
 export default function RegisterPage() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
+
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
@@ -19,6 +40,9 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const dur = reduceMotion ? 0.01 : 0.55;
+  const spring = reduceMotion ? { duration: 0.01 } : { type: "spring" as const, stiffness: 380, damping: 28 };
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,185 +61,266 @@ export default function RegisterPage() {
       } else {
         router.push("/dashboard");
       }
-    } catch (err: any) {
-      setError(err.message || "Qeydiyyat alınmadı");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Qeydiyyat alınmadı");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4 py-12">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-[#C41E3A]/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-[#D4AF37]/5 to-transparent rounded-full blur-3xl" />
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#070a12] text-zinc-100 flex items-center justify-center px-4 py-14">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          className="absolute -left-1/4 top-0 h-[min(90vw,520px)] w-[min(90vw,520px)] rounded-full bg-[#C41E3A]/22 blur-[100px]"
+          animate={
+            reduceMotion
+              ? {}
+              : { x: [0, 36, 0], y: [0, 20, 0], scale: [1, 1.05, 1] }
+          }
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <motion.div
+          className="absolute -right-1/4 bottom-0 h-[min(80vw,460px)] w-[min(80vw,460px)] rounded-full bg-amber-500/12 blur-[100px]"
+          animate={
+            reduceMotion
+              ? {}
+              : { x: [0, -32, 0], y: [0, -18, 0] }
+          }
+          transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
+          }}
+        />
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        className="relative z-10 w-full max-w-[440px]"
+        initial={reduceMotion ? false : { opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md relative"
+        transition={{ duration: dur, ease: easeOut }}
       >
-        {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-[#0A0A0A] to-[#1a1a1a] px-8 py-10 text-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#C41E3A] to-[#9A1529] rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-red-500/30">
-              <User className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Qeydiyyat</h1>
-            <p className="text-gray-400 text-sm">Premium Reklam hesabı yaradın</p>
-          </div>
+        <motion.div
+          className={cn(
+            "relative overflow-hidden rounded-[1.75rem] border border-white/[0.12]",
+            "bg-zinc-900/55 shadow-[0_32px_64px_-16px_rgba(0,0,0,.55),inset_0_1px_0_0_rgba(255,255,255,.06)]",
+            "backdrop-blur-2xl"
+          )}
+        >
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/35 to-transparent" />
 
-          {/* Form */}
-          <form onSubmit={handleRegister} className="p-8 space-y-5">
-            {/* Full Name */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Ad Soyad</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  name="fullName"
-                  placeholder="Adınız və soyadınız"
-                  value={form.fullName}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C41E3A]/20 focus:border-[#C41E3A] transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Username */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">İstifadəçi adı</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">@</span>
-                <input
-                  name="username"
-                  placeholder="istifadeci_adi"
-                  value={form.username}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C41E3A]/20 focus:border-[#C41E3A] transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Email */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="email@ornek.com"
-                  value={form.email}
-                  onChange={handleChange}
-                  required
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C41E3A]/20 focus:border-[#C41E3A] transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Telefon</label>
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  name="phone"
-                  placeholder="+994 50 123 45 67"
-                  value={form.phone}
-                  onChange={handleChange}
-                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C41E3A]/20 focus:border-[#C41E3A] transition-all"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Şifrə</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Minimum 6 simvol"
-                  value={form.password}
-                  onChange={handleChange}
-                  required
-                  minLength={6}
-                  className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C41E3A]/20 focus:border-[#C41E3A] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3"
-              >
-                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-red-600 text-sm">!</span>
-                </div>
-                <p className="text-sm text-red-600">{error}</p>
-              </motion.div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-[#C41E3A] to-[#8F1025] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-red-700/35 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          <div className="px-8 py-9 md:px-10 md:py-10">
+            <motion.div
+              className="mb-7 text-center"
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...spring, delay: reduceMotion ? 0 : 0.04 }}
             >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Göndərilir...</span>
-                </>
-              ) : (
-                <>
-                  <span>Qeydiyyatdan keç</span>
-                  <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
+              <motion.div
+                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#C41E3A] to-[#7f1d1d] shadow-[0_12px_40px_-8px_rgba(196,30,58,0.6)] ring-1 ring-white/20"
+                whileHover={reduceMotion ? {} : { scale: 1.04, rotate: 2 }}
+                whileTap={reduceMotion ? {} : { scale: 0.98 }}
+                transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              >
+                <User className="h-8 w-8 text-white" strokeWidth={1.75} />
+              </motion.div>
+              <h1 className="text-2xl font-bold tracking-tight text-white md:text-[1.65rem]">
+                Qeydiyyat
+              </h1>
+              <p className="mt-2 text-sm text-zinc-400">Premium Reklam hesabı yaradın</p>
+            </motion.div>
 
-            {/* Login Link */}
-            <div className="text-center pt-2">
-              <p className="text-gray-500 text-sm">
+            <form onSubmit={handleRegister} className="space-y-4">
+              <AnimatePresence mode="wait">
+                {error ? (
+                  <motion.div
+                    key={error}
+                    role="alert"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: reduceMotion ? 0.01 : 0.26, ease: easeOut }}
+                    className="overflow-hidden rounded-xl border border-red-500/35 bg-red-950/50 px-4 py-3 text-sm text-red-200"
+                  >
+                    {error}
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              {[
+                {
+                  name: "fullName" as const,
+                  label: "Ad Soyad",
+                  placeholder: "Adınız və soyadınız",
+                  icon: <User className="h-5 w-5" />,
+                  type: "text" as const,
+                  required: true,
+                  delay: 0.08,
+                  padLeft: "pl-12",
+                },
+                {
+                  name: "username" as const,
+                  label: "İstifadəçi adı",
+                  placeholder: "istifadeci_adi",
+                  icon: <span className="text-sm font-semibold text-zinc-400">@</span>,
+                  type: "text" as const,
+                  required: true,
+                  delay: 0.11,
+                  padLeft: "pl-12",
+                },
+                {
+                  name: "email" as const,
+                  label: "Email",
+                  placeholder: "email@ornek.com",
+                  icon: <Mail className="h-5 w-5" />,
+                  type: "email" as const,
+                  required: true,
+                  delay: 0.14,
+                  padLeft: "pl-12",
+                },
+                {
+                  name: "phone" as const,
+                  label: "Telefon",
+                  placeholder: "+994 50 123 45 67",
+                  icon: <Phone className="h-5 w-5" />,
+                  type: "text" as const,
+                  required: false,
+                  delay: 0.17,
+                  padLeft: "pl-12",
+                },
+              ].map((field) => (
+                <motion.div
+                  key={field.name}
+                  initial={reduceMotion ? false : { opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ ...spring, delay: reduceMotion ? 0 : field.delay }}
+                >
+                  <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    {field.label}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
+                      {field.icon}
+                    </div>
+                    <input
+                      name={field.name}
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      value={form[field.name]}
+                      onChange={handleChange}
+                      required={field.required}
+                      disabled={loading}
+                      className={fieldClass}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...spring, delay: reduceMotion ? 0 : 0.2 }}
+              >
+                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  Şifrə
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Minimum 6 simvol"
+                    value={form.password}
+                    onChange={handleChange}
+                    required
+                    minLength={6}
+                    disabled={loading}
+                    className={cn(fieldClass, "pr-12")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-white/10 hover:text-zinc-200"
+                    aria-label={showPassword ? "Gizlət" : "Göstər"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...spring, delay: reduceMotion ? 0 : 0.24 }}
+                className="pt-1"
+              >
+                <motion.button
+                  type="submit"
+                  disabled={loading}
+                  whileHover={reduceMotion || loading ? {} : { scale: 1.02, y: -1 }}
+                  whileTap={reduceMotion || loading ? {} : { scale: 0.98 }}
+                  className={cn(
+                    "relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-3.5 text-[15px] font-semibold text-white",
+                    "bg-gradient-to-r from-[#C41E3A] via-[#a01830] to-[#7f1025]",
+                    "shadow-[0_14px_36px_-10px_rgba(196,30,58,0.55)] ring-1 ring-white/15",
+                    "disabled:cursor-not-allowed disabled:opacity-60"
+                  )}
+                >
+                  {!reduceMotion && !loading && (
+                    <motion.span
+                      className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/18 to-transparent"
+                      initial={{ x: "-100%" }}
+                      animate={{ x: "200%" }}
+                      transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 2.8, ease: "easeInOut" }}
+                    />
+                  )}
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Göndərilir...
+                    </>
+                  ) : (
+                    <>
+                      Qeydiyyatdan keç
+                      <ArrowRight className="h-5 w-5" />
+                    </>
+                  )}
+                </motion.button>
+              </motion.div>
+
+              <p className="pt-2 text-center text-sm text-zinc-500">
                 Artıq hesabınız var?{" "}
-                <Link href="/login" className="text-[#C41E3A] font-semibold hover:underline">
+                <Link
+                  href="/login"
+                  className="font-semibold text-[#f87171] underline-offset-4 hover:text-rose-300 hover:underline"
+                >
                   Daxil olun
                 </Link>
               </p>
-            </div>
-          </form>
-        </div>
+            </form>
+          </div>
+        </motion.div>
 
-        {/* Footer */}
-        <p className="text-center text-gray-400 text-xs mt-6">
+        <motion.p
+          className="mt-6 text-center text-xs text-zinc-600"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: reduceMotion ? 0 : 0.35 }}
+        >
           Qeydiyyatla razılaşıram{" "}
-          <Link href="/terms" className="text-gray-500 hover:text-[#C41E3A] hover:underline">
+          <Link href="/terms" className="text-zinc-400 hover:text-zinc-300 hover:underline">
             İstifadə şərtləri
-          </Link>
-          {" "}və{" "}
-          <Link href="/privacy" className="text-gray-500 hover:text-[#C41E3A] hover:underline">
+          </Link>{" "}
+          və{" "}
+          <Link href="/privacy" className="text-zinc-400 hover:text-zinc-300 hover:underline">
             Məxfilik siyasəti
           </Link>
-        </p>
+        </motion.p>
       </motion.div>
     </div>
   );

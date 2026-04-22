@@ -4,12 +4,16 @@
 spring:
   application:
     name: premium-reklam-backend
+  servlet:
+    multipart:
+      max-file-size: 6MB
+      max-request-size: 10MB
   profiles:
     default: local
 
 app:
   cors:
-    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://premium-reklam.vercel.app,https://*.vercel.app,https://premiumreklam.shop,https://*.premiumreklam.shop,http://localhost:3000}
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://premium-reklam.vercel.app,https://*.vercel.app,https://premiumreklam.shop,https://*.premiumreklam.shop,http://localhost:*,http://127.0.0.1:*}
 
 ---
 spring:
@@ -41,6 +45,9 @@ spring:
 
 server:
   port: ${PORT:8080}
+  tomcat:
+    max-http-post-size: 10MB
+    max-swallow-size: 10MB
 
 jwt:
   secret: ${JWT_SECRET:localDevSecretKeyForTestingOnly12345678901234567890}
@@ -74,6 +81,9 @@ spring:
 
 server:
   port: ${PORT:8080}
+  tomcat:
+    max-http-post-size: 10MB
+    max-swallow-size: 10MB
 
 jwt:
   secret: ${JWT_SECRET}
@@ -127,6 +137,9 @@ server:
   port: ${PORT:8080}
   # Render health checks need the process listening on all interfaces (not only loopback).
   address: 0.0.0.0
+  tomcat:
+    max-http-post-size: 10MB
+    max-swallow-size: 10MB
 
 jwt:
   secret: ${APP_JWT_SECRET:${JWT_SECRET}}

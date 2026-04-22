@@ -1,15 +1,16 @@
 // API Base URL - MUST be set in Vercel Environment Variables
 // For Vercel: NEXT_PUBLIC_API_URL = https://premium-reklam-backend.onrender.com
+// Local dev: Next rewrites /api-proxy → backend (CORS-sız); NEXT_PUBLIC_API_DIRECT=1 ilə birbaşa URL.
+
+import { getRestApiBase, getBackendOrigin } from "./restApiBase";
 
 declare const process: {
   env: Record<string, string | undefined>;
 };
 
 const API_URL_FROM_ENV = process.env.NEXT_PUBLIC_API_URL || "(not set)";
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
-const HEALTH_URL = `${BASE_URL}/health`;
+const baseUrl = () => getRestApiBase();
+const healthUrl = () => `${baseUrl()}/health`;
 const MOCK_AUTH_ENABLED =
   process.env.NEXT_PUBLIC_ENABLE_MOCK_AUTH === "true" ||
   (!process.env.NEXT_PUBLIC_API_URL && process.env.NODE_ENV !== "production");
@@ -27,7 +28,35 @@ async function getMockAuth() {
 
 if (process.env.NODE_ENV === "development") {
   console.log("[API Config] NEXT_PUBLIC_API_URL:", API_URL_FROM_ENV);
-  console.log("[API Config] BASE_URL:", BASE_URL);
+  console.log("[API Config] REST base (this request context):", baseUrl());
+  console.log("[API Config] Backend origin:", getBackendOrigin());
+}
+
+/** BOM, boş cavab, gateway düz mətni və ya `{...}` daxilində JSON üçün. */
+function parseJsonObjectResponse(raw: string): Record<string, unknown> | null {
+  const stripped = raw.replace(/^\uFEFF/, "").trim();
+  if (!stripped) return null;
+  try {
+    const val = JSON.parse(stripped) as unknown;
+    if (val !== null && typeof val === "object" && !Array.isArray(val)) {
+      return val as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    const start = stripped.indexOf("{");
+    const end = stripped.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        const val = JSON.parse(stripped.slice(start, end + 1)) as unknown;
+        if (val !== null && typeof val === "object" && !Array.isArray(val)) {
+          return val as Record<string, unknown>;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return null;
+  }
 }
 
 // Map backend role to frontend role
@@ -37,6 +66,7 @@ function mapRole(role: string): string {
     'DECORCU': 'DECORATOR',
     'DECORATOR': 'DECORATOR',
     'VENDOR': 'VENDOR',
+    'SUBADMIN': 'SUBADMIN',
   };
   return roleMap[role] || role;
 }
@@ -93,6 +123,8 @@ export interface UserData {
   role: string;
   email?: string;
   phone?: string;
+  /** Subadmin JWT cavabında ola bilər */
+  permissions?: Record<string, string>;
 }
 
 export interface AuthApi {
@@ -220,7 +252,7 @@ function getCurrentUser(): UserData | null {
 
 async function checkBackendHealth(): Promise<boolean> {
   try {
-    const res = await fetch(HEALTH_URL, { method: "GET" });
+    const res = await fetch(healthUrl(), { method: "GET" });
     if (!res.ok) return false;
     const data = (await res.json().catch(() => ({}))) as { status?: string };
     return String(data.status || "").toUpperCase() === "UP";
@@ -240,7 +272,7 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
   }
 
   try {
-    const res = await fetch(`${BASE_URL}${endpoint}`, {
+    const res = await fetch(`${baseUrl()}${endpoint}`, {
       ...options,
       headers,
     });
@@ -285,7 +317,7 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
       if (isHealthy) {
         throw new Error("Server işləyir, amma şəbəkə/CORS səbəbindən sorğu alınmadı.");
       }
-      throw new Error(`Server bağlantısı yoxdur. Backend işləyirmi? ${HEALTH_URL} ünvanını yoxlayın.`);
+      throw new Error(`Server bağlantısı yoxdur. Backend işləyirmi? ${healthUrl()} ünvanını yoxlayın.`);
     }
     throw error;
   }
@@ -293,7 +325,7 @@ async function fetchApi(endpoint: string, options: RequestInit = {}) {
 
 export const authApi = {
   async register(userData: any) {
-    const res = await fetch(`${BASE_URL}/auth/register`, {
+    const res = await fetch(`${baseUrl()}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(userData),
@@ -329,7 +361,7 @@ export const authApi = {
     };
 
     try {
-      const res = await fetch(`${BASE_URL}/auth/login`, {
+      const res = await fetch(`${baseUrl()}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -346,13 +378,22 @@ export const authApi = {
         throw new Error("Server bağlantısı yoxdur. Backend xidmətini işə salın.");
       }
 
-      let data: Record<string, unknown>;
-      try {
-        data = JSON.parse(text) as Record<string, unknown>;
-      } catch {
+      const data = parseJsonObjectResponse(text);
+      if (!data) {
         const mockUser = await tryLocalMock();
         if (mockUser) return mockUser;
-        throw new Error("Giriş cavabı oxunmadı");
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[authApi] login: JSON parse uğursuz", {
+            status: res.status,
+            preview: text.replace(/^\uFEFF/, "").trim().slice(0, 240),
+          });
+        }
+        const empty = !text.replace(/^\uFEFF/, "").trim();
+        throw new Error(
+          empty
+            ? `Boş cavab (HTTP ${res.status}). Backend/proxy işləmir və ya sorğu vaxtı bitib.`
+            : `Cavab düzgün JSON deyil (HTTP ${res.status}). Çox vaxt Render yuxarı olanda və ya proxy xətası — bir neçə saniyə sonra yenidən cəhd edin.`
+        );
       }
 
       if (res.ok) {
@@ -396,7 +437,7 @@ export const authApi = {
           throw new Error("Server UP-dır, amma giriş sorğusu şəbəkə/CORS səbəbi ilə alınmadı.");
         }
         throw new Error(
-          "Server bağlantısı yoxdur. Backend işləyirmi? " + HEALTH_URL + " ünvanını yoxlayın."
+          "Server bağlantısı yoxdur. Backend işləyirmi? " + healthUrl() + " ünvanını yoxlayın."
         );
       }
       throw new Error(msg || "Giriş uğursuz oldu");
@@ -407,7 +448,7 @@ export const authApi = {
     try {
       const token = getToken();
       
-      let response = await fetch(`${BASE_URL}/admin/users`, {
+      let response = await fetch(`${baseUrl()}/admin/users`, {
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
@@ -415,7 +456,7 @@ export const authApi = {
       });
 
       if (response.status === 404) {
-        response = await fetch(`${BASE_URL}/users`, {
+        response = await fetch(`${baseUrl()}/users`, {
           headers: {
             "Content-Type": "application/json",
             ...(token ? { "Authorization": `Bearer ${token}` } : {}),
@@ -460,6 +501,17 @@ export const authApi = {
     }
   },
 
+  async deleteUser(userId: string | number): Promise<void> {
+    await fetchApi(`/users/${userId}`, { method: "DELETE" });
+  },
+
+  async changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+    await fetchApi(`/users/profile/me/password`, {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
+
   getCurrentUser,
 
   saveCurrentUser(user: UserData) {
@@ -475,7 +527,7 @@ export const authApi = {
   },
 
   async forgotPassword(email: string) {
-    const res = await fetch(`${BASE_URL}/auth/forgot-password`, {
+    const res = await fetch(`${baseUrl()}/auth/forgot-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -487,7 +539,7 @@ export const authApi = {
   },
 
   async resetPassword(token: string, newPassword: string) {
-    const res = await fetch(`${BASE_URL}/auth/reset-password`, {
+    const res = await fetch(`${baseUrl()}/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, newPassword }),
@@ -546,7 +598,7 @@ export const productApi = {
       const user = getCurrentUser();
       const token = user?.token;
       
-      const response = await fetch(`${BASE_URL}/products`, {
+      const response = await fetch(`${baseUrl()}/products`, {
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
@@ -575,7 +627,7 @@ export const productApi = {
       const user = getCurrentUser();
       const token = user?.token;
       
-      const response = await fetch(`${BASE_URL}/products/${id}`, {
+      const response = await fetch(`${baseUrl()}/products/${id}`, {
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
@@ -598,7 +650,7 @@ export const productApi = {
       const user = getCurrentUser();
       const token = user?.token;
       
-      const response = await fetch(`${BASE_URL}/products/categories`, {
+      const response = await fetch(`${baseUrl()}/products/categories`, {
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
@@ -898,7 +950,7 @@ export const orderApi = {
       const queryString = params.toString();
       const url = `/orders${queryString ? '?' + queryString : ''}`;
       
-      const response = await fetch(`${BASE_URL}${url}`, {
+      const response = await fetch(`${baseUrl()}${url}`, {
         headers: { 
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),

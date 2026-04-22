@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface ClientPaymentRequestRepository extends JpaRepository<ClientPaymentRequest, Long> {
 
+    void deleteByUser_Id(Long userId);
+
     List<ClientPaymentRequest> findByStatusOrderByCreatedAtDesc(ClientPaymentRequestStatus status);
 
     List<ClientPaymentRequest> findByUser_IdOrderByCreatedAtDesc(Long userId);

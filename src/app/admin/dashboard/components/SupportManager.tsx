@@ -11,10 +11,13 @@ import { SupportTicketForm } from "./support-manager/SupportTicketForm";
 import { SupportTicketDetailPanel } from "./support-manager/SupportTicketDetailPanel";
 import { SupportTicketsTable } from "./support-manager/SupportTicketsTable";
 import { SupportListFooter } from "./support-manager/SupportListFooter";
+import { LiveSupportPanel } from "./support-manager/LiveSupportPanel";
+import { Headphones, MessageSquare } from "lucide-react";
 
 const API_BASE = getAdminDashboardApiBase();
 
 export default function SupportManager() {
+  const [supportMode, setSupportMode] = useState<"tickets" | "live">("tickets");
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [users, setUsers] = useState<SupportTicketUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -370,6 +373,39 @@ export default function SupportManager() {
 
   return (
     <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setSupportMode("tickets")}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition ${
+              supportMode === "tickets"
+                ? "bg-[#D90429] text-white"
+                : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Tiketlər
+          </button>
+          <button
+            type="button"
+            onClick={() => setSupportMode("live")}
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition ${
+              supportMode === "live"
+                ? "bg-[#D90429] text-white"
+                : "text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <Headphones className="w-4 h-4" />
+            Canlı dəstək
+          </button>
+        </div>
+      </div>
+
+      {supportMode === "live" ? (
+        <LiveSupportPanel />
+      ) : (
+        <>
       <SupportHeaderBar onExport={handleExport} onNewTicket={handleNewTicket} />
       <SupportStatsCards stats={stats} />
       <SupportFilterBar
@@ -434,6 +470,8 @@ export default function SupportManager() {
           filteredCount={filteredTickets.length}
           stats={{ open: stats.open, resolved: stats.resolved, urgent: stats.urgent }}
         />
+      )}
+        </>
       )}
     </div>
   );

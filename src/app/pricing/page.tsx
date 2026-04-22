@@ -4,17 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import Link from "next/link";
-import { 
-  Check, 
-  X, 
-  Star, 
-  Zap, 
-  Crown,
-  TrendingUp,
-  FileText,
-  Users,
-  Headphones
-} from "lucide-react";
+import { Check, X, Star, Zap, Crown, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 
 const plans = [
@@ -174,23 +164,9 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-[#F8F9FB]">
       <Header variant="public" />
-      
-      {/* Hero */}
-      <section className="py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto">
-            <h1 className="text-4xl lg:text-5xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
-              Sadə və Şəffaf <span className="text-[#D90429]">Qiymətlər</span>
-            </h1>
-            <p className="text-lg text-[#6B7280]">
-              Biznesinizin ölçüsünə uyğun plan seçin. Pulsuz başlayın, böyüdükcə yüksəlin.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Pricing Plans */}
-      <section className="pb-16 lg:pb-24">
+      <section className="pt-8 lg:pt-12 pb-16 lg:pb-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-6 lg:gap-8">
             {plans.map((plan, index) => (
@@ -407,8 +383,8 @@ export default function PricingPage() {
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><a href="#" className="hover:text-white transition-colors">Yardım Mərkəzi</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Status Səhifəsi</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Şərtlər</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Gizlilik</a></li>
+                <li><a href="/terms" className="hover:text-white transition-colors">Şərtlər</a></li>
+                <li><a href="/privacy" className="hover:text-white transition-colors">Gizlilik</a></li>
               </ul>
             </div>
           </div>

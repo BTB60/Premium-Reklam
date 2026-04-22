@@ -23,6 +23,7 @@ import {
   type FinanceTransactionType,
   type FinanceUserDebtRow,
 } from "@/lib/clientPaymentNotificationsApi";
+import { getRestApiBase } from "@/lib/restApiBase";
 
 interface Payment {
   id: number;
@@ -52,9 +53,7 @@ interface FinanceKpis {
   paidPayments: number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `${process.env.NEXT_PUBLIC_API_URL}/api`
-  : "https://premium-reklam-backend.onrender.com/api";
+const apiBase = () => getRestApiBase();
 
 export default function FinanceDashboard() {
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -150,8 +149,8 @@ export default function FinanceDashboard() {
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [dashboardRes, ordersRes] = await Promise.all([
-        fetch(`${API_BASE}/admin/dashboard`, { headers }),
-        fetch(`${API_BASE}/admin/orders`, { headers }),
+        fetch(`${apiBase()}/admin/dashboard`, { headers }),
+        fetch(`${apiBase()}/admin/orders`, { headers }),
       ]);
 
       let totalRevenue = 0;
@@ -183,7 +182,7 @@ export default function FinanceDashboard() {
   const loadPayments = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/payments`, {
+      const res = await fetch(`${apiBase()}/payments`, {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
       if (res.ok) {
@@ -223,7 +222,7 @@ export default function FinanceDashboard() {
   const loadUsers = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_BASE}/admin/users`, {
+      const res = await fetch(`${apiBase()}/admin/users`, {
         headers: token ? { "Authorization": `Bearer ${token}` } : {}
       });
       if (res.ok) {

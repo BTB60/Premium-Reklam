@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Map;
+
 @Getter
 @AllArgsConstructor
 @Builder
@@ -16,6 +18,8 @@ public class AuthResponse {
     private String email;
     private String phone;
     private String role;
+    /** Subadmin JWT login üçün; adi istifadəçidə {@code null}. */
+    private Map<String, String> permissions;
 
     public static AuthResponse fromUser(User user, String token) {
         return AuthResponse.builder()
@@ -26,6 +30,7 @@ public class AuthResponse {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .role(user.getRole().getValue())
+                .permissions(null)
                 .build();
     }
 }

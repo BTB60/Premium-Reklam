@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { orderApi, productApi, authApi, type Order, type Product, type OrderSummary } from "@/lib/authApi";
@@ -42,8 +42,36 @@ import {
   MessageCircle,
   Route,
   Calculator,
-  ImagePlus
+  ImagePlus,
+  FileDown,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  BarChart3,
+  History,
 } from "lucide-react";
+
+function getCurrentYearMonth(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseOrderCreatedAt(o: any): Date | null {
+  const raw = o?.createdAt ?? o?.created_at;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function parsePaymentCreatedAt(iso: string): Date | null {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function dateInYearMonth(d: Date, ym: string): boolean {
+  const [y, m] = ym.split("-").map(Number);
+  return d.getFullYear() === y && d.getMonth() + 1 === m;
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -55,7 +83,7 @@ export default function DashboardPage() {
   const [nextWeeklyDueDate, setNextWeeklyDueDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "products" | "orders">("home");
+  const [activeTab, setActiveTab] = useState<"home" | "products" | "orders" | "history">("home");
 
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -67,6 +95,15 @@ export default function DashboardPage() {
   const [clientPayReceiptName, setClientPayReceiptName] = useState<string>("");
   const [clientPayBusy, setClientPayBusy] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<ClientPaymentRequestRow[]>([]);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyType, setHistoryType] = useState<"all" | "orders" | "payments">("all");
+  const [historyPaymentStatus, setHistoryPaymentStatus] = useState<"all" | "PENDING" | "APPROVED" | "REJECTED">("all");
+  const [historyMonthKey, setHistoryMonthKey] = useState(getCurrentYearMonth);
+  const [historyDay, setHistoryDay] = useState<number | null>(null);
+
+  const [paymentOverviewMode, setPaymentOverviewMode] = useState<"month" | "year">("month");
+  const [paymentOverviewMonthKey, setPaymentOverviewMonthKey] = useState(getCurrentYearMonth);
+  const [paymentOverviewYear, setPaymentOverviewYear] = useState(() => new Date().getFullYear());
 
   // New order form state
   const [showNewOrder, setShowNewOrder] = useState(false);
@@ -307,6 +344,184 @@ export default function DashboardPage() {
     return "pending";
   };
 
+  const historyMonthLabel = useMemo(() => {
+    const [y, m] = historyMonthKey.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("az-AZ", { month: "long", year: "numeric" });
+  }, [historyMonthKey]);
+
+  const historyDaysInMonth = useMemo(() => {
+    const [y, m] = historyMonthKey.split("-").map(Number);
+    return new Date(y, m, 0).getDate();
+  }, [historyMonthKey]);
+
+  const canGoNextHistoryMonth = historyMonthKey < getCurrentYearMonth();
+
+  const shiftHistoryMonth = (delta: number) => {
+    const [y, m] = historyMonthKey.split("-").map(Number);
+    const next = new Date(y, m - 1 + delta, 1);
+    const cap = new Date();
+    const capFirst = new Date(cap.getFullYear(), cap.getMonth(), 1);
+    if (next > capFirst) return;
+    setHistoryMonthKey(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+    setHistoryDay(null);
+  };
+
+  const goHistoryCurrentMonth = () => {
+    setHistoryMonthKey(getCurrentYearMonth());
+    setHistoryDay(null);
+  };
+
+  const ordersInHistoryPeriod = useMemo(() => {
+    return userOrders.filter((o) => {
+      const d = parseOrderCreatedAt(o);
+      if (!d || !dateInYearMonth(d, historyMonthKey)) return false;
+      if (historyDay !== null && d.getDate() !== historyDay) return false;
+      return true;
+    });
+  }, [userOrders, historyMonthKey, historyDay]);
+
+  const paymentsInHistoryPeriod = useMemo(() => {
+    return paymentHistory.filter((p) => {
+      const d = parsePaymentCreatedAt(p.createdAt);
+      if (!d || !dateInYearMonth(d, historyMonthKey)) return false;
+      if (historyDay !== null && d.getDate() !== historyDay) return false;
+      return true;
+    });
+  }, [paymentHistory, historyMonthKey, historyDay]);
+
+  const historyDaysWithActivity = useMemo(() => {
+    const set = new Set<number>();
+    const [y, m] = historyMonthKey.split("-").map(Number);
+    for (const o of userOrders) {
+      const d = parseOrderCreatedAt(o);
+      if (d && d.getFullYear() === y && d.getMonth() + 1 === m) set.add(d.getDate());
+    }
+    for (const p of paymentHistory) {
+      const d = parsePaymentCreatedAt(p.createdAt);
+      if (d && d.getFullYear() === y && d.getMonth() + 1 === m) set.add(d.getDate());
+    }
+    return set;
+  }, [userOrders, paymentHistory, historyMonthKey]);
+
+  const filteredOrders = useMemo(() => {
+    const q = historyQuery.trim().toLowerCase();
+    if (!q) return ordersInHistoryPeriod;
+    return ordersInHistoryPeriod.filter((o) => {
+      const orderNo = String(o.orderNumber || o.order_number || o.id || "").toLowerCase();
+      const customer = String(o.customerName || o.customer_name || "").toLowerCase();
+      const amount = String(Number(o.totalAmount || 0).toFixed(2));
+      return orderNo.includes(q) || customer.includes(q) || amount.includes(q);
+    });
+  }, [historyQuery, ordersInHistoryPeriod]);
+
+  const filteredPayments = useMemo(() => {
+    const q = historyQuery.trim().toLowerCase();
+    return paymentsInHistoryPeriod.filter((p) => {
+      if (historyPaymentStatus !== "all" && p.status !== historyPaymentStatus) return false;
+      if (!q) return true;
+      const amount = String(Number(p.amount || 0).toFixed(2));
+      const date = new Date(p.createdAt).toLocaleDateString("az-AZ").toLowerCase();
+      const statusText = String(p.status || "").toLowerCase();
+      return amount.includes(q) || date.includes(q) || statusText.includes(q);
+    });
+  }, [historyPaymentStatus, historyQuery, paymentsInHistoryPeriod]);
+
+  const historyPeriodOrderTotal = useMemo(
+    () => ordersInHistoryPeriod.reduce((s, o) => s + Number(o.totalAmount || 0), 0),
+    [ordersInHistoryPeriod]
+  );
+
+  const historyPeriodPaymentTotal = useMemo(
+    () => paymentsInHistoryPeriod.reduce((s, p) => s + Number(p.amount || 0), 0),
+    [paymentsInHistoryPeriod]
+  );
+
+  const approvedPaymentRequests = useMemo(
+    () => paymentHistory.filter((p) => p.status === "APPROVED"),
+    [paymentHistory]
+  );
+
+  const paymentOverviewMonthLabel = useMemo(() => {
+    const [y, m] = paymentOverviewMonthKey.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("az-AZ", { month: "long", year: "numeric" });
+  }, [paymentOverviewMonthKey]);
+
+  const canPaymentOverviewNextMonth = paymentOverviewMonthKey < getCurrentYearMonth();
+
+  const shiftPaymentOverviewMonth = (delta: number) => {
+    const [y, m] = paymentOverviewMonthKey.split("-").map(Number);
+    const next = new Date(y, m - 1 + delta, 1);
+    const cap = new Date();
+    const capFirst = new Date(cap.getFullYear(), cap.getMonth(), 1);
+    if (next > capFirst) return;
+    setPaymentOverviewMonthKey(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const goPaymentOverviewCurrentMonth = () => {
+    setPaymentOverviewMonthKey(getCurrentYearMonth());
+  };
+
+  const paymentOverviewMonthStats = useMemo(() => {
+    const list = approvedPaymentRequests.filter((p) => {
+      const d = parsePaymentCreatedAt(p.createdAt);
+      return d && dateInYearMonth(d, paymentOverviewMonthKey);
+    });
+    const sum = list.reduce((s, p) => s + Number(p.amount || 0), 0);
+    const pending = paymentHistory.filter((p) => {
+      if (p.status !== "PENDING") return false;
+      const d = parsePaymentCreatedAt(p.createdAt);
+      return d && dateInYearMonth(d, paymentOverviewMonthKey);
+    }).length;
+    const rejected = paymentHistory.filter((p) => {
+      if (p.status !== "REJECTED") return false;
+      const d = parsePaymentCreatedAt(p.createdAt);
+      return d && dateInYearMonth(d, paymentOverviewMonthKey);
+    }).length;
+    return {
+      list: list.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+      sum,
+      count: list.length,
+      pending,
+      rejected,
+    };
+  }, [approvedPaymentRequests, paymentHistory, paymentOverviewMonthKey]);
+
+  const paymentOverviewYearStats = useMemo(() => {
+    const y = paymentOverviewYear;
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const key = `${y}-${String(m).padStart(2, "0")}`;
+      const list = approvedPaymentRequests.filter((p) => {
+        const d = parsePaymentCreatedAt(p.createdAt);
+        return d && dateInYearMonth(d, key);
+      });
+      const sum = list.reduce((s, p) => s + Number(p.amount || 0), 0);
+      return {
+        month: m,
+        key,
+        shortLabel: new Date(y, i, 1).toLocaleDateString("az-AZ", { month: "short" }),
+        sum,
+        count: list.length,
+      };
+    });
+    const yearSum = months.reduce((s, x) => s + x.sum, 0);
+    const yearCount = months.reduce((s, x) => s + x.count, 0);
+    return { months, yearSum, yearCount };
+  }, [approvedPaymentRequests, paymentOverviewYear]);
+
+  const paymentOverviewYearOptions = useMemo(() => {
+    const set = new Set<number>();
+    const cur = new Date().getFullYear();
+    set.add(cur);
+    for (const p of paymentHistory) {
+      const d = parsePaymentCreatedAt(p.createdAt);
+      if (d) set.add(d.getFullYear());
+    }
+    return Array.from(set).sort((a, b) => b - a);
+  }, [paymentHistory]);
+
   const handleReorder = (order: any) => {
     const firstItem = order?.items?.[0];
     if (!firstItem) {
@@ -335,6 +550,79 @@ export default function DashboardPage() {
     });
     setShowNewOrder(true);
     setActiveTab("products");
+  };
+
+  const handleExportMyReport = () => {
+    const now = new Date();
+    const stamp = now.toISOString().slice(0, 10);
+    const summary = orderSummary || {
+      totalOrders: userOrders.length,
+      totalAmount: 0,
+      totalPaid: 0,
+      totalDebt: 0,
+      monthOrderCount: 0,
+      monthOrderAmount: 0,
+      todayOrderCount: 0,
+      todayOrderAmount: 0,
+    };
+
+    const periodLabel =
+      historyDay !== null ? `${historyMonthLabel} — ${historyDay} gün` : historyMonthLabel;
+
+    const headerLines = [
+      ["Hesabat növü", "İstifadəçi şəxsi hesabatı"],
+      ["İstifadəçi", String(user?.fullName || user?.username || "-")],
+      ["Tarix", now.toLocaleString("az-AZ")],
+      ["Seçilmiş dövr (tarixçə filtri)", periodLabel],
+      ["Ümumi sifariş", String(summary.totalOrders || 0)],
+      ["Ümumi sifariş məbləği", `${Number(summary.totalAmount || 0).toFixed(2)} AZN`],
+      ["Ödənilmiş", `${Number(summary.totalPaid || 0).toFixed(2)} AZN`],
+      ["Qalıq borc", `${Number(summary.totalDebt || 0).toFixed(2)} AZN`],
+    ];
+
+    const orderHeader = [
+      ["", ""],
+      ["SİFARİŞ TARİXÇƏSİ (ekranda görünən siyahı)", ""],
+      ["No", "Tarix", "Müştəri", "Məbləğ (AZN)", "Status", "Ödəniş statusu"],
+    ];
+    const orderRows = filteredOrders.map((o: any) => [
+      String(o.orderNumber || o.order_number || o.id || "-"),
+      new Date(o.createdAt).toLocaleString("az-AZ"),
+      String(o.customerName || o.customer_name || "-"),
+      Number(o.totalAmount || 0).toFixed(2),
+      String(o.status || "-"),
+      String(o.paymentStatus || o.payment_status || "-"),
+    ]);
+
+    const payHeader = [["", ""], ["ÖDƏNİŞ TARİXÇƏSİ (ekranda görünən siyahı)", ""], ["ID", "Tarix", "Məbləğ (AZN)", "Status"]];
+    const payRows = filteredPayments.map((p) => [
+      String(p.id),
+      new Date(p.createdAt).toLocaleString("az-AZ"),
+      Number(p.amount || 0).toFixed(2),
+      String(p.status || "-"),
+    ]);
+
+    const includeOrders = historyType === "all" || historyType === "orders";
+    const includePayments = historyType === "all" || historyType === "payments";
+    const csvRows: (string | number)[][] = [...headerLines];
+    if (includeOrders) csvRows.push(...orderHeader, ...orderRows);
+    if (includePayments) csvRows.push(...payHeader, ...payRows);
+
+    const lines = csvRows
+      .map((row) =>
+        row
+          .map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`)
+          .join(",")
+      )
+      .join("\n");
+
+    const blob = new Blob([`\uFEFF${lines}`], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hesabat_${String(user?.username || "user")}_${stamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -382,11 +670,14 @@ export default function DashboardPage() {
             { id: "home", label: "Ana Səhifə", icon: User },
             { id: "products", label: "Məhsullar", icon: ShoppingBag },
             { id: "orders", label: "Sifarişlərim", icon: Package },
+            { id: "history", label: "Tarixçələr", icon: History },
             { id: "store", label: "Mağazam", icon: Store, href: "/dashboard/store" },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => tab.href ? router.push(tab.href) : setActiveTab(tab.id as any)}
+              onClick={() =>
+                tab.href ? router.push(tab.href) : setActiveTab(tab.id as "home" | "products" | "orders" | "history")
+              }
               className={`flex items-center gap-2 px-5 py-4 border-b-2 whitespace-nowrap text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "border-[#D90429] text-[#D90429]"
@@ -625,46 +916,6 @@ export default function DashboardPage() {
               </div>
             </Card>
 
-            <div className="grid lg:grid-cols-2 gap-4 mb-6">
-              <Card className="p-5">
-                <h3 className="font-semibold text-[#1F2937] mb-3">Sifariş tarixçəsi</h3>
-                <div className="space-y-2">
-                  {userOrders.slice(0, 6).map((order) => (
-                    <div key={order.id} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
-                      <span className="font-medium text-[#1F2937]">#{order.orderNumber || order.order_number || order.id}</span>
-                      <span className="text-[#6B7280]">{new Date(order.createdAt).toLocaleDateString("az-AZ")}</span>
-                      <span className="text-[#D90429] font-semibold">{Number(order.totalAmount || 0).toFixed(2)} AZN</span>
-                    </div>
-                  ))}
-                  {userOrders.length === 0 && <p className="text-sm text-[#6B7280]">Hələ sifariş tarixçəsi yoxdur.</p>}
-                </div>
-              </Card>
-
-              <Card className="p-5">
-                <h3 className="font-semibold text-[#1F2937] mb-3">Ödəniş tarixçəsi</h3>
-                <div className="space-y-2">
-                  {paymentHistory.slice(0, 6).map((p) => (
-                    <div key={p.id} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
-                      <span className="font-medium text-[#1F2937]">{Number(p.amount || 0).toFixed(2)} AZN</span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs ${
-                          p.status === "APPROVED"
-                            ? "bg-green-100 text-green-700"
-                            : p.status === "REJECTED"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {p.status === "APPROVED" ? "Təsdiqlənib" : p.status === "REJECTED" ? "Rədd edilib" : "Gözləyir"}
-                      </span>
-                      <span className="text-[#6B7280]">{new Date(p.createdAt).toLocaleDateString("az-AZ")}</span>
-                    </div>
-                  ))}
-                  {paymentHistory.length === 0 && <p className="text-sm text-[#6B7280]">Hələ ödəniş tarixçəsi yoxdur.</p>}
-                </div>
-              </Card>
-            </div>
-
             {/* Recent Orders */}
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -707,6 +958,451 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </motion.div>
+        )}
+
+        {activeTab === "history" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h1 className="text-2xl font-bold text-[#1F2937] flex items-center gap-2">
+                  <History className="w-7 h-7 text-[#D90429]" />
+                  Tarixçələr
+                </h1>
+                <p className="text-sm text-[#6B7280] mt-1">
+                  Ödəniş xülasəsi və sifariş / ödəniş tarixçəniz — ay və gün üzrə.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleRefresh} icon={<RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />}>
+                Yenilə
+              </Button>
+            </div>
+
+            <Card className="p-0 overflow-hidden border border-[#E5E7EB] shadow-sm">
+              <div className="bg-gradient-to-br from-[#0F766E] to-[#115E59] px-5 py-4 text-white">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                      <BarChart3 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-lg tracking-tight">Ödəniş xülasəsi</h2>
+                      <p className="text-xs text-white/80 mt-0.5">
+                        Admin tərəfindən təsdiqlənmiş ödəniş bildirişləriniz üzrə ay və il cəmləri.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="inline-flex rounded-lg bg-black/20 p-0.5 w-fit">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentOverviewMode("month")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                        paymentOverviewMode === "month" ? "bg-white text-teal-900" : "text-white/90 hover:bg-white/10"
+                      }`}
+                    >
+                      Aylıq
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentOverviewMode("year")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                        paymentOverviewMode === "year" ? "bg-white text-teal-900" : "text-white/90 hover:bg-white/10"
+                      }`}
+                    >
+                      İllik
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-white">
+                {paymentOverviewMode === "month" ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 border border-[#E5E7EB] rounded-xl p-0.5 bg-[#F9FAFB]">
+                        <button
+                          type="button"
+                          onClick={() => shiftPaymentOverviewMonth(-1)}
+                          className="p-2 rounded-lg hover:bg-white transition"
+                          aria-label="Əvvəlki ay"
+                        >
+                          <ChevronLeft className="w-5 h-5 text-[#374151]" />
+                        </button>
+                        <span className="px-3 text-sm font-semibold text-[#1F2937] min-w-[11rem] text-center">
+                          {paymentOverviewMonthLabel}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={!canPaymentOverviewNextMonth}
+                          onClick={() => shiftPaymentOverviewMonth(1)}
+                          className="p-2 rounded-lg hover:bg-white transition disabled:opacity-35 disabled:pointer-events-none"
+                          aria-label="Növbəti ay"
+                        >
+                          <ChevronRight className="w-5 h-5 text-[#374151]" />
+                        </button>
+                      </div>
+                      {paymentOverviewMonthKey !== getCurrentYearMonth() && (
+                        <button
+                          type="button"
+                          onClick={goPaymentOverviewCurrentMonth}
+                          className="text-xs font-medium px-3 py-1.5 rounded-lg bg-teal-50 text-teal-800 border border-teal-100 hover:bg-teal-100"
+                        >
+                          Cari ay
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid sm:grid-cols-3 gap-3">
+                      <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 p-4">
+                        <p className="text-xs font-medium text-emerald-700">Təsdiqlənmiş cəm</p>
+                        <p className="text-2xl font-bold text-emerald-900 mt-1">
+                          {paymentOverviewMonthStats.sum.toFixed(2)} AZN
+                        </p>
+                        <p className="text-[11px] text-emerald-600 mt-1">
+                          {paymentOverviewMonthStats.count} əməliyyat
+                        </p>
+                      </div>
+                      <div className="rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] p-4">
+                        <p className="text-xs font-medium text-amber-700">Gözləyir</p>
+                        <p className="text-xl font-bold text-[#1F2937] mt-1">{paymentOverviewMonthStats.pending}</p>
+                        <p className="text-[11px] text-[#6B7280] mt-1">həmin ay üzrə sorğu</p>
+                      </div>
+                      <div className="rounded-xl bg-[#F9FAFB] border border-[#E5E7EB] p-4">
+                        <p className="text-xs font-medium text-red-700">Rədd edilib</p>
+                        <p className="text-xl font-bold text-[#1F2937] mt-1">{paymentOverviewMonthStats.rejected}</p>
+                        <p className="text-[11px] text-[#6B7280] mt-1">həmin ay üzrə sorğu</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-[#6B7280] mb-2">Həmin ay — təsdiqlənmiş siyahı</p>
+                      <div className="max-h-52 overflow-y-auto space-y-2 rounded-xl border border-[#E5E7EB] p-2 bg-[#FAFBFC]">
+                        {paymentOverviewMonthStats.list.length === 0 ? (
+                          <p className="text-sm text-[#6B7280] py-6 text-center">Bu ay üçün təsdiqlənmiş ödəniş yoxdur.</p>
+                        ) : (
+                          paymentOverviewMonthStats.list.map((p) => (
+                            <div
+                              key={p.id}
+                              className="flex items-center justify-between text-sm bg-white rounded-lg px-3 py-2 border border-[#F3F4F6]"
+                            >
+                              <span className="text-[#6B7280] text-xs">
+                                {new Date(p.createdAt).toLocaleString("az-AZ", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              <span className="font-semibold text-emerald-700">
+                                +{Number(p.amount || 0).toFixed(2)} AZN
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="text-xs font-medium text-[#6B7280] sr-only">İl</label>
+                      <select
+                        value={paymentOverviewYear}
+                        onChange={(e) => setPaymentOverviewYear(Number(e.target.value))}
+                        className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm bg-white font-medium text-[#1F2937]"
+                      >
+                        {paymentOverviewYearOptions.map((yr) => (
+                          <option key={yr} value={yr}>
+                            {yr}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-xs text-[#6B7280]">üzrə ay ay cəmlər</span>
+                    </div>
+
+                    <div className="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 p-4 flex flex-wrap items-end justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-medium text-emerald-700">İl üzrə təsdiqlənmiş cəm</p>
+                        <p className="text-2xl font-bold text-emerald-900 mt-1">
+                          {paymentOverviewYearStats.yearSum.toFixed(2)} AZN
+                        </p>
+                      </div>
+                      <p className="text-sm text-emerald-800 font-medium">
+                        {paymentOverviewYearStats.yearCount} təsdiqlənmiş bildiriş
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      {paymentOverviewYearStats.months.map((row) => (
+                        <div
+                          key={row.key}
+                          className={`rounded-xl border p-3 text-center ${
+                            row.sum > 0
+                              ? "bg-teal-50 border-teal-200"
+                              : "bg-[#F9FAFB] border-[#E5E7EB] opacity-80"
+                          }`}
+                        >
+                          <p className="text-[11px] font-medium text-[#6B7280] capitalize">{row.shortLabel}</p>
+                          <p className={`text-sm font-bold mt-1 ${row.sum > 0 ? "text-teal-800" : "text-[#9CA3AF]"}`}>
+                            {row.sum > 0 ? `${row.sum.toFixed(2)}` : "—"}
+                          </p>
+                          {row.count > 0 && (
+                            <p className="text-[10px] text-teal-600 mt-0.5">{row.count} əməliyyat</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card className="overflow-hidden border border-[#E5E7EB] shadow-sm">
+              <div className="bg-gradient-to-r from-[#1F2937] via-[#374151] to-[#D90429]/90 px-5 py-4 text-white">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-lg tracking-tight">İstifadəçi tarixçəsi</h2>
+                      <p className="text-xs text-white/80 mt-0.5">
+                        Ay və gün üzrə süzgəc — cari ay yenilənir; əvvəlki aylara keçə bilərsiniz.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleExportMyReport}
+                    icon={<FileDown className="w-4 h-4" />}
+                    className="text-white border border-white/30 hover:bg-white/10 shrink-0"
+                  >
+                    CSV yüklə
+                  </Button>
+                </div>
+
+                <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex items-center gap-1 bg-black/20 rounded-xl p-1 w-fit">
+                    <button
+                      type="button"
+                      onClick={() => shiftHistoryMonth(-1)}
+                      className="p-2 rounded-lg hover:bg-white/10 transition"
+                      aria-label="Əvvəlki ay"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <div className="px-3 min-w-[10.5rem] text-center">
+                      <p className="text-sm font-semibold">{historyMonthLabel}</p>
+                      {historyMonthKey === getCurrentYearMonth() ? (
+                        <p className="text-[10px] text-emerald-200 font-medium">Cari ay</p>
+                      ) : (
+                        <p className="text-[10px] text-amber-200 font-medium">Arxiv ay</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!canGoNextHistoryMonth}
+                      onClick={() => shiftHistoryMonth(1)}
+                      className="p-2 rounded-lg hover:bg-white/10 transition disabled:opacity-35 disabled:pointer-events-none"
+                      aria-label="Növbəti ay"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                  {historyMonthKey !== getCurrentYearMonth() && (
+                    <button
+                      type="button"
+                      onClick={goHistoryCurrentMonth}
+                      className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition w-fit"
+                    >
+                      Bu ayə qayıt
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <div className="rounded-lg bg-black/25 px-3 py-1.5">
+                    <span className="text-white/70">Ay üzrə sifariş: </span>
+                    <span className="font-semibold">{ordersInHistoryPeriod.length}</span>
+                    <span className="text-white/60"> · </span>
+                    <span className="font-semibold">{historyPeriodOrderTotal.toFixed(2)} AZN</span>
+                  </div>
+                  <div className="rounded-lg bg-black/25 px-3 py-1.5">
+                    <span className="text-white/70">Ay üzrə ödəniş sorğusu: </span>
+                    <span className="font-semibold">{paymentsInHistoryPeriod.length}</span>
+                    <span className="text-white/60"> · </span>
+                    <span className="font-semibold">{historyPeriodPaymentTotal.toFixed(2)} AZN</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4 bg-white">
+                <div>
+                  <p className="text-xs font-medium text-[#6B7280] mb-2">Gün üzrə süzgəc</p>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryDay(null)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                        historyDay === null
+                          ? "bg-[#D90429] text-white border-[#D90429]"
+                          : "bg-white text-[#374151] border-[#E5E7EB] hover:border-[#D90429]/40"
+                      }`}
+                    >
+                      Bütün ay
+                    </button>
+                    {Array.from({ length: historyDaysInMonth }, (_, i) => i + 1).map((day) => {
+                      const has = historyDaysWithActivity.has(day);
+                      const active = historyDay === day;
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => setHistoryDay(active ? null : day)}
+                          className={`shrink-0 min-w-[2.25rem] py-1.5 rounded-full text-xs font-medium border transition relative ${
+                            active
+                              ? "bg-[#D90429] text-white border-[#D90429]"
+                              : has
+                                ? "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]"
+                                : "bg-[#F9FAFB] text-[#9CA3AF] border-[#E5E7EB] hover:border-gray-300"
+                          }`}
+                        >
+                          {day}
+                          {has && !active && (
+                            <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#D90429]" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] text-[#9CA3AF] mt-1.5">
+                    Qırmızı nöqtə — həmin gün sifariş və ya ödəniş qeydi var. Yuxarıdan “Yenilə” ilə məlumatı yeniləyin.
+                  </p>
+                </div>
+
+                <div className="flex flex-col lg:flex-row flex-wrap gap-2 lg:items-center">
+                  <input
+                    type="text"
+                    value={historyQuery}
+                    onChange={(e) => setHistoryQuery(e.target.value)}
+                    placeholder="Axtar: nömrə, müştəri, məbləğ..."
+                    className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm flex-1 min-w-[200px]"
+                  />
+                  <select
+                    value={historyType}
+                    onChange={(e) => setHistoryType(e.target.value as "all" | "orders" | "payments")}
+                    className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm bg-white"
+                  >
+                    <option value="all">Növ: hamısı</option>
+                    <option value="orders">Yalnız sifarişlər</option>
+                    <option value="payments">Yalnız ödənişlər</option>
+                  </select>
+                  {(historyType === "all" || historyType === "payments") && (
+                    <select
+                      value={historyPaymentStatus}
+                      onChange={(e) =>
+                        setHistoryPaymentStatus(e.target.value as "all" | "PENDING" | "APPROVED" | "REJECTED")
+                      }
+                      className="px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm bg-white"
+                    >
+                      <option value="all">Ödəniş statusu: hamısı</option>
+                      <option value="PENDING">Gözləyir</option>
+                      <option value="APPROVED">Təsdiqlənib</option>
+                      <option value="REJECTED">Rədd edilib</option>
+                    </select>
+                  )}
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-4">
+                  {(historyType === "all" || historyType === "orders") && (
+                    <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFBFC] p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-semibold text-[#1F2937]">Sifarişlər</p>
+                        <span className="text-xs text-[#6B7280]">{filteredOrders.length} sətir</span>
+                      </div>
+                      <div className="space-y-2 max-h-[min(420px,50vh)] overflow-y-auto pr-1">
+                        {filteredOrders.map((order) => (
+                          <div
+                            key={order.id}
+                            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm bg-white rounded-xl p-3 border border-[#F3F4F6] shadow-sm"
+                          >
+                            <div>
+                              <span className="font-semibold text-[#1F2937]">
+                                #{order.orderNumber || order.order_number || order.id}
+                              </span>
+                              <p className="text-xs text-[#6B7280] mt-0.5">
+                                {new Date(order.createdAt).toLocaleString("az-AZ", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                            <span className="text-[#D90429] font-bold whitespace-nowrap">
+                              {Number(order.totalAmount || 0).toFixed(2)} AZN
+                            </span>
+                          </div>
+                        ))}
+                        {filteredOrders.length === 0 && (
+                          <p className="text-sm text-[#6B7280] py-6 text-center">Bu dövrdə sifariş yoxdur.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {(historyType === "all" || historyType === "payments") && (
+                    <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFBFC] p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-sm font-semibold text-[#1F2937]">Ödəniş sorğuları</p>
+                        <span className="text-xs text-[#6B7280]">{filteredPayments.length} sətir</span>
+                      </div>
+                      <div className="space-y-2 max-h-[min(420px,50vh)] overflow-y-auto pr-1">
+                        {filteredPayments.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm bg-white rounded-xl p-3 border border-[#F3F4F6] shadow-sm"
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-[#1F2937]">
+                                {Number(p.amount || 0).toFixed(2)} AZN
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  p.status === "APPROVED"
+                                    ? "bg-green-100 text-green-700"
+                                    : p.status === "REJECTED"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-amber-100 text-amber-700"
+                                }`}
+                              >
+                                {p.status === "APPROVED"
+                                  ? "Təsdiqlənib"
+                                  : p.status === "REJECTED"
+                                    ? "Rədd edilib"
+                                    : "Gözləyir"}
+                              </span>
+                            </div>
+                            <span className="text-xs text-[#6B7280] whitespace-nowrap">
+                              {new Date(p.createdAt).toLocaleString("az-AZ", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        ))}
+                        {filteredPayments.length === 0 && (
+                          <p className="text-sm text-[#6B7280] py-6 text-center">Bu dövrdə ödəniş qeydi yoxdur.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Card>
           </motion.div>
         )}
 

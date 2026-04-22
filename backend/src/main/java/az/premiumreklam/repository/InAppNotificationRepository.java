@@ -10,6 +10,8 @@ import java.util.List;
 
 public interface InAppNotificationRepository extends JpaRepository<InAppNotification, Long> {
 
+    void deleteByUser_Id(Long userId);
+
     List<InAppNotification> findByUser_IdOrderByCreatedAtDesc(Long userId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
