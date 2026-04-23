@@ -28,6 +28,7 @@ import {
   type User 
 } from "@/lib/db";
 import { authApi, orderApi, productApi, type UserData } from "@/lib/authApi";
+import { playPremiumNotificationSound } from "@/lib/notificationSound";
 
 interface SizeItem {
   id: string;
@@ -232,6 +233,7 @@ export default function NewOrderPage() {
         paidAmount: 0,
       });
 
+      playPremiumNotificationSound();
       router.push("/dashboard?orderSuccess=true");
     } catch (error: any) {
       console.error("[Orders/New] Create order error:", error);

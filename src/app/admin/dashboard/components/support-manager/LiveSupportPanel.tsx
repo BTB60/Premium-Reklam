@@ -15,6 +15,7 @@ import {
   type SupportChatMessageDto,
 } from "@/lib/supportChatApi";
 import { Headphones, ImagePlus, Loader2, Send, Video } from "lucide-react";
+import { playPremiumNotificationSound } from "@/lib/notificationSound";
 
 function mediaSrc(m: SupportChatMessageDto): string | null {
   if (!m.attachmentBase64 || !m.attachmentMimeType) return null;
@@ -33,6 +34,8 @@ export function LiveSupportPanel() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastKnownMaxMsgIdRef = useRef<number | null>(null);
+  const prevSelectedUserIdRef = useRef<number | null>(null);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -81,6 +84,27 @@ export function LiveSupportPanel() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (selectedUserId !== prevSelectedUserIdRef.current) {
+      prevSelectedUserIdRef.current = selectedUserId;
+      lastKnownMaxMsgIdRef.current = null;
+    }
+    if (selectedUserId == null) return;
+    const threadMessages = messages.filter((m) => m.userId === selectedUserId);
+    if (threadMessages.length === 0) return;
+    const maxId = Math.max(...threadMessages.map((m) => m.id));
+    const prev = lastKnownMaxMsgIdRef.current;
+    if (prev === null) {
+      lastKnownMaxMsgIdRef.current = maxId;
+      return;
+    }
+    const userArrived = threadMessages.some(
+      (m) => m.id > prev && m.senderRole === "USER"
+    );
+    lastKnownMaxMsgIdRef.current = maxId;
+    if (userArrived) playPremiumNotificationSound();
+  }, [messages, selectedUserId]);
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];

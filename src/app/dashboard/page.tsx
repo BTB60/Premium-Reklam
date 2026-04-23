@@ -16,6 +16,7 @@ import {
   submitClientPaymentRequest,
   type ClientPaymentRequestRow,
 } from "@/lib/clientPaymentNotificationsApi";
+import { playPremiumNotificationSound } from "@/lib/notificationSound";
 import { 
   LogOut, 
   Package, 
@@ -234,6 +235,7 @@ export default function DashboardPage() {
       setClientPayReceiptData("");
       setClientPayReceiptName("");
       await loadData();
+      playPremiumNotificationSound();
       alert("Ödəniş bildirişi göndərildi. Admin təsdiqləyəndə borc yenilənəcək.");
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Göndərilmədi");
@@ -263,6 +265,7 @@ export default function DashboardPage() {
     setPaymentProcessing(true);
     try {
       await orderApi.addPayment(paymentOrderId, amount, "CASH", "Müştəri ödənişi");
+      playPremiumNotificationSound();
       alert("Ödəniş uğurla qeydə alındı!");
       setShowPaymentModal(false);
       loadData();
@@ -311,6 +314,7 @@ export default function DashboardPage() {
         }],
       });
 
+      playPremiumNotificationSound();
       alert("Sifariş uğurla yaradıldı!");
       setShowNewOrder(false);
       setSelectedProduct(null);

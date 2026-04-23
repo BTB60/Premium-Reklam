@@ -6,6 +6,7 @@ import { Client, IMessage } from "@stomp/stompjs";
 import { getRealtimeBearerToken } from "@/app/admin/dashboard/components/admin-dashboard-api";
 import { cn } from "@/lib/utils";
 import { getBackendOrigin } from "@/lib/restApiBase";
+import { playPremiumNotificationSound } from "@/lib/notificationSound";
 
 export type ToastItem = { id: string; message: string; event: string };
 const DISMISSED_KEY = "premium_dismissed_toast_ids";
@@ -50,43 +51,6 @@ function resolveSubs(): { adminTopic: boolean; userQueue: boolean } {
   }
 }
 
-/** Brauzer avtoplay siyasəti: ilk klikdən sonra işləyir. MP3 faylı olmadan Web Audio ilə iki fərqli ton. */
-function playNotificationChime(profile: string | undefined) {
-  const kind = profile === "admin" ? "admin" : "user";
-  try {
-    const AC =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    const ctx = new AC();
-    void ctx.resume();
-    const now = ctx.currentTime;
-    const scheduleBeep = (freq: number, start: number, dur: number, vol: number) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.connect(g);
-      g.connect(ctx.destination);
-      osc.type = kind === "admin" ? "triangle" : "sine";
-      osc.frequency.setValueAtTime(freq, start);
-      g.gain.setValueAtTime(0.0001, start);
-      g.gain.exponentialRampToValueAtTime(vol, start + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-      osc.start(start);
-      osc.stop(start + dur + 0.02);
-    };
-    if (kind === "admin") {
-      scheduleBeep(420, now, 0.12, 0.14);
-      scheduleBeep(520, now + 0.14, 0.12, 0.12);
-    } else {
-      scheduleBeep(740, now, 0.1, 0.12);
-      scheduleBeep(990, now + 0.11, 0.14, 0.1);
-    }
-    window.setTimeout(() => void ctx.close().catch(() => {}), 700);
-  } catch {
-    /* ignore */
-  }
-}
-
 function parsePayload(body: string): {
   event: string;
   message?: string;
@@ -110,8 +74,6 @@ export function RealtimeNotificationsHost() {
   const visibleDedupeRef = useRef(new Set<string>());
   const lastEmitRef = useRef<Record<string, number>>({});
   const dismissedRef = useRef<Set<string>>(new Set<string>());
-  const soundAllowedRef = useRef(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const removeToast = useCallback((id: string) => {
     setToasts((t) => t.filter((x) => x.id !== id));
@@ -143,9 +105,8 @@ export function RealtimeNotificationsHost() {
     [removeToast]
   );
 
-  const playSound = useCallback((profile: string | undefined) => {
-    if (!soundAllowedRef.current) return;
-    playNotificationChime(profile);
+  const playSound = useCallback(() => {
+    playPremiumNotificationSound();
   }, []);
 
   const latest = useRef({ onMsg: (_msg: IMessage) => {} });
@@ -155,7 +116,7 @@ export function RealtimeNotificationsHost() {
       const p = parsePayload(msg.body);
       const key = p.dedupeKey || `${p.event}-${p.message ?? ""}`;
       pushToast(key, p.message || p.event, p.event);
-      playSound(p.soundProfile);
+      playSound();
       if (p.event === "PAYMENT_PENDING") {
         window.dispatchEvent(new CustomEvent("premium:refresh-client-payment-requests"));
       }
@@ -179,29 +140,6 @@ export function RealtimeNotificationsHost() {
       }
     };
   }, [playSound, pushToast]);
-
-  useEffect(() => {
-    const unlock = () => {
-      soundAllowedRef.current = true;
-      try {
-        const AC =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (AC && !audioCtxRef.current) {
-          audioCtxRef.current = new AC();
-          void audioCtxRef.current.resume();
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    document.addEventListener("pointerdown", unlock, { once: true });
-    document.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      document.removeEventListener("pointerdown", unlock);
-      document.removeEventListener("keydown", unlock);
-    };
-  }, []);
 
   useEffect(() => {
     dismissedRef.current = loadDismissedIds();

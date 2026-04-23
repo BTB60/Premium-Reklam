@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft, Send, Headphones, ImagePlus, Video, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { playPremiumNotificationSound } from "@/lib/notificationSound";
 
 function mediaSrc(m: SupportChatMessageDto): string | null {
   if (!m.attachmentBase64 || !m.attachmentMimeType) return null;
@@ -33,6 +34,7 @@ export default function SupportPage() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const lastKnownMaxMsgIdRef = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -91,6 +93,24 @@ export default function SupportPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (loading || chatMessages.length === 0) {
+      if (chatMessages.length === 0) lastKnownMaxMsgIdRef.current = null;
+      return;
+    }
+    const maxId = Math.max(...chatMessages.map((m) => m.id));
+    const prev = lastKnownMaxMsgIdRef.current;
+    if (prev === null) {
+      lastKnownMaxMsgIdRef.current = maxId;
+      return;
+    }
+    const adminArrived = chatMessages.some(
+      (m) => m.id > prev && m.senderRole === "ADMIN"
+    );
+    lastKnownMaxMsgIdRef.current = maxId;
+    if (adminArrived) playPremiumNotificationSound();
+  }, [chatMessages, loading]);
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
