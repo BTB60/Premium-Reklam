@@ -6,7 +6,7 @@ import { Client, IMessage } from "@stomp/stompjs";
 import { getRealtimeBearerToken } from "@/app/admin/dashboard/components/admin-dashboard-api";
 import { cn } from "@/lib/utils";
 import { getBackendOrigin } from "@/lib/restApiBase";
-import { playPremiumNotificationSound } from "@/lib/notificationSound";
+import { playPremiumNotificationSound, playSupportChatNotificationSound } from "@/lib/notificationSound";
 
 export type ToastItem = { id: string; message: string; event: string };
 const DISMISSED_KEY = "premium_dismissed_toast_ids";
@@ -105,8 +105,14 @@ export function RealtimeNotificationsHost() {
     [removeToast]
   );
 
-  const playSound = useCallback(() => {
-    playPremiumNotificationSound();
+  const playSoundForEvent = useCallback((event: string) => {
+    if (event === "SUPPORT_REPLY") {
+      playSupportChatNotificationSound("user");
+    } else if (event === "SUPPORT_MESSAGE") {
+      playSupportChatNotificationSound("admin");
+    } else {
+      playPremiumNotificationSound();
+    }
   }, []);
 
   const latest = useRef({ onMsg: (_msg: IMessage) => {} });
@@ -116,7 +122,7 @@ export function RealtimeNotificationsHost() {
       const p = parsePayload(msg.body);
       const key = p.dedupeKey || `${p.event}-${p.message ?? ""}`;
       pushToast(key, p.message || p.event, p.event);
-      playSound();
+      playSoundForEvent(p.event);
       if (p.event === "PAYMENT_PENDING") {
         window.dispatchEvent(new CustomEvent("premium:refresh-client-payment-requests"));
       }
@@ -139,7 +145,7 @@ export function RealtimeNotificationsHost() {
         window.dispatchEvent(new CustomEvent("premium:support-chat-refresh"));
       }
     };
-  }, [playSound, pushToast]);
+  }, [playSoundForEvent, pushToast]);
 
   useEffect(() => {
     dismissedRef.current = loadDismissedIds();

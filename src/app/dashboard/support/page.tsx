@@ -15,9 +15,13 @@ import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { ArrowLeft, Send, Headphones, ImagePlus, Video, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Headphones, ImagePlus, Video, Loader2, Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
-import { playPremiumNotificationSound } from "@/lib/notificationSound";
+import {
+  playSupportChatNotificationSound,
+  readSupportChatSoundEnabled,
+  writeSupportChatSoundEnabled,
+} from "@/lib/notificationSound";
 
 function mediaSrc(m: SupportChatMessageDto): string | null {
   if (!m.attachmentBase64 || !m.attachmentMimeType) return null;
@@ -35,6 +39,7 @@ export default function SupportPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const lastKnownMaxMsgIdRef = useRef<number | null>(null);
+  const [supportSoundOn, setSupportSoundOn] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -91,6 +96,10 @@ export default function SupportPage() {
   }, [router, refresh]);
 
   useEffect(() => {
+    setSupportSoundOn(readSupportChatSoundEnabled("user"));
+  }, []);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
@@ -109,8 +118,8 @@ export default function SupportPage() {
       (m) => m.id > prev && m.senderRole === "ADMIN"
     );
     lastKnownMaxMsgIdRef.current = maxId;
-    if (adminArrived) playPremiumNotificationSound();
-  }, [chatMessages, loading]);
+    if (adminArrived) playSupportChatNotificationSound("user");
+  }, [chatMessages, loading, supportSoundOn]);
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -186,14 +195,27 @@ export default function SupportPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-4 mb-6"
+            className="flex flex-wrap items-center gap-3 mb-6"
           >
             <Link href="/dashboard">
               <Button variant="ghost" icon={<ArrowLeft className="w-5 h-5" />}>
                 Geri
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-[#1F2937]">Dəstək Mərkəzi</h1>
+            <h1 className="text-2xl font-bold text-[#1F2937] flex-1 min-w-[10rem]">Dəstək Mərkəzi</h1>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !supportSoundOn;
+                setSupportSoundOn(next);
+                writeSupportChatSoundEnabled("user", next);
+              }}
+              className="inline-flex items-center gap-2 text-sm text-[#6B7280] hover:text-[#1F2937] border border-gray-200 rounded-lg px-3 py-2 bg-white"
+              title={supportSoundOn ? "Mesaj səsini söndür" : "Mesaj səsini aç"}
+            >
+              {supportSoundOn ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              <span className="hidden sm:inline">{supportSoundOn ? "Səs açıq" : "Səs söndürülüb"}</span>
+            </button>
           </motion.div>
 
           {loadError && (

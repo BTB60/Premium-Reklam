@@ -7,6 +7,7 @@ import { Search, Trash2, Download, RefreshCw } from "lucide-react";
 import { authApi, orderApi, type Order as BackendOrder } from "@/lib/authApi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { logAdminAction } from "@/lib/auditLog";
+import { playPremiumNotificationIfOrderWaitToApproved } from "@/lib/notificationSound";
 
 type Order = BackendOrder;
 
@@ -74,8 +75,10 @@ export default function OrdersTable() {
   };
 
   const updateOrderStatus = async (orderId: string | number, status: string) => {
+    const before = orders.find((o) => String(o.id) === String(orderId));
     try {
       await orderApi.updateStatus(orderId, status);
+      playPremiumNotificationIfOrderWaitToApproved(before, status);
       await logAdminAction("ORDER_STATUS_UPDATED", { orderId, newStatus: status });
       await loadOrders(false);
     } catch (error) {

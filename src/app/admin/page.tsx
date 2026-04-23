@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, playNotificationSound, storeRequests, vendorStores, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask, type StoreRequest } from "@/lib/db";
 import { authApi, orderApi, productApi, type Order as ApiOrder } from "@/lib/authApi";
+import { playPremiumNotificationIfOrderWaitToApproved } from "@/lib/notificationSound";
 import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -250,7 +251,8 @@ export default function AdminDashboardPage() {
     try {
       const order = allOrders.find(o => o.id === orderId);
       await orderApi.updateStatus(orderId, status);
-      
+      playPremiumNotificationIfOrderWaitToApproved(order, status);
+
       // Bildiriş yaradın
       if (order?.userId) {
         const statusMessages: Record<string, { title: string; message: string }> = {

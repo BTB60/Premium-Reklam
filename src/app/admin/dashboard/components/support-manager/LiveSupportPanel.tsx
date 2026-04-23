@@ -14,8 +14,12 @@ import {
   SUPPORT_MAX_ATTACHMENT_BYTES,
   type SupportChatMessageDto,
 } from "@/lib/supportChatApi";
-import { Headphones, ImagePlus, Loader2, Send, Video } from "lucide-react";
-import { playPremiumNotificationSound } from "@/lib/notificationSound";
+import { Headphones, ImagePlus, Loader2, Send, Video, Volume2, VolumeX } from "lucide-react";
+import {
+  playSupportChatNotificationSound,
+  readSupportChatSoundEnabled,
+  writeSupportChatSoundEnabled,
+} from "@/lib/notificationSound";
 
 function mediaSrc(m: SupportChatMessageDto): string | null {
   if (!m.attachmentBase64 || !m.attachmentMimeType) return null;
@@ -36,6 +40,8 @@ export function LiveSupportPanel() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastKnownMaxMsgIdRef = useRef<number | null>(null);
   const prevSelectedUserIdRef = useRef<number | null>(null);
+  const prevThreadsSnapshotRef = useRef<Map<number, { unread: number; lastAt: string }>>(new Map());
+  const [supportSoundOn, setSupportSoundOn] = useState(true);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -75,6 +81,43 @@ export function LiveSupportPanel() {
   }, [loadThreads]);
 
   useEffect(() => {
+    setSupportSoundOn(readSupportChatSoundEnabled("admin"));
+  }, []);
+
+  useEffect(() => {
+    if (threads.length === 0) {
+      prevThreadsSnapshotRef.current = new Map();
+      return;
+    }
+    const next = new Map(
+      threads.map((t) => [t.userId, { unread: t.unreadForAdmin, lastAt: t.lastMessageAt }])
+    );
+    if (!supportSoundOn) {
+      prevThreadsSnapshotRef.current = next;
+      return;
+    }
+    const prev = prevThreadsSnapshotRef.current;
+    if (prev.size === 0) {
+      prevThreadsSnapshotRef.current = next;
+      return;
+    }
+    let notify = false;
+    for (const t of threads) {
+      const old = prev.get(t.userId);
+      if (old == null && t.unreadForAdmin > 0) {
+        notify = true;
+        break;
+      }
+      if (old != null && t.unreadForAdmin > old.unread) {
+        notify = true;
+        break;
+      }
+    }
+    prevThreadsSnapshotRef.current = next;
+    if (notify) playSupportChatNotificationSound("admin");
+  }, [threads, supportSoundOn]);
+
+  useEffect(() => {
     if (selectedUserId == null) return;
     loadMessages(selectedUserId);
     const t = setInterval(() => loadMessages(selectedUserId), 3000);
@@ -103,8 +146,8 @@ export function LiveSupportPanel() {
       (m) => m.id > prev && m.senderRole === "USER"
     );
     lastKnownMaxMsgIdRef.current = maxId;
-    if (userArrived) playPremiumNotificationSound();
-  }, [messages, selectedUserId]);
+    if (userArrived) playSupportChatNotificationSound("admin");
+  }, [messages, selectedUserId, supportSoundOn]);
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -171,9 +214,23 @@ export function LiveSupportPanel() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
       <Card className="p-0 overflow-hidden lg:col-span-1">
-        <div className="p-3 border-b bg-gray-50 font-semibold text-sm flex items-center gap-2">
-          <Headphones className="w-4 h-4 text-[#D90429]" />
-          Canlı söhbətlər
+        <div className="p-3 border-b bg-gray-50 font-semibold text-sm flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2 min-w-0">
+            <Headphones className="w-4 h-4 text-[#D90429] shrink-0" />
+            <span className="truncate">Canlı söhbətlər</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !supportSoundOn;
+              setSupportSoundOn(next);
+              writeSupportChatSoundEnabled("admin", next);
+            }}
+            className="shrink-0 inline-flex items-center gap-1 text-xs font-normal text-[#6B7280] hover:text-[#1F2937] border border-gray-200 rounded-md px-2 py-1 bg-white"
+            title={supportSoundOn ? "Mesaj səsini söndür" : "Mesaj səsini aç"}
+          >
+            {supportSoundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          </button>
         </div>
         <div className="max-h-[480px] overflow-y-auto">
           {threads.length === 0 ? (
