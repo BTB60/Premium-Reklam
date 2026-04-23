@@ -120,6 +120,11 @@ export default function DashboardPage() {
     couponCode: "",
   });
   const [orderLoading, setOrderLoading] = useState(false);
+  /** Seçilmiş məhsul üçün sessiyadakı istifadəçiyə uyğun vahid qiymət (admin təyinindən). */
+  const [orderPriceResolution, setOrderPriceResolution] = useState<{
+    productId: number;
+    price: number;
+  } | null>(null);
   const [selectedTimelineOrder, setSelectedTimelineOrder] = useState<any | null>(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
 
@@ -134,6 +139,42 @@ export default function DashboardPage() {
     setUser(currentUser);
     loadData();
   }, [router]);
+
+  const dashboardOrderUnitPrice = useMemo(() => {
+    if (!selectedProduct) return 0;
+    if (orderPriceResolution?.productId === selectedProduct.id) {
+      return orderPriceResolution.price;
+    }
+    return Number(selectedProduct.salePrice) || 0;
+  }, [selectedProduct, orderPriceResolution]);
+
+  useEffect(() => {
+    const cu = authApi.getCurrentUser();
+    if (!cu || !selectedProduct) {
+      setOrderPriceResolution(null);
+      return;
+    }
+    const uid = Number(cu.userId);
+    const pid = Number(selectedProduct.id);
+    if (!Number.isFinite(uid) || !Number.isFinite(pid)) {
+      setOrderPriceResolution(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fromApi = await productApi.getUserPrice(uid, pid);
+        if (cancelled) return;
+        if (fromApi != null) setOrderPriceResolution({ productId: pid, price: fromApi });
+        else setOrderPriceResolution(null);
+      } catch {
+        if (!cancelled) setOrderPriceResolution(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProduct?.id]);
 
   useEffect(() => {
     const onBalanceUpdated = () => {
@@ -292,7 +333,7 @@ export default function DashboardPage() {
       const height = parseFloat(orderForm.height);
       const quantity = parseInt(orderForm.quantity) || 1;
       const area = width * height;
-      const unitPrice = selectedProduct.salePrice;
+      const unitPrice = dashboardOrderUnitPrice;
       const lineTotal = area * quantity * unitPrice;
 
       await orderApi.create({
@@ -1479,7 +1520,9 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-[#6B7280]">Qiymət</p>
-                      <p className="text-xl font-bold text-[#D90429]">{selectedProduct?.salePrice} AZN/{selectedProduct?.unit}</p>
+                      <p className="text-xl font-bold text-[#D90429]">
+                        {dashboardOrderUnitPrice.toFixed(2)} AZN/{selectedProduct?.unit}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1535,10 +1578,10 @@ export default function DashboardPage() {
                           <p className="text-sm text-[#6B7280]">Ümumi qiymət</p>
                           <p className="text-2xl font-bold text-[#D90429]">
                             {(
-                              parseFloat(orderForm.width) * 
-                              parseFloat(orderForm.height) * 
-                              (parseInt(orderForm.quantity) || 1) * 
-                              selectedProduct.salePrice
+                              parseFloat(orderForm.width) *
+                              parseFloat(orderForm.height) *
+                              (parseInt(orderForm.quantity) || 1) *
+                              dashboardOrderUnitPrice
                             ).toFixed(2)} AZN
                           </p>
                         </div>

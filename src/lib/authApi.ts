@@ -689,8 +689,17 @@ export const productApi = {
     });
   },
 
-  async getUserPrice(userId: number, productId: number): Promise<number> {
-    return fetchApi(`/products/user-prices/${userId}/product/${productId}`);
+  /** Backend: kataloq + müştəri üzrə qiymət/endirim; sorğu uğursuzdursa null. */
+  async getUserPrice(userId: number, productId: number): Promise<number | null> {
+    try {
+      const data = await fetchApi(`/products/user-prices/${userId}/product/${productId}`);
+      if (typeof data === "number" && Number.isFinite(data) && data >= 0) return data;
+      const n = Number(data);
+      if (Number.isFinite(n) && n >= 0) return n;
+    } catch {
+      /* şəbəkə və ya 401 — kataloq qiymətinə düş */
+    }
+    return null;
   },
 
   async setUserPrice(userId: number, productId: number, customPrice: number, discountPercent?: number): Promise<UserPrice> {

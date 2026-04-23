@@ -71,6 +71,8 @@ export default function NewOrderPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
   const [priorOrderTotal, setPriorOrderTotal] = useState(0);
+  /** Yalnız productId uyğun gələndə tətbiq olunur (məhsul dəyişəndə köhnə qiymət qalmır). */
+  const [priceResolution, setPriceResolution] = useState<{ productId: string; price: number } | null>(null);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
@@ -127,13 +129,59 @@ export default function NewOrderPage() {
     })();
   }, [router]);
 
+  const effectiveUnitPrice =
+    selectedProduct != null
+      ? priceResolution?.productId === selectedProduct.id
+        ? priceResolution.price
+        : selectedProduct.unitPrice
+      : 0;
+
+  useEffect(() => {
+    if (!user || !selectedProduct) {
+      setPriceResolution(null);
+      return;
+    }
+    const uid = Number(user.userId);
+    const pid = Number(selectedProduct.id);
+    const sid = selectedProduct.id;
+    if (!Number.isFinite(uid) || !Number.isFinite(pid)) {
+      setPriceResolution(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const fromApi = await productApi.getUserPrice(uid, pid);
+        if (cancelled) return;
+        if (fromApi != null) setPriceResolution({ productId: sid, price: fromApi });
+        else setPriceResolution(null);
+      } catch {
+        if (!cancelled) setPriceResolution(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, selectedProduct?.id]);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const up = effectiveUnitPrice;
+    setSizes((prev) =>
+      prev.map((s) => ({
+        ...s,
+        basePrice: s.area * up,
+        finalPrice: s.area * up,
+      })),
+    );
+  }, [effectiveUnitPrice, selectedProduct?.id]);
+
   const calculateArea = (width: number, height: number) => {
     return width * height;
   };
 
   const calculatePrice = (area: number) => {
-    const up = selectedProduct?.unitPrice ?? 0;
-    return area * up;
+    return area * effectiveUnitPrice;
   };
 
   const updateSize = (id: string, field: "width" | "height", value: number) => {
@@ -152,7 +200,7 @@ export default function NewOrderPage() {
 
   const addSize = () => {
     if (!selectedProduct) return;
-    const up = selectedProduct.unitPrice;
+    const up = effectiveUnitPrice;
     const newSize: SizeItem = {
       id: Date.now().toString(),
       width: 1,
@@ -208,13 +256,14 @@ export default function NewOrderPage() {
 
     try {
       const orderItems = sizes.map((size) => ({
+        productId: Number(selectedProduct.id),
         productName: selectedProduct.name,
         unit: "M2",
         width: size.width,
         height: size.height,
         area: size.area,
         quantity: 1,
-        unitPrice: selectedProduct.unitPrice,
+        unitPrice: effectiveUnitPrice,
         lineTotal: size.basePrice * (1 - totals.discountRate),
       }));
 
@@ -227,6 +276,7 @@ export default function NewOrderPage() {
         paymentMethod: paymentMethod.toUpperCase(),
         isCredit: paymentMethod === "debt",
         note: note || undefined,
+        discountPercent: Math.round(totals.discountRate * 10000) / 100,
         subtotal: totals.totalBase,
         discountAmount: totals.totalDiscount,
         totalAmount: totals.finalAmount,
@@ -316,7 +366,7 @@ export default function NewOrderPage() {
               <Card className="p-4 bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white">
                 <div className="flex items-center justify-between">
                   <span className="text-white/80">1 m² =</span>
-                  <span className="text-3xl font-bold">{selectedProduct.unitPrice} AZN</span>
+                  <span className="text-3xl font-bold">{effectiveUnitPrice} AZN</span>
                 </div>
               </Card>
 
@@ -329,11 +379,6 @@ export default function NewOrderPage() {
                     const product = catalog.find((p) => p.id === e.target.value);
                     if (!product) return;
                     setSelectedProduct(product);
-                    setSizes(sizes.map((size) => ({
-                      ...size,
-                      basePrice: size.area * product.unitPrice,
-                      finalPrice: size.area * product.unitPrice,
-                    })));
                   }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D90429] text-lg"
                 >

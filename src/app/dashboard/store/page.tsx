@@ -133,7 +133,10 @@ export default function MyStorePage() {
               category: normalizeVendorStoreCategories(approved.categories),
               isActive: true,
               isApproved: true,
+              highlightTier: "standard",
               commissionRate: 5,
+              totalOrderAmount: 0,
+              totalBonusEarned: 0,
             });
             auth.update(vk, { isVendor: true, storeId: store.id });
             const sess = authApi.getCurrentUser();

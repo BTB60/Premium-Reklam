@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { orders, notifications, settings, tasks, products, finance, inventory, workerTasks, playNotificationSound, storeRequests, vendorStores, type User, type Order, type Notification, type SystemSettings, type Task, type Product, type ProductCategory, type FinancialTransaction, type Material, type WorkerTask, type StoreRequest } from "@/lib/db";
 import { authApi, orderApi, productApi, type Order as ApiOrder } from "@/lib/authApi";
 import { playPremiumNotificationIfOrderWaitToApproved } from "@/lib/notificationSound";
+import { normalizeHighlightTier } from "@/lib/vendorStoreHighlight";
+import type { VendorHighlightTier } from "@/lib/db";
 import { getOrderTotal, formatAZN } from "@/lib/orderHelpers";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -1168,6 +1170,70 @@ function VendorManagement({
                       <span>{store.address}</span>
                     </div>
                   </div>
+
+                  <div className="mb-4">
+                    <label className="text-xs text-[#6B7280] block mb-1">
+                      Marketplace öncəliyi (VIP / Premium paket)
+                    </label>
+                    <select
+                      className="w-full text-sm border border-gray-200 rounded-lg px-2 py-2 bg-white"
+                      value={normalizeHighlightTier(store.highlightTier)}
+                      onChange={(e) => {
+                        vendorStores.update(store.id, {
+                          highlightTier: e.target.value as VendorHighlightTier,
+                        });
+                        onRefresh();
+                      }}
+                    >
+                      <option value="standard">Standart</option>
+                      <option value="premium">Premium</option>
+                      <option value="vip">VIP</option>
+                    </select>
+                  </div>
+
+                  {normalizeHighlightTier(store.highlightTier) === "vip" && (
+                    <div className="mb-4 space-y-2">
+                      <div>
+                        <label className="text-xs text-[#6B7280] block mb-1">
+                          VIP bitmə tarixi (boş = limitsiz)
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full text-sm border border-gray-200 rounded-lg px-2 py-2 bg-white"
+                          value={
+                            store.vipExpiresAt && String(store.vipExpiresAt).length >= 10
+                              ? String(store.vipExpiresAt).slice(0, 10)
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const d = e.target.value;
+                            vendorStores.update(store.id, {
+                              vipExpiresAt: d ? `${d}T23:59:59.999` : null,
+                            });
+                            onRefresh();
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-[#6B7280] block mb-1">
+                          Müddətli VIP bitəndən sonra paket
+                        </label>
+                        <select
+                          className="w-full text-sm border border-gray-200 rounded-lg px-2 py-2 bg-white"
+                          value={store.tierAfterVip ?? "premium"}
+                          onChange={(e) => {
+                            vendorStores.update(store.id, {
+                              tierAfterVip: e.target.value as "standard" | "premium",
+                            });
+                            onRefresh();
+                          }}
+                        >
+                          <option value="premium">Premium</option>
+                          <option value="standard">Standart</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-100">
                     <div className="text-center">

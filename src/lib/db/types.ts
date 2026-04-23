@@ -300,6 +300,9 @@ export interface PromoCode {
 // VENDOR SYSTEM
 // ========================================
 
+/** Marketplace-də sıralama: VIP ən öndə, sonra Premium, sonra Standart. */
+export type VendorHighlightTier = "standard" | "premium" | "vip";
+
 export interface VendorStore {
   id: string;
   vendorId: string;            // ✅ Привязка к владельцу
@@ -313,6 +316,12 @@ export interface VendorStore {
   category: string[];
   isActive: boolean;
   isApproved: boolean;
+  /** Paket: admin təyin edir; aşağı dəyər = daha çox ön sıra. */
+  highlightTier?: VendorHighlightTier;
+  /** Müddətli VIP: ISO bitmə vaxtı; boş/boş string = VIP limitsiz. */
+  vipExpiresAt?: string | null;
+  /** Müddətli VIP bitəndə hansı paketə düşsün (yazılmayıbsa standart). */
+  tierAfterVip?: "standard" | "premium";
   rating: number;
   reviewCount: number;
   totalSales: number;

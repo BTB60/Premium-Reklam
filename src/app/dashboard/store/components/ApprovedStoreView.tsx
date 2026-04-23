@@ -8,6 +8,12 @@ import { Input } from "@/components/ui/Input";
 import { Store, MapPin, Phone, Mail, Edit, Image, X, CheckCircle, Loader2, Package, Eye } from "lucide-react";
 import Link from "next/link";
 import type { VendorStore } from "@/lib/db";
+import {
+  getEffectiveHighlightTier,
+  getVipExpiryDisplay,
+  highlightTierBadgeClass,
+  highlightTierLabel,
+} from "@/lib/vendorStoreHighlight";
 
 export default function ApprovedStoreView({ 
   store, 
@@ -69,12 +75,51 @@ export default function ApprovedStoreView({
       </div>
 
       <div className="ml-36 mb-6">
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3 mb-2 flex-wrap">
           <h2 className="text-2xl font-bold text-[#1F2937]">{store.name}</h2>
           <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">Aktiv</span>
+          <span
+            className={`text-xs font-bold px-2 py-1 rounded-full ${highlightTierBadgeClass(getEffectiveHighlightTier(store))}`}
+          >
+            {highlightTierLabel(getEffectiveHighlightTier(store))}
+          </span>
         </div>
         <p className="text-[#6B7280]">{store.description}</p>
       </div>
+
+      <Card className="p-4 mb-6 border border-amber-100 bg-amber-50/60">
+        <p className="text-sm font-semibold text-[#1F2937] mb-2">Marketplace görünürlüyü</p>
+        {getEffectiveHighlightTier(store) === "vip" && getVipExpiryDisplay(store) ? (
+          <p className="text-xs text-amber-800 mb-2">
+            Müddətli VIP — bitmə: <strong>{getVipExpiryDisplay(store)}</strong>. Bitəndən sonra paket:{" "}
+            <strong>{store.tierAfterVip === "standard" ? "Standart" : "Premium"}</strong>.
+          </p>
+        ) : null}
+        {getEffectiveHighlightTier(store) === "vip" && !getVipExpiryDisplay(store) ? (
+          <p className="text-xs text-amber-800 mb-2">
+            <strong>VIP (limitsiz)</strong> — Marketplace-də ən ön sıra.
+          </p>
+        ) : null}
+        <p className="text-sm text-[#6B7280] leading-relaxed">
+          {getEffectiveHighlightTier(store) === "vip" && (
+            <>
+              <strong>VIP</strong> paketində mağazanız Marketplace siyahısında ən öndə göstərilir.
+            </>
+          )}
+          {getEffectiveHighlightTier(store) === "premium" && (
+            <>
+              <strong>Premium</strong> paketində VIP mağazalardan sonra, standart mağazalardan əvvəl
+              yerləşirsiniz.
+            </>
+          )}
+          {getEffectiveHighlightTier(store) === "standard" && (
+            <>
+              <strong>Standart</strong> sıralama: Premium və VIP paketli mağazalardan sonra
+              göstərilirsiniz. Paket təyinatı üçün admin ilə əlaqə saxlayın.
+            </>
+          )}
+        </p>
+      </Card>
 
       <div className="flex justify-end mb-4">
         <Button onClick={() => setShowEditForm(true)} icon={<Edit className="w-4 h-4" />}>Redaktə Et</Button>

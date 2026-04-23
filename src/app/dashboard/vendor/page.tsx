@@ -317,7 +317,10 @@ function CreateStoreForm({
       banner: formData.banner,
       isActive: true,
       isApproved: true,
+      highlightTier: "standard",
       commissionRate: 0.05, // 5%
+      totalOrderAmount: 0,
+      totalBonusEarned: 0,
     });
 
     onSuccess(newStore);

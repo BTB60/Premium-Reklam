@@ -23,6 +23,12 @@ import {
   MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  getEffectiveHighlightTier,
+  getVipExpiryDisplay,
+  highlightTierBadgeClass,
+  highlightTierLabel,
+} from "@/lib/vendorStoreHighlight";
 
 export default function StorePage() {
   const params = useParams();
@@ -162,7 +168,19 @@ export default function StorePage() {
               )}
             </div>
             <div className="flex-1">
-              <h1 className="text-3xl font-bold">{store.name}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-bold">{store.name}</h1>
+                {getEffectiveHighlightTier(store) !== "standard" ? (
+                  <span
+                    className={`text-sm font-bold px-3 py-1 rounded-full ${highlightTierBadgeClass(getEffectiveHighlightTier(store))}`}
+                  >
+                    {highlightTierLabel(getEffectiveHighlightTier(store))}
+                  </span>
+                ) : null}
+              </div>
+              {getEffectiveHighlightTier(store) === "vip" && getVipExpiryDisplay(store) ? (
+                <p className="text-white/85 text-sm mt-1">VIP bitir: {getVipExpiryDisplay(store)}</p>
+              ) : null}
               <p className="text-white/90 mt-2 max-w-2xl">{store.description}</p>
               <div className="flex flex-wrap gap-4 mt-4 text-sm">
                 <a href={`tel:${store.phone}`} className="flex items-center gap-1 hover:text-white/80">

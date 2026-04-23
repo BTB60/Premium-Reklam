@@ -2,11 +2,34 @@ import {
   VendorStore, StoreRequest, VendorProduct, VendorOrder, 
   Review, VendorWithdrawal 
 } from "./types";
+import { isTimedVipExpired, normalizeHighlightTier } from "@/lib/vendorStoreHighlight";
 import { getFromStorage, saveToStorage } from "./storage";
 import { notifications } from "./orders";
 import { auth } from "./auth";
 
 const VENDOR_STORES_KEY = "decor_vendor_stores";
+
+function reconcileExpiredVipStores(all: VendorStore[]): VendorStore[] {
+  let changed = false;
+  const next = all.map((s) => {
+    if (!isTimedVipExpired(s)) return s;
+    changed = true;
+    return {
+      ...s,
+      highlightTier: normalizeHighlightTier(s.tierAfterVip ?? "standard"),
+      vipExpiresAt: null,
+      tierAfterVip: undefined,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+  if (changed) saveToStorage(VENDOR_STORES_KEY, next);
+  return next;
+}
+
+function loadStoresReconciled(): VendorStore[] {
+  const raw = getFromStorage<VendorStore[]>(VENDOR_STORES_KEY, []);
+  return reconcileExpiredVipStores(raw);
+}
 const STORE_REQUESTS_KEY = "decor_store_requests";
 const VENDOR_PRODUCTS_KEY = "decor_vendor_products";
 const VENDOR_ORDERS_KEY = "decor_vendor_orders";
@@ -16,20 +39,21 @@ const REVIEWS_KEY = "decor_reviews";
 // --- Vendor Stores ---
 export const vendorStores = {
   getAll(): VendorStore[] {
-    return getFromStorage<VendorStore[]>(VENDOR_STORES_KEY, []).filter(s => s.isActive && s.isApproved);
+    return loadStoresReconciled().filter((s) => s.isActive && s.isApproved);
   },
   getAllIncludingInactive(): VendorStore[] {
-    return getFromStorage(VENDOR_STORES_KEY, []);
+    return loadStoresReconciled();
   },
   getById(id: string): VendorStore | undefined {
-    return getFromStorage<VendorStore[]>(VENDOR_STORES_KEY, []).find(s => s.id === id);
+    return loadStoresReconciled().find((s) => s.id === id);
   },
   getByVendorId(vendorId: string): VendorStore | undefined {
-    return getFromStorage<VendorStore[]>(VENDOR_STORES_KEY, []).find(s => s.vendorId === vendorId);
+    return loadStoresReconciled().find((s) => s.vendorId === vendorId);
   },
   create(store: Omit<VendorStore, "id" | "createdAt" | "updatedAt" | "rating" | "reviewCount" | "totalSales">): VendorStore {
     const newStore: VendorStore = {
       ...store,
+      highlightTier: normalizeHighlightTier(store.highlightTier),
       id: Date.now().toString(),
       rating: 0,
       reviewCount: 0,
@@ -37,16 +61,20 @@ export const vendorStores = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const all = getFromStorage<VendorStore[]>(VENDOR_STORES_KEY, []);
+    const all = loadStoresReconciled();
     all.push(newStore);
     saveToStorage(VENDOR_STORES_KEY, all);
     return newStore;
   },
   update(id: string, updates: Partial<VendorStore>): VendorStore | null {
-    const all = getFromStorage<VendorStore[]>(VENDOR_STORES_KEY, []);
-    const index = all.findIndex(s => s.id === id);
+    const all = loadStoresReconciled();
+    const index = all.findIndex((s) => s.id === id);
     if (index === -1) return null;
-    all[index] = { ...all[index], ...updates, updatedAt: new Date().toISOString() };
+    let next: VendorStore = { ...all[index], ...updates, updatedAt: new Date().toISOString() };
+    if (updates.highlightTier !== undefined && normalizeHighlightTier(updates.highlightTier) !== "vip") {
+      next = { ...next, vipExpiresAt: null, tierAfterVip: undefined };
+    }
+    all[index] = next;
     saveToStorage(VENDOR_STORES_KEY, all);
     return all[index];
   },
@@ -130,7 +158,10 @@ export const storeRequests = {
       category: request.category,
       isActive: true,
       isApproved: true,
+      highlightTier: "standard",
       commissionRate: 5,
+      totalOrderAmount: 0,
+      totalBonusEarned: 0,
     });
     
     auth.update(request.vendorId, { isVendor: true, storeId: store.id });

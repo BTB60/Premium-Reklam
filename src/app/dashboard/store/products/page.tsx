@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import { vendorStores, vendorProducts, type VendorProduct, type VendorStore } from "@/lib/db";
@@ -24,6 +24,11 @@ import {
   Tag
 } from "lucide-react";
 import Link from "next/link";
+import {
+  getVendorProductCategoryPickerOptions,
+  MARKETPLACE_PRODUCT_CATEGORIES_EVENT,
+  registerProductCategory,
+} from "@/lib/vendorStoreCategories";
 
 export default function VendorProductsPage() {
   const router = useRouter();
@@ -39,28 +44,27 @@ export default function VendorProductsPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    category: "Vinil Banner",
+    category: "Dekorlar",
     price: "",
     unit: "m²" as "m²" | "ədəd" | "metr",
     stock: "",
     images: [] as string[],
   });
   const [formError, setFormError] = useState("");
+  const [categoryTick, setCategoryTick] = useState(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const categories = [
-    "Vinil Banner",
-    "Orakal",
-    "Laminasiya",
-    "Karton",
-    "Plexi",
-    "Dizayn",
-    "UV Çap",
-    "Loqotip",
-    "Banner",
-    "İşıqlı Qutu",
-  ];
+  const categoryOptions = useMemo(
+    () => (myStore ? getVendorProductCategoryPickerOptions(myStore) : []),
+    [myStore, categoryTick]
+  );
+
+  useEffect(() => {
+    const on = () => setCategoryTick((n) => n + 1);
+    window.addEventListener(MARKETPLACE_PRODUCT_CATEGORIES_EVENT, on);
+    return () => window.removeEventListener(MARKETPLACE_PRODUCT_CATEGORIES_EVENT, on);
+  }, []);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser() as any;
@@ -109,10 +113,12 @@ export default function VendorProductsPage() {
   };
 
   const resetForm = () => {
+    const opts = myStore ? getVendorProductCategoryPickerOptions(myStore) : [];
+    const first = opts[0] ?? "Dekorlar";
     setFormData({
       name: "",
       description: "",
-      category: "Vinil Banner",
+      category: first,
       price: "",
       unit: "m²",
       stock: "",
@@ -147,6 +153,12 @@ export default function VendorProductsPage() {
     }
     if (!myStore) return;
 
+    const categoryNorm = registerProductCategory(formData.category);
+    if (!categoryNorm) {
+      setFormError("Kateqoriya daxil edin");
+      return;
+    }
+
     setSubmitting(true);
     setFormError("");
 
@@ -155,7 +167,7 @@ export default function VendorProductsPage() {
         vendorProducts.update(editingProduct.id, {
           name: formData.name.trim(),
           description: formData.description.trim(),
-          category: formData.category,
+          category: categoryNorm,
           price: parseFloat(formData.price),
           unit: formData.unit,
           stock: parseInt(formData.stock) || 0,
@@ -167,7 +179,7 @@ export default function VendorProductsPage() {
           storeId: myStore.id,
           name: formData.name.trim(),
           description: formData.description.trim(),
-          category: formData.category,
+          category: categoryNorm,
           price: parseFloat(formData.price),
           unit: formData.unit,
           stock: parseInt(formData.stock) || 0,
@@ -436,15 +448,23 @@ export default function VendorProductsPage() {
                   <label className="block text-sm font-medium text-[#6B7280] mb-2">
                     Kateqoriya
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    list="vendor-product-category-options"
                     value={formData.category}
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="Siyahıdan seçin və ya yeni yazın"
                     className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D90429]"
-                  >
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
+                  />
+                  <datalist id="vendor-product-category-options">
+                    {categoryOptions.map((cat) => (
+                      <option key={cat} value={cat} />
                     ))}
-                  </select>
+                  </datalist>
+                  <p className="text-xs text-[#9CA3AF] mt-1.5">
+                    Mağazanızın kateqoriyaları və ümumi siyahı avtomatik təklif olunur; yeni ad
+                    yazsanız Marketplace filtrində də görünəcək.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-[#6B7280] mb-2">

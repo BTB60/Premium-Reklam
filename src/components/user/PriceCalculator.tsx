@@ -32,13 +32,12 @@ export function PriceCalculator({ availableProducts, user }: PriceCalculatorProp
     const height = parseFloat(item.height) || 0;
     const quantity = parseInt(item.quantity) || 1;
 
-    // Formula: en x uzunluq x 5
     if (product.unit === "m²" && width > 0 && height > 0) {
-      const area = width * height; // m²
-      return area * 5 * quantity; // en x uzun x 5
+      const area = width * height; // istifadəçi ölçüləri ilə eyni ölçü vahidi (əvvəlki davranış)
+      const unitSqm = Number(product.basePrice) || 0;
+      return area * unitSqm * quantity;
     }
 
-    // Ədəd və metr üçün sadə vurma
     const basePrice = (product as any).price || (product as any).basePrice || 0;
     return basePrice * quantity;
   };
@@ -141,7 +140,11 @@ export function PriceCalculator({ availableProducts, user }: PriceCalculatorProp
                       <option value="">Məhsul seçin</option>
                       {availableProducts.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.name} ({p.unit === "m²" ? "5 AZN/m²" : `${((p as any).price || (p as any).basePrice || 0).toFixed(2)} AZN/${p.unit}`})
+                          {p.name} (
+                          {p.unit === "m²"
+                            ? `${(p.basePrice || 0).toFixed(2)} AZN/m²`
+                            : `${((p as any).price || p.basePrice || 0).toFixed(2)} AZN/${p.unit}`}
+                          )
                         </option>
                       ))}
                     </select>

@@ -1,11 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { vendorStores, vendorProducts, type VendorStore, type VendorProduct } from "@/lib/db";
+import {
+  getMarketplaceProductFilterCategories,
+  MARKETPLACE_PRODUCT_CATEGORIES_EVENT,
+} from "@/lib/vendorStoreCategories";
+import {
+  compareVendorStoresByHighlight,
+  getVipExpiryDisplay,
+  highlightTierBadgeClass,
+  highlightTierLabel,
+  getEffectiveHighlightTier,
+  vendorHighlightRankForStore,
+} from "@/lib/vendorStoreHighlight";
 import { motion } from "framer-motion";
 import {
   Search,
@@ -29,26 +41,60 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeTab, setActiveTab] = useState<"stores" | "products">("stores");
+  const [categoryTick, setCategoryTick] = useState(0);
 
   useEffect(() => {
-    setStores(vendorStores.getAll());
-    setProducts(vendorProducts.getAll());
+    const load = () => {
+      setStores(vendorStores.getAll());
+      setProducts(vendorProducts.getAll());
+    };
+    load();
+    const onCats = () => {
+      setCategoryTick((n) => n + 1);
+      load();
+    };
+    window.addEventListener(MARKETPLACE_PRODUCT_CATEGORIES_EVENT, onCats);
+    return () => window.removeEventListener(MARKETPLACE_PRODUCT_CATEGORIES_EVENT, onCats);
   }, []);
 
-  const categories = ["all", "Vinil", "Orakal", "Banner", "Karton", "Plexi", "Dizayn"];
-
-  const filteredStores = stores.filter(
-    (store) =>
-      store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      store.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const productCategories = useMemo(
+    () => ["all", ...getMarketplaceProductFilterCategories(products, stores)],
+    [products, stores, categoryTick]
   );
 
-  const filteredProducts = products.filter(
-    (product) =>
-      (selectedCategory === "all" || product.category === selectedCategory) &&
-      (product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredStores = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return stores
+      .filter(
+        (store) =>
+          store.name.toLowerCase().includes(q) || store.description.toLowerCase().includes(q)
+      )
+      .sort(compareVendorStoresByHighlight);
+  }, [stores, searchQuery]);
+
+  const storeRankById = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of stores) m.set(String(s.id), vendorHighlightRankForStore(s));
+    return m;
+  }, [stores]);
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return products
+      .filter(
+        (product) =>
+          (selectedCategory === "all" ||
+            (product.category || "").trim() === selectedCategory) &&
+          (product.name.toLowerCase().includes(q) ||
+            product.description.toLowerCase().includes(q))
+      )
+      .sort((a, b) => {
+        const ra = storeRankById.get(String(a.storeId)) ?? 1;
+        const rb = storeRankById.get(String(b.storeId)) ?? 1;
+        if (ra !== rb) return rb - ra;
+        return a.name.localeCompare(b.name, "az");
+      });
+  }, [products, selectedCategory, searchQuery, storeRankById]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FB]">
@@ -146,7 +192,7 @@ export default function MarketplacePage() {
           {/* Category Filter */}
           {activeTab === "products" && (
             <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-              {categories.map((cat) => (
+              {productCategories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
@@ -226,6 +272,10 @@ function StoreCard({
   store: VendorStore;
   viewMode: "grid" | "list";
 }) {
+  const tier = getEffectiveHighlightTier(store);
+  const showTierBadge = tier !== "standard";
+  const vipUntil = getVipExpiryDisplay(store);
+
   if (viewMode === "list") {
     return (
       <Card className="p-4 flex gap-4">
@@ -235,7 +285,19 @@ function StoreCard({
         <div className="flex-1">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-bold text-lg">{store.name}</h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-lg">{store.name}</h3>
+                {showTierBadge ? (
+                  <span
+                    className={`text-xs font-bold px-2 py-0.5 rounded-full ${highlightTierBadgeClass(tier)}`}
+                  >
+                    {highlightTierLabel(tier)}
+                  </span>
+                ) : null}
+              </div>
+              {tier === "vip" && vipUntil ? (
+                <p className="text-xs text-amber-700 mt-1">VIP bitir: {vipUntil}</p>
+              ) : null}
               <p className="text-gray-500 text-sm line-clamp-2">
                 {store.description}
               </p>
@@ -272,6 +334,13 @@ function StoreCard({
   return (
     <Card className="overflow-hidden group">
       <div className="h-32 bg-gradient-to-r from-[#D90429] to-[#EF476F] relative">
+        {showTierBadge ? (
+          <span
+            className={`absolute top-2 right-2 z-10 text-xs font-bold px-2 py-1 rounded-full ${highlightTierBadgeClass(tier)}`}
+          >
+            {highlightTierLabel(tier)}
+          </span>
+        ) : null}
         <div className="absolute -bottom-8 left-4">
           <div className="w-16 h-16 bg-white rounded-xl shadow-lg flex items-center justify-center">
             <Store className="w-8 h-8 text-[#D90429]" />
@@ -282,6 +351,9 @@ function StoreCard({
         <div className="flex items-start justify-between">
           <div>
             <h3 className="font-bold text-lg">{store.name}</h3>
+            {tier === "vip" && vipUntil ? (
+              <p className="text-[11px] text-amber-700 mt-0.5">VIP: {vipUntil}-dək</p>
+            ) : null}
             <p className="text-gray-500 text-sm line-clamp-2 mt-1">
               {store.description}
             </p>

@@ -9,7 +9,6 @@ import az.premiumreklam.enums.ProductUnit;
 import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.ProductRepository;
 import az.premiumreklam.repository.UserRepository;
-import az.premiumreklam.repository.UserPriceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +25,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-    private final UserPriceRepository userPriceRepository;
+    private final UserPriceService userPriceService;
     private final PromoCouponService promoCouponService;
     private final RealtimePushService realtimePushService;
 
@@ -61,16 +60,9 @@ public class OrderService {
                 }
 
                 BigDecimal quantity = defaultBigDecimal(itemRequest.getQuantity(), BigDecimal.ONE);
-                BigDecimal unitPrice = BigDecimal.ZERO;
+                BigDecimal unitPrice;
                 if (product != null) {
-                    var userPriceOpt = userPriceRepository.findByUser_IdAndProduct_IdAndIsActiveTrue(user.getId(), product.getId());
-                    if (userPriceOpt.isPresent()) {
-                        unitPrice = userPriceOpt.get().getCustomPrice();
-                    } else {
-                        unitPrice = product.getSalePrice() != null
-                                ? product.getSalePrice()
-                                : defaultBigDecimal(itemRequest.getUnitPrice());
-                    }
+                    unitPrice = userPriceService.getPriceForUser(user.getId(), product.getId());
                 } else {
                     unitPrice = defaultBigDecimal(itemRequest.getUnitPrice());
                 }
