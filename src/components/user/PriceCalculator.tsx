@@ -17,9 +17,11 @@ import Link from "next/link";
 interface PriceCalculatorProps {
   availableProducts: Product[];
   user: User;
-  /** Backend ümumi sifariş məbləği (verilərsə, mock `totalSales` əvəzinə istifadə olunur). */
+  /** Backend: cari təqvim ayı üzrə sifariş cəmi (bonus həddi üçün; ay sonunda sıfırlanır). */
   lifetimeOrderTotalAzn?: number;
   loyaltyPercentOverride?: LoyaltyPercentOverride;
+  /** Müştəri üzrə xüsusi qiymət cədvəlidirsə bonus tətbiq olunmur. */
+  hasCustomUserPrices?: boolean;
 }
 
 export function PriceCalculator({
@@ -27,6 +29,7 @@ export function PriceCalculator({
   user,
   lifetimeOrderTotalAzn,
   loyaltyPercentOverride = null,
+  hasCustomUserPrices = false,
 }: PriceCalculatorProps) {
   const [items, setItems] = useState<
     { productId: string; width: string; height: string; quantity: string }[]
@@ -34,14 +37,16 @@ export function PriceCalculator({
 
   const spentForBonus = lifetimeOrderTotalAzn ?? (Number(user.totalSales) || 0);
 
+  const loyaltyEligibility = useMemo(() => ({ hasCustomUserPrices }), [hasCustomUserPrices]);
+
   const loyaltyDiscount = useMemo(() => {
-    const d = calculateDiscount(spentForBonus, loyaltyPercentOverride);
+    const d = calculateDiscount(spentForBonus, loyaltyPercentOverride, loyaltyEligibility);
     return { rate: d.rate, label: `${d.activePercent}%` };
-  }, [spentForBonus, loyaltyPercentOverride]);
+  }, [spentForBonus, loyaltyPercentOverride, loyaltyEligibility]);
 
   const loyaltyProgress = useMemo(
-    () => getLoyaltyBonusProgress(spentForBonus, loyaltyPercentOverride),
-    [spentForBonus, loyaltyPercentOverride]
+    () => getLoyaltyBonusProgress(spentForBonus, loyaltyPercentOverride, loyaltyEligibility),
+    [spentForBonus, loyaltyPercentOverride, loyaltyEligibility]
   );
 
   const calculateItemPrice = (item: (typeof items)[0]) => {
@@ -109,7 +114,7 @@ export function PriceCalculator({
             <p className="text-white/80 text-sm">Sənin endirimin</p>
             <p className="text-2xl font-bold">{loyaltyDiscount.label}</p>
             <p className="text-white/80 text-xs">
-              Bonus üçün ümumi sifariş: {spentForBonus.toFixed(0)} AZN
+              Bonus üçün bu ay: {spentForBonus.toFixed(0)} AZN
             </p>
           </div>
           <div className="text-right max-w-[55%]">

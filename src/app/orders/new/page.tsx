@@ -72,9 +72,12 @@ export default function NewOrderPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "debt">("cash");
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
+  /** Cari ayda (təqvim ayı) əvvəlki sifarişlərin cəmi — bonus həddi üçün; ay sonunda sıfırlanır. */
   const [priorOrderTotal, setPriorOrderTotal] = useState(0);
   /** Backend-dən müştəri üzrə bonus faizləri; null = yalnız ümumi (local) ayarlar. */
   const [loyaltyPercentOverride, setLoyaltyPercentOverride] = useState<LoyaltyPercentOverride>(null);
+  /** Admin müştəri üzrə xüsusi qiymət təyin edibsə bonus hesablanmır. */
+  const [hasCustomUserPrices, setHasCustomUserPrices] = useState(false);
   /** Yalnız productId uyğun gələndə tətbiq olunur (məhsul dəyişəndə köhnə qiymət qalmır). */
   const [priceResolution, setPriceResolution] = useState<{ productId: string; price: number } | null>(null);
 
@@ -89,16 +92,26 @@ export default function NewOrderPage() {
 
     void (async () => {
       try {
-        const [summary, plist, profile] = await Promise.all([
+        const uid = Number(currentUser.userId);
+        const pricesPromise =
+          Number.isFinite(uid) && uid > 0
+            ? productApi.getUserPrices(uid).catch(() => [])
+            : Promise.resolve([]);
+        const [summary, plist, profile, userPricesRows] = await Promise.all([
           orderApi.getMySummary(),
           productApi.getActiveCatalog(),
           authApi.getMyProfile().catch(() => null),
+          pricesPromise,
         ]);
-        const totalSpent = Number(summary.totalAmount || 0);
+        const customPricingActive = Array.isArray(userPricesRows) && userPricesRows.length > 0;
+        setHasCustomUserPrices(customPricingActive);
+        const totalSpent = Number(summary.monthOrderAmount || 0);
         setPriorOrderTotal(totalSpent);
         const loyOverride = loyaltyOverrideFromProfile(profile);
         setLoyaltyPercentOverride(loyOverride);
-        const discount = calculateDiscount(totalSpent, loyOverride);
+        const discount = calculateDiscount(totalSpent, loyOverride, {
+          hasCustomUserPrices: customPricingActive,
+        });
         setMonthlyStats({
           totalSpent,
           discountTier: discount.tier,
@@ -124,6 +137,7 @@ export default function NewOrderPage() {
       } catch {
         setPriorOrderTotal(0);
         setLoyaltyPercentOverride(null);
+        setHasCustomUserPrices(false);
         setMonthlyStats({
           totalSpent: 0,
           discountTier: "none",
@@ -231,9 +245,10 @@ export default function NewOrderPage() {
     totalBase: sizes.reduce((sum, s) => sum + s.basePrice, 0),
   };
   
-  // Calculate discount rate based on LIFETIME total spending (backend orders + current cart)
-  const lifetimeTotal = priorOrderTotal + baseTotals.totalBase;
-  const loyaltyDiscount = calculateDiscount(lifetimeTotal, loyaltyPercentOverride);
+  // Cari ay üzrə məbləğ (əvvəlki sifarişlər bu ay + hazırkı səbət) — ay dəyişəndə sıfırlanır
+  const monthlyTotalForBonus = priorOrderTotal + baseTotals.totalBase;
+  const loyaltyEligibility = { hasCustomUserPrices };
+  const loyaltyDiscount = calculateDiscount(monthlyTotalForBonus, loyaltyPercentOverride, loyaltyEligibility);
   const discountRate = loyaltyDiscount.rate; // 0, 0.05, or 0.10
   
   // Apply discount to EACH size individually, then sum up
@@ -250,7 +265,7 @@ export default function NewOrderPage() {
     sizesWithDiscount,
     totalDiscount: totalDiscountAmount,
     finalAmount: totalAfterDiscounts,
-    lifetimeTotal: lifetimeTotal,
+    lifetimeTotal: monthlyTotalForBonus,
     discountRate: discountRate,
     discountTier: loyaltyDiscount.tier
   };
@@ -558,10 +573,11 @@ export default function NewOrderPage() {
                     : "bg-gray-100"
                 }`}>
                   <p className="text-sm font-medium mb-1">
-                    {getDiscountMessage(totals.discountTier, loyaltyPercentOverride)}
+                    {getDiscountMessage(totals.discountTier, loyaltyPercentOverride, loyaltyEligibility)}
                   </p>
                   <p className="text-xs text-[#6B7280]">
-                    Keçmiş sifarişlər: {priorOrderTotal.toFixed(2)} AZN • Cari sifarişlə birlikdə: {totals.lifetimeTotal.toFixed(2)} AZN
+                    Bu ay əvvəlki sifarişlər: {priorOrderTotal.toFixed(2)} AZN • Bu sifarişlə birlikdə (cari ay):{" "}
+                    {totals.lifetimeTotal.toFixed(2)} AZN
                   </p>
                   {totals.discountRate > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1">

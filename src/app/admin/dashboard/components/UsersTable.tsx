@@ -256,8 +256,9 @@ export default function UsersTable({ canDeleteUsers = false }: UsersTableProps) 
             </button>
             <h2 className="text-lg font-bold text-[#1F2937] pr-10 mb-1">Bonus endirim — fərdi faiz</h2>
             <p className="text-sm text-[#6B7280] mb-4">
-              {bonusModalUser.fullName} (@{bonusModalUser.username}). Ümumi sifariş məbləyi 500 və 1000 AZN hədlərində
-              tətbiq olunacaq faizlər. Boş saxlayıb saxlasanız həmin hədd üçün ümumi sistem ayarı istifadə olunur.
+              {bonusModalUser.fullName} (@{bonusModalUser.username}). Cari ay üzrə sifariş məbləği 500 və 1000 AZN
+              hədlərində tətbiq olunacaq faizlər (ay sonunda sıfırlanır). Boş saxlasanız həmin hədd üçün ümumi sistem
+              ayarı istifadə olunur.
             </p>
             <div className="space-y-3 mb-4">
               <div>

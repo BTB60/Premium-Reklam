@@ -109,6 +109,10 @@ public class OrderService {
         }
 
         BigDecimal discountPercent = defaultBigDecimal(order.getDiscountPercent());
+        if (userPriceService.hasActiveCustomPrices(user.getId())) {
+            discountPercent = BigDecimal.ZERO;
+            order.setDiscountPercent(BigDecimal.ZERO);
+        }
         BigDecimal discountAmount = subtotal.multiply(discountPercent).divide(BigDecimal.valueOf(100));
         BigDecimal couponDiscount = promoCouponService.calculateAndConsumeDiscount(request.getCouponCode(), subtotal);
         discountAmount = discountAmount.add(couponDiscount);

@@ -115,11 +115,11 @@ export default function SettingsManager() {
         <Card className="p-6">
           <h2 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
             <Award className="w-5 h-5 text-[#D90429]" />
-            Bonus endirim (ümumi sifariş məbləği)
+            Bonus endirim (cari ay üzrə)
           </h2>
           <p className="text-xs text-[#6B7280] mb-3">
-            Müştərinin bütün vaxt üzrə ümumi sifariş məbləyi hədd keçəndə növbəti sifarişlərə tətbiq olunacaq endirim faizi.
-            Hədlər: 500 AZN və 1000 AZN (sabit).
+            Müştərinin cari təqvim ayındakı sifariş məbləği hədd keçəndə növbəti sifarişlərə endirim faizi tətbiq olunur.
+            Hər ayın sonunda bu məbləğ sıfırlanır. Hədlər: 500 AZN və 1000 AZN (sabit).
           </p>
           <label className="flex items-center gap-2 cursor-pointer mb-4">
             <input
@@ -137,7 +137,7 @@ export default function SettingsManager() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-1">
-                500 AZN ümumi sifarişdən sonra endirim (%)
+                500 AZN (bu ay) sifarişdən sonra endirim (%)
               </label>
               <input
                 type="number"
@@ -152,7 +152,7 @@ export default function SettingsManager() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-1">
-                1000 AZN ümumi sifarişdən sonra endirim (%)
+                1000 AZN (bu ay) sifarişdən sonra endirim (%)
               </label>
               <input
                 type="number"

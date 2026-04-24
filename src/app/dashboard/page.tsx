@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { orderApi, productApi, authApi, type Order, type Product, type OrderSummary } from "@/lib/authApi";
+import { orderApi, productApi, authApi, isOrderCancelled, type Order, type Product, type OrderSummary } from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -137,6 +137,7 @@ export default function DashboardPage() {
   const [selectedTimelineOrder, setSelectedTimelineOrder] = useState<any | null>(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
   const [loyaltyProfileOverride, setLoyaltyProfileOverride] = useState<LoyaltyPercentOverride>(null);
+  const [hasCustomUserPrices, setHasCustomUserPrices] = useState(false);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
@@ -198,13 +199,20 @@ export default function DashboardPage() {
     setLoading(true);
     try {
       const user = authApi.getCurrentUser();
-      
-      const [ordersResponse, productsData, profile, myPayments] = await Promise.all([
+      const uid = user ? Number(user.userId) : NaN;
+      const userPricesPromise =
+        Number.isFinite(uid) && uid > 0
+          ? productApi.getUserPrices(uid).catch(() => [])
+          : Promise.resolve([]);
+
+      const [ordersResponse, productsData, profile, myPayments, userPricesRows] = await Promise.all([
         orderApi.getMyOrders(),
         productApi.getActiveCatalog(),
         authApi.getMyProfile().catch(() => null),
         fetchMyClientPaymentRequests().catch(() => []),
+        userPricesPromise,
       ]);
+      setHasCustomUserPrices(Array.isArray(userPricesRows) && userPricesRows.length > 0);
       const ordersData = ordersResponse as any;
       const orders = ordersData.orders || [];
       setUserOrders(orders);
@@ -213,16 +221,18 @@ export default function DashboardPage() {
       const monthStart = today.substring(0, 7) + '-01';
       
       const todayOrders = orders.filter((o: any) => {
+        if (isOrderCancelled(o)) return false;
         const orderDate = (o.createdAt || '').split('T')[0];
         return orderDate === today;
       });
       
       const monthOrders = orders.filter((o: any) => {
+        if (isOrderCancelled(o)) return false;
         const orderDate = o.createdAt || '';
         return orderDate >= monthStart;
       });
       
-      const activeOrders = orders.filter((o: any) => o.paymentStatus !== 'CANCELLED');
+      const activeOrders = orders.filter((o: any) => !isOrderCancelled(o));
       
       const summary = {
         todayOrderCount: todayOrders.length,
@@ -246,6 +256,7 @@ export default function DashboardPage() {
       setPaymentHistory(myPayments);
     } catch (error) {
       console.error("Data load error:", error);
+      setHasCustomUserPrices(false);
       setUserOrders([]);
       setOrderSummary(null);
       setProducts([]);
@@ -580,9 +591,9 @@ export default function DashboardPage() {
   }, [paymentHistory]);
 
   const loyaltyBonus = useMemo(() => {
-    const spent = Number(orderSummary?.totalAmount ?? 0);
-    return getLoyaltyBonusProgress(spent, loyaltyProfileOverride);
-  }, [orderSummary?.totalAmount, loyaltyProfileOverride]);
+    const spent = Number(orderSummary?.monthOrderAmount ?? 0);
+    return getLoyaltyBonusProgress(spent, loyaltyProfileOverride, { hasCustomUserPrices });
+  }, [orderSummary?.monthOrderAmount, loyaltyProfileOverride, hasCustomUserPrices]);
 
   const loyaltyPercentPreset = useMemo(
     () => getLoyaltyPercentages(loyaltyProfileOverride),
@@ -937,7 +948,7 @@ export default function DashboardPage() {
                   Bonus endirim proqramı
                 </h3>
                 <p className="text-xs text-[#6B7280] mb-2">
-                  Ümumi sifariş məbləği:{" "}
+                  Bu ay sifariş məbləği (bonus üçün):{" "}
                   <span className="font-medium text-[#1F2937]">{loyaltyBonus.spent.toFixed(0)} AZN</span>
                   {loyaltyBonus.activePercent > 0 && (
                     <>
@@ -954,7 +965,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <p className="text-xs text-[#6B7280] mt-2">{loyaltyBonus.hint}</p>
-                {isLoyaltyBonusProgramEnabled() && (
+                {isLoyaltyBonusProgramEnabled() && !hasCustomUserPrices && (
                   <p className="text-[10px] text-[#9CA3AF] mt-1 leading-snug">
                     Hədlər: {LOYALTY_FIRST_THRESHOLD_AZN} AZN → {loyaltyPercentPreset.first}% ·{" "}
                     {LOYALTY_SECOND_THRESHOLD_AZN} AZN → {loyaltyPercentPreset.second}% (admin paneldə dəyişilir)

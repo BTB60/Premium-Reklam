@@ -1637,14 +1637,15 @@ function AdminSettings() {
           </div>
         </Card>
 
-        {/* Lifetime-order bonus discount tiers (500 / 1000 AZN thresholds) */}
+        {/* Aylıq bonus hədləri (500 / 1000 AZN — cari təqvim ayı) */}
         <Card className="p-6">
           <h2 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
             <Award className="w-5 h-5 text-[#D90429]" />
-            Bonus endirim (ümumi sifariş məbləği)
+            Bonus endirim (cari ay üzrə)
           </h2>
           <p className="text-xs text-[#6B7280] mb-3">
-            Ümumi sifariş məbləyi 500 və 1000 AZN-i keçəndə növbəti sifarişlərdə tətbiq olunacaq faizlər.
+            Cari ay üzrə sifariş məbləği 500 və 1000 AZN-i keçəndə növbəti sifarişlərdə tətbiq olunacaq faizlər. Ay
+            sonunda məbləğ sıfırlanır.
           </p>
           <label className="flex items-center gap-2 cursor-pointer mb-4">
             <input
@@ -1662,7 +1663,7 @@ function AdminSettings() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-1">
-                500 AZN ümumi sifarişdən sonra endirim (%)
+                500 AZN (bu ay) sifarişdən sonra endirim (%)
               </label>
               <input
                 type="number"
@@ -1675,7 +1676,7 @@ function AdminSettings() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-1">
-                1000 AZN ümumi sifarişdən sonra endirim (%)
+                1000 AZN (bu ay) sifarişdən sonra endirim (%)
               </label>
               <input
                 type="number"

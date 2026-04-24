@@ -27,6 +27,11 @@ public class UserPriceService {
         return userPriceRepository.findByUser_IdAndIsActiveTrue(userId);
     }
 
+    /** Müştəri üzrə ən azı bir aktiv xüsusi qiymət/endirim təyin olunubsa true. */
+    public boolean hasActiveCustomPrices(Long userId) {
+        return !getUserPrices(userId).isEmpty();
+    }
+
     public List<UserPrice> getProductPrices(Long productId) {
         return userPriceRepository.findByProduct_Id(productId);
     }

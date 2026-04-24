@@ -762,6 +762,22 @@ export interface OrderSummary {
   totalAmount: number;
 }
 
+/**
+ * Ləğv olunmuş sifarişlər aylıq bonus və məbləğ xülasələrində nəzərə alınmır.
+ * Backend: payment_status CANCELLED və/və ya status cancelled.
+ */
+export function isOrderCancelled(order: any): boolean {
+  const ps = String(order?.paymentStatus ?? order?.payment_status ?? "").toUpperCase();
+  if (ps === "CANCELLED") return true;
+  const st = String(order?.status ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  return (
+    st === "cancelled" ||
+    st === "canceled" ||
+    st === "ləğv edildi" ||
+    st === "legv edildi"
+  );
+}
+
 function normalizeOrder(order: any): Order {
   return {
     ...order,
@@ -878,6 +894,8 @@ export const orderApi = {
     let totalAmount = 0, totalPaid = 0, totalDebt = 0;
     
     orderList.forEach((order: any) => {
+      if (isOrderCancelled(order)) return;
+
       const orderDate = (order.createdAt || '').split('T')[0];
       const amount = Number(order.totalAmount) || 0;
       const paid = Number(order.paidAmount) || 0;
@@ -896,6 +914,8 @@ export const orderApi = {
       }
     });
     
+    const activeOrderCount = orderList.filter((o: any) => !isOrderCancelled(o)).length;
+
     return {
       todayOrderCount: todayCount,
       todayOrderAmount: todayAmount,
@@ -903,7 +923,7 @@ export const orderApi = {
       monthOrderAmount: monthAmount,
       totalPaid,
       totalDebt,
-      totalOrders: orderList.length,
+      totalOrders: activeOrderCount,
       totalAmount,
     };
   },

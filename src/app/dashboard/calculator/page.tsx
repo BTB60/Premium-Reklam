@@ -45,6 +45,7 @@ export default function CalculatorPage() {
   const [loading, setLoading] = useState(true);
   const [lifetimeOrderTotal, setLifetimeOrderTotal] = useState<number | undefined>(undefined);
   const [loyaltyOverride, setLoyaltyOverride] = useState<LoyaltyPercentOverride>(null);
+  const [hasCustomUserPrices, setHasCustomUserPrices] = useState(false);
 
   useEffect(() => {
     const currentUser = auth.getCurrentUser();
@@ -55,18 +56,27 @@ export default function CalculatorPage() {
     setUser(currentUser);
     void (async () => {
       try {
-        const [list, summary, profile] = await Promise.all([
+        const apiUser = authApi.getCurrentUser();
+        const uid = apiUser ? Number(apiUser.userId) : NaN;
+        const pricesPromise =
+          Number.isFinite(uid) && uid > 0
+            ? productApi.getUserPrices(uid).catch(() => [])
+            : Promise.resolve([]);
+        const [list, summary, profile, userPricesRows] = await Promise.all([
           productApi.getActiveCatalog(),
           orderApi.getMySummary().catch(() => null),
           authApi.getMyProfile().catch(() => null),
+          pricesPromise,
         ]);
         setAvailableProducts(list.map(mapApiProductToCalculator));
-        if (summary && Number.isFinite(Number(summary.totalAmount))) {
-          setLifetimeOrderTotal(Number(summary.totalAmount));
+        if (summary && Number.isFinite(Number(summary.monthOrderAmount))) {
+          setLifetimeOrderTotal(Number(summary.monthOrderAmount));
         }
         setLoyaltyOverride(loyaltyOverrideFromProfile(profile as any));
+        setHasCustomUserPrices(Array.isArray(userPricesRows) && userPricesRows.length > 0);
       } catch {
         setAvailableProducts([]);
+        setHasCustomUserPrices(false);
       } finally {
         setLoading(false);
       }
@@ -107,6 +117,7 @@ export default function CalculatorPage() {
             user={user}
             lifetimeOrderTotalAzn={lifetimeOrderTotal}
             loyaltyPercentOverride={loyaltyOverride}
+            hasCustomUserPrices={hasCustomUserPrices}
           />
         </div>
       </main>
