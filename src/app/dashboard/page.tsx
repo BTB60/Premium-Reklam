@@ -17,6 +17,15 @@ import {
   type ClientPaymentRequestRow,
 } from "@/lib/clientPaymentNotificationsApi";
 import { playPremiumNotificationSound } from "@/lib/notificationSound";
+import {
+  getLoyaltyBonusProgress,
+  isLoyaltyBonusProgramEnabled,
+  LOYALTY_FIRST_THRESHOLD_AZN,
+  LOYALTY_SECOND_THRESHOLD_AZN,
+  getLoyaltyPercentages,
+  loyaltyOverrideFromProfile,
+  type LoyaltyPercentOverride,
+} from "@/lib/db";
 import { 
   LogOut, 
   Package, 
@@ -127,6 +136,7 @@ export default function DashboardPage() {
   } | null>(null);
   const [selectedTimelineOrder, setSelectedTimelineOrder] = useState<any | null>(null);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
+  const [loyaltyProfileOverride, setLoyaltyProfileOverride] = useState<LoyaltyPercentOverride>(null);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
@@ -230,6 +240,7 @@ export default function DashboardPage() {
       
       setOrderSummary(summary);
       setProducts(productsData);
+      setLoyaltyProfileOverride(loyaltyOverrideFromProfile(profile as any));
       setOrderBlocked(Boolean((profile as any)?.orderBlocked));
       setNextWeeklyDueDate((profile as any)?.nextWeeklyDueDate ? String((profile as any).nextWeeklyDueDate) : null);
       setPaymentHistory(myPayments);
@@ -241,6 +252,7 @@ export default function DashboardPage() {
       setOrderBlocked(false);
       setNextWeeklyDueDate(null);
       setPaymentHistory([]);
+      setLoyaltyProfileOverride(null);
     } finally {
       setLoading(false);
     }
@@ -566,6 +578,16 @@ export default function DashboardPage() {
     }
     return Array.from(set).sort((a, b) => b - a);
   }, [paymentHistory]);
+
+  const loyaltyBonus = useMemo(() => {
+    const spent = Number(orderSummary?.totalAmount ?? 0);
+    return getLoyaltyBonusProgress(spent, loyaltyProfileOverride);
+  }, [orderSummary?.totalAmount, loyaltyProfileOverride]);
+
+  const loyaltyPercentPreset = useMemo(
+    () => getLoyaltyPercentages(loyaltyProfileOverride),
+    [loyaltyProfileOverride]
+  );
 
   const handleReorder = (order: any) => {
     const firstItem = order?.items?.[0];
@@ -912,18 +934,32 @@ export default function DashboardPage() {
               <Card className="p-4">
                 <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
                   <Award className="w-4 h-4 text-[#16A34A]" />
-                  Bonus Proqresi
+                  Bonus endirim proqramı
                 </h3>
-                <p className="text-xs text-[#6B7280] mb-2">Növbəti bonus həddi: 1000 AZN</p>
+                <p className="text-xs text-[#6B7280] mb-2">
+                  Ümumi sifariş məbləği:{" "}
+                  <span className="font-medium text-[#1F2937]">{loyaltyBonus.spent.toFixed(0)} AZN</span>
+                  {loyaltyBonus.activePercent > 0 && (
+                    <>
+                      {" "}
+                      · aktiv:{" "}
+                      <span className="font-medium text-[#16A34A]">{loyaltyBonus.activePercent}%</span>
+                    </>
+                  )}
+                </p>
                 <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E]"
-                    style={{ width: `${Math.min(((orderSummary?.monthOrderAmount || 0) / 1000) * 100, 100)}%` }}
+                    className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E] transition-all"
+                    style={{ width: `${loyaltyBonus.progressPercent}%` }}
                   />
                 </div>
-                <p className="text-xs text-[#6B7280] mt-2">
-                  Qalan: {(Math.max(0, 1000 - (orderSummary?.monthOrderAmount || 0))).toFixed(2)} AZN
-                </p>
+                <p className="text-xs text-[#6B7280] mt-2">{loyaltyBonus.hint}</p>
+                {isLoyaltyBonusProgramEnabled() && (
+                  <p className="text-[10px] text-[#9CA3AF] mt-1 leading-snug">
+                    Hədlər: {LOYALTY_FIRST_THRESHOLD_AZN} AZN → {loyaltyPercentPreset.first}% ·{" "}
+                    {LOYALTY_SECOND_THRESHOLD_AZN} AZN → {loyaltyPercentPreset.second}% (admin paneldə dəyişilir)
+                  </p>
+                )}
               </Card>
 
               <Card className="p-4">

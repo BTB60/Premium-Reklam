@@ -3,8 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { auth, type User, type Product } from "@/lib/db";
-import { productApi, type Product as ApiProduct } from "@/lib/authApi";
+import {
+  auth,
+  type User,
+  type Product,
+  loyaltyOverrideFromProfile,
+  type LoyaltyPercentOverride,
+} from "@/lib/db";
+import { productApi, orderApi, authApi, type Product as ApiProduct } from "@/lib/authApi";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { PriceCalculator } from "@/components/user/PriceCalculator";
@@ -37,6 +43,8 @@ export default function CalculatorPage() {
   const [user, setUser] = useState<User | null>(null);
   const [availableProducts, setAvailableProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lifetimeOrderTotal, setLifetimeOrderTotal] = useState<number | undefined>(undefined);
+  const [loyaltyOverride, setLoyaltyOverride] = useState<LoyaltyPercentOverride>(null);
 
   useEffect(() => {
     const currentUser = auth.getCurrentUser();
@@ -47,8 +55,16 @@ export default function CalculatorPage() {
     setUser(currentUser);
     void (async () => {
       try {
-        const list = await productApi.getActiveCatalog();
+        const [list, summary, profile] = await Promise.all([
+          productApi.getActiveCatalog(),
+          orderApi.getMySummary().catch(() => null),
+          authApi.getMyProfile().catch(() => null),
+        ]);
         setAvailableProducts(list.map(mapApiProductToCalculator));
+        if (summary && Number.isFinite(Number(summary.totalAmount))) {
+          setLifetimeOrderTotal(Number(summary.totalAmount));
+        }
+        setLoyaltyOverride(loyaltyOverrideFromProfile(profile as any));
       } catch {
         setAvailableProducts([]);
       } finally {
@@ -86,7 +102,12 @@ export default function CalculatorPage() {
             <h1 className="text-2xl font-bold text-[#1F2937]">Qiymət Hesablayıcı</h1>
           </motion.div>
 
-          <PriceCalculator availableProducts={availableProducts} user={user} />
+          <PriceCalculator
+            availableProducts={availableProducts}
+            user={user}
+            lifetimeOrderTotalAzn={lifetimeOrderTotal}
+            loyaltyPercentOverride={loyaltyOverride}
+          />
         </div>
       </main>
 

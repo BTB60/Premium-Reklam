@@ -4,25 +4,45 @@ import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { type Product, type User } from "@/lib/db";
+import {
+  type Product,
+  type User,
+  calculateDiscount,
+  getLoyaltyBonusProgress,
+  type LoyaltyPercentOverride,
+} from "@/lib/db";
 import { Calculator, Plus, Trash2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 interface PriceCalculatorProps {
   availableProducts: Product[];
   user: User;
+  /** Backend ümumi sifariş məbləği (verilərsə, mock `totalSales` əvəzinə istifadə olunur). */
+  lifetimeOrderTotalAzn?: number;
+  loyaltyPercentOverride?: LoyaltyPercentOverride;
 }
 
-export function PriceCalculator({ availableProducts, user }: PriceCalculatorProps) {
+export function PriceCalculator({
+  availableProducts,
+  user,
+  lifetimeOrderTotalAzn,
+  loyaltyPercentOverride = null,
+}: PriceCalculatorProps) {
   const [items, setItems] = useState<
     { productId: string; width: string; height: string; quantity: string }[]
   >([{ productId: "", width: "", height: "", quantity: "1" }]);
 
+  const spentForBonus = lifetimeOrderTotalAzn ?? (Number(user.totalSales) || 0);
+
   const loyaltyDiscount = useMemo(() => {
-    if (user.totalSales >= 1000) return { rate: 0.1, label: "10%" };
-    if (user.totalSales >= 500) return { rate: 0.05, label: "5%" };
-    return { rate: 0, label: "0%" };
-  }, [user.totalSales]);
+    const d = calculateDiscount(spentForBonus, loyaltyPercentOverride);
+    return { rate: d.rate, label: `${d.activePercent}%` };
+  }, [spentForBonus, loyaltyPercentOverride]);
+
+  const loyaltyProgress = useMemo(
+    () => getLoyaltyBonusProgress(spentForBonus, loyaltyPercentOverride),
+    [spentForBonus, loyaltyPercentOverride]
+  );
 
   const calculateItemPrice = (item: (typeof items)[0]) => {
     const product = availableProducts.find((p) => p.id === item.productId);
@@ -89,24 +109,17 @@ export function PriceCalculator({ availableProducts, user }: PriceCalculatorProp
             <p className="text-white/80 text-sm">Sənin endirimin</p>
             <p className="text-2xl font-bold">{loyaltyDiscount.label}</p>
             <p className="text-white/80 text-xs">
-              Ümumi xərcləmə: {user.totalSales.toFixed(0)} AZN
+              Bonus üçün ümumi sifariş: {spentForBonus.toFixed(0)} AZN
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-white/80 text-sm">Endirimli qalıq</p>
-            <p className="text-3xl font-bold">
-              {1000 - user.totalSales > 0
-                ? (1000 - user.totalSales).toFixed(0)
-                : 0}{" "}
-              AZN
+          <div className="text-right max-w-[55%]">
+            <p className="text-white/80 text-sm">Növbəti hədd</p>
+            <p className="text-sm font-semibold leading-tight">
+              {loyaltyProgress.nextThresholdAzn != null
+                ? `${Math.max(0, loyaltyProgress.nextThresholdAzn - spentForBonus).toFixed(0)} AZN qalıb`
+                : "—"}
             </p>
-            <p className="text-white/80 text-xs">
-              {user.totalSales >= 1000
-                ? "Maksimum endirim!"
-                : user.totalSales >= 500
-                ? "10% endirim üçün"
-                : "5% endirim üçün"}
-            </p>
+            <p className="text-white/80 text-xs mt-1 line-clamp-2">{loyaltyProgress.hint}</p>
           </div>
         </div>
       </Card>

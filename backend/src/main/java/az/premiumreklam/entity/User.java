@@ -70,6 +70,14 @@ public class User {
     @Column(name = "next_weekly_due_date")
     private LocalDate nextWeeklyDueDate;
 
+    /** 500 AZN ümumi sifariş həddi üçün fərdi endirim %; NULL = ümumi ayar. */
+    @Column(name = "bonus_loyalty_500_percent")
+    private Integer bonusLoyalty500Percent;
+
+    /** 1000 AZN ümumi sifariş həddi üçün fərdi endirim %; NULL = ümumi ayar. */
+    @Column(name = "bonus_loyalty_1000_percent")
+    private Integer bonusLoyalty1000Percent;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

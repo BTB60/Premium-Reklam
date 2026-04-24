@@ -2,6 +2,7 @@ package az.premiumreklam.controller;
 
 import az.premiumreklam.dto.auth.ChangePasswordRequest;
 import az.premiumreklam.dto.auth.ProfileUpdateRequest;
+import az.premiumreklam.dto.user.LoyaltyBonusPercentRequest;
 import az.premiumreklam.entity.User;
 import az.premiumreklam.security.JwtService;
 import az.premiumreklam.service.AuthService;
@@ -68,6 +69,26 @@ public class UserController {
         }
     }
 
+    @PutMapping("/{id}/loyalty-bonus")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String, Object> updateUserLoyaltyBonus(
+            @PathVariable Long id,
+            @RequestBody LoyaltyBonusPercentRequest body) {
+        try {
+            User u = userService.updateLoyaltyBonusPercents(
+                    id,
+                    body != null ? body.getBonus500Percent() : null,
+                    body != null ? body.getBonus1000Percent() : null);
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("userId", u.getId());
+            out.put("bonusLoyalty500Percent", u.getBonusLoyalty500Percent());
+            out.put("bonusLoyalty1000Percent", u.getBonusLoyalty1000Percent());
+            return out;
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+        }
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id, Authentication authentication) {
@@ -104,6 +125,8 @@ public class UserController {
         map.put("totalDebt", u.getTotalDebt());
         map.put("orderBlocked", Boolean.TRUE.equals(u.getOrderBlocked()));
         map.put("nextWeeklyDueDate", u.getNextWeeklyDueDate());
+        map.put("bonusLoyalty500Percent", u.getBonusLoyalty500Percent());
+        map.put("bonusLoyalty1000Percent", u.getBonusLoyalty1000Percent());
         return map;
     }
 }

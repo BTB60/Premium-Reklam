@@ -505,6 +505,24 @@ export const authApi = {
     await fetchApi(`/users/${userId}`, { method: "DELETE" });
   },
 
+  /** ADMIN: müştəri üçün 500/1000 AZN həddi bonus faizləri (null = ümumi ayar). */
+  async updateUserLoyaltyBonus(
+    userId: string | number,
+    body: { bonus500Percent: number | null; bonus1000Percent: number | null }
+  ): Promise<{
+    userId: number;
+    bonusLoyalty500Percent: number | null;
+    bonusLoyalty1000Percent: number | null;
+  }> {
+    return fetchApi(`/users/${userId}/loyalty-bonus`, {
+      method: "PUT",
+      body: JSON.stringify({
+        bonus500Percent: body.bonus500Percent,
+        bonus1000Percent: body.bonus1000Percent,
+      }),
+    });
+  },
+
   async changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
     await fetchApi(`/users/profile/me/password`, {
       method: "POST",
@@ -558,6 +576,8 @@ export const authApi = {
     phone: string;
     role: string;
     totalDebt?: number;
+    bonusLoyalty500Percent?: number | null;
+    bonusLoyalty1000Percent?: number | null;
   }> {
     const data = await fetchApi("/users/profile/me");
     return {

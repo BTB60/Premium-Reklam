@@ -1559,6 +1559,7 @@ function AdminSettings() {
   const [currentSettings, setCurrentSettings] = useState<SystemSettings>(settings.get());
   const [formData, setFormData] = useState({
     unitPricePerSqm: currentSettings.unitPricePerSqm,
+    loyaltyBonusEnabled: currentSettings.loyaltyBonusEnabled !== false,
     monthlyBonus500: currentSettings.monthlyBonus500,
     monthlyBonus1000: currentSettings.monthlyBonus1000,
     bannerDiscount: currentSettings.productDiscounts.banner,
@@ -1572,6 +1573,7 @@ function AdminSettings() {
   const handleSave = () => {
     const updated = settings.update({
       unitPricePerSqm: formData.unitPricePerSqm,
+      loyaltyBonusEnabled: formData.loyaltyBonusEnabled,
       monthlyBonus500: formData.monthlyBonus500,
       monthlyBonus1000: formData.monthlyBonus1000,
       productDiscounts: {
@@ -1592,6 +1594,7 @@ function AdminSettings() {
     setCurrentSettings(reset);
     setFormData({
       unitPricePerSqm: reset.unitPricePerSqm,
+      loyaltyBonusEnabled: reset.loyaltyBonusEnabled !== false,
       monthlyBonus500: reset.monthlyBonus500,
       monthlyBonus1000: reset.monthlyBonus1000,
       bannerDiscount: reset.productDiscounts.banner,
@@ -1634,17 +1637,32 @@ function AdminSettings() {
           </div>
         </Card>
 
-        {/* Monthly Bonus Settings */}
+        {/* Lifetime-order bonus discount tiers (500 / 1000 AZN thresholds) */}
         <Card className="p-6">
           <h2 className="text-lg font-bold text-[#1F2937] mb-4 flex items-center gap-2">
             <Award className="w-5 h-5 text-[#D90429]" />
-            Aylıq Bonus Endirimləri
+            Bonus endirim (ümumi sifariş məbləği)
           </h2>
-          
+          <p className="text-xs text-[#6B7280] mb-3">
+            Ümumi sifariş məbləyi 500 və 1000 AZN-i keçəndə növbəti sifarişlərdə tətbiq olunacaq faizlər.
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer mb-4">
+            <input
+              type="checkbox"
+              checked={formData.loyaltyBonusEnabled}
+              onChange={(e) =>
+                setFormData({ ...formData, loyaltyBonusEnabled: e.target.checked })
+              }
+              className="rounded border-gray-300 text-[#D90429] focus:ring-[#D90429]"
+            />
+            <span className="text-sm font-medium text-[#1F2937]">
+              Bonus endirim proqramı aktivdir
+            </span>
+          </label>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-1">
-                500 AZN keçəndə bonus (%)
+                500 AZN ümumi sifarişdən sonra endirim (%)
               </label>
               <input
                 type="number"
@@ -1657,7 +1675,7 @@ function AdminSettings() {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#6B7280] mb-1">
-                1000 AZN keçəndə bonus (%)
+                1000 AZN ümumi sifarişdən sonra endirim (%)
               </label>
               <input
                 type="number"

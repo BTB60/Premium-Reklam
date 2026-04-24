@@ -55,6 +55,8 @@ export interface SystemSettings {
   productDiscounts: Record<string, number>;
   monthlyBonus500: number;
   monthlyBonus1000: number;
+  /** false olanda 500/1000 AZN bonus endirimi tətbiq olunmur (admin söndürə bilər). */
+  loyaltyBonusEnabled?: boolean;
   updatedAt: string;
 }
 

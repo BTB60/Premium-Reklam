@@ -21,11 +21,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { 
-  getUserMonthlyStats, 
-  calculateDiscount, 
+import {
+  getUserMonthlyStats,
+  calculateDiscount,
   getDiscountMessage,
-  type User 
+  loyaltyOverrideFromProfile,
+  type LoyaltyPercentOverride,
+  type User,
 } from "@/lib/db";
 import { authApi, orderApi, productApi, type UserData } from "@/lib/authApi";
 import { playPremiumNotificationSound } from "@/lib/notificationSound";
@@ -71,6 +73,8 @@ export default function NewOrderPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
   const [priorOrderTotal, setPriorOrderTotal] = useState(0);
+  /** Backend-dən müştəri üzrə bonus faizləri; null = yalnız ümumi (local) ayarlar. */
+  const [loyaltyPercentOverride, setLoyaltyPercentOverride] = useState<LoyaltyPercentOverride>(null);
   /** Yalnız productId uyğun gələndə tətbiq olunur (məhsul dəyişəndə köhnə qiymət qalmır). */
   const [priceResolution, setPriceResolution] = useState<{ productId: string; price: number } | null>(null);
 
@@ -85,13 +89,16 @@ export default function NewOrderPage() {
 
     void (async () => {
       try {
-        const [summary, plist] = await Promise.all([
+        const [summary, plist, profile] = await Promise.all([
           orderApi.getMySummary(),
           productApi.getActiveCatalog(),
+          authApi.getMyProfile().catch(() => null),
         ]);
         const totalSpent = Number(summary.totalAmount || 0);
         setPriorOrderTotal(totalSpent);
-        const discount = calculateDiscount(totalSpent);
+        const loyOverride = loyaltyOverrideFromProfile(profile);
+        setLoyaltyPercentOverride(loyOverride);
+        const discount = calculateDiscount(totalSpent, loyOverride);
         setMonthlyStats({
           totalSpent,
           discountTier: discount.tier,
@@ -116,6 +123,7 @@ export default function NewOrderPage() {
         }
       } catch {
         setPriorOrderTotal(0);
+        setLoyaltyPercentOverride(null);
         setMonthlyStats({
           totalSpent: 0,
           discountTier: "none",
@@ -225,7 +233,7 @@ export default function NewOrderPage() {
   
   // Calculate discount rate based on LIFETIME total spending (backend orders + current cart)
   const lifetimeTotal = priorOrderTotal + baseTotals.totalBase;
-  const loyaltyDiscount = calculateDiscount(lifetimeTotal);
+  const loyaltyDiscount = calculateDiscount(lifetimeTotal, loyaltyPercentOverride);
   const discountRate = loyaltyDiscount.rate; // 0, 0.05, or 0.10
   
   // Apply discount to EACH size individually, then sum up
@@ -550,10 +558,10 @@ export default function NewOrderPage() {
                     : "bg-gray-100"
                 }`}>
                   <p className="text-sm font-medium mb-1">
-                    {getDiscountMessage(totals.discountTier)}
+                    {getDiscountMessage(totals.discountTier, loyaltyPercentOverride)}
                   </p>
                   <p className="text-xs text-[#6B7280]">
-                    Ümumi xərcləmə: {(Number((user as any)?.totalSales || 0)).toFixed(2)} AZN • Bu sifarişlə: {totals.lifetimeTotal.toFixed(2)} AZN
+                    Keçmiş sifarişlər: {priorOrderTotal.toFixed(2)} AZN • Cari sifarişlə birlikdə: {totals.lifetimeTotal.toFixed(2)} AZN
                   </p>
                   {totals.discountRate > 0 && (
                     <p className="text-xs text-green-600 font-medium mt-1">

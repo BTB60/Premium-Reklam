@@ -1,6 +1,7 @@
 package az.premiumreklam.service;
 
 import az.premiumreklam.entity.User;
+import az.premiumreklam.enums.UserRole;
 import az.premiumreklam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,5 +51,32 @@ public class UserService {
         }
 
         return userRepository.save(user);
+    }
+
+    /**
+     * Müştəri üçün 500/1000 AZN həddində tətbiq olunacaq bonus endirim faizləri.
+     * Hər iki arqument null olarsa, ümumi (frontend) ayarlardan istifadə olunur.
+     */
+    @Transactional
+    public User updateLoyaltyBonusPercents(Long userId, Integer bonus500Percent, Integer bonus1000Percent) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new RuntimeException("ADMIN üçün fərdi bonus təyin edilmir");
+        }
+        validateBonusPercent(bonus500Percent);
+        validateBonusPercent(bonus1000Percent);
+        user.setBonusLoyalty500Percent(bonus500Percent);
+        user.setBonusLoyalty1000Percent(bonus1000Percent);
+        return userRepository.save(user);
+    }
+
+    private static void validateBonusPercent(Integer p) {
+        if (p == null) {
+            return;
+        }
+        if (p < 0 || p > 100) {
+            throw new RuntimeException("Bonus faizi 0–100 arası olmalıdır");
+        }
     }
 }

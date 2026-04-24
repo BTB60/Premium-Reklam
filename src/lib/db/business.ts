@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: SystemSettings = {
   productDiscounts: { banner: 0, vinyl: 0, poster: 0, canvas: 0, oracal: 0 },
   monthlyBonus500: 5,
   monthlyBonus1000: 10,
+  loyaltyBonusEnabled: true,
   updatedAt: new Date().toISOString()
 };
 
