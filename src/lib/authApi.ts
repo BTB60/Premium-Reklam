@@ -778,6 +778,28 @@ export function isOrderCancelled(order: any): boolean {
   );
 }
 
+/** Bonus həddi üçün: yalnız admin təsdiqləyəndən sonra (pending deyil). */
+export function isOrderPendingForBonus(order: any): boolean {
+  const st = String(order?.status ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+  return st === "pending" || st === "təsdiq";
+}
+
+/** Bu sifariş aylıq bonus məbləğinə daxil edilə bilər (ləğv deyil, təsdiq gözləmir). */
+export function orderCountsTowardLoyaltySpend(order: any): boolean {
+  return !isOrderCancelled(order) && !isOrderPendingForBonus(order);
+}
+
+/**
+ * Bonus tərəfdən hesablanan məbləğ: əvvəlcə subtotal (loyalty endirimindən əvvəl baza).
+ * Köhnə sifarişlərdə subtotal yoxdursa totalAmount-a düşür.
+ */
+export function loyaltySpendAmountAzn(order: any): number {
+  const sub = Number(order?.subtotal ?? order?.sub_total ?? 0);
+  if (Number.isFinite(sub) && sub > 0) return sub;
+  const total = Number(order?.totalAmount ?? order?.total_amount ?? 0);
+  return Number.isFinite(total) && total > 0 ? total : 0;
+}
+
 function normalizeOrder(order: any): Order {
   return {
     ...order,
@@ -910,7 +932,9 @@ export const orderApi = {
       }
       if (orderDate >= monthStart) {
         monthCount++;
-        monthAmount += amount;
+        if (orderCountsTowardLoyaltySpend(order)) {
+          monthAmount += loyaltySpendAmountAzn(order);
+        }
       }
     });
     

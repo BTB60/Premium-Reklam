@@ -3,7 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { orderApi, productApi, authApi, isOrderCancelled, type Order, type Product, type OrderSummary } from "@/lib/authApi";
+import {
+  orderApi,
+  productApi,
+  authApi,
+  isOrderCancelled,
+  orderCountsTowardLoyaltySpend,
+  loyaltySpendAmountAzn,
+  type Order,
+  type Product,
+  type OrderSummary,
+} from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -228,9 +238,10 @@ export default function DashboardPage() {
       
       const monthOrders = orders.filter((o: any) => {
         if (isOrderCancelled(o)) return false;
-        const orderDate = o.createdAt || '';
+        const orderDate = o.createdAt || "";
         return orderDate >= monthStart;
       });
+      const monthOrdersForBonus = monthOrders.filter((o: any) => orderCountsTowardLoyaltySpend(o));
       
       const activeOrders = orders.filter((o: any) => !isOrderCancelled(o));
       
@@ -238,7 +249,10 @@ export default function DashboardPage() {
         todayOrderCount: todayOrders.length,
         todayOrderAmount: todayOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
         monthOrderCount: monthOrders.length,
-        monthOrderAmount: monthOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0),
+        monthOrderAmount: monthOrdersForBonus.reduce(
+          (sum: number, o: any) => sum + loyaltySpendAmountAzn(o),
+          0
+        ),
         totalPaid: activeOrders.reduce((sum: number, o: any) => sum + Number(o.paidAmount || 0), 0),
         totalDebt:
           profile && Number.isFinite(Number((profile as any).totalDebt))
@@ -897,8 +911,11 @@ export default function DashboardPage() {
               </Card>
               
               <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                <p className="text-xs text-purple-600 font-medium">Bu Ay Məbləğ</p>
+                <p className="text-xs text-purple-600 font-medium">Bu ay — bonus əsası</p>
                 <p className="text-3xl font-bold text-purple-700">{(orderSummary?.monthOrderAmount || 0).toFixed(2)} AZN</p>
+                <p className="text-[10px] text-purple-600/80 mt-1 leading-snug">
+                  Təsdiqlənmiş sifarişlər, baza (endirimdən əvvəl)
+                </p>
               </Card>
 
               <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
@@ -965,6 +982,10 @@ export default function DashboardPage() {
                   />
                 </div>
                 <p className="text-xs text-[#6B7280] mt-2">{loyaltyBonus.hint}</p>
+                <p className="text-[10px] text-[#9CA3AF] mt-1 leading-snug">
+                  Yalnız admin təsdiqləyən sifarişlərin baza məbləği sayılır; &quot;gözləyir&quot; statusu bonusa
+                  düşmür.
+                </p>
                 {isLoyaltyBonusProgramEnabled() && !hasCustomUserPrices && (
                   <p className="text-[10px] text-[#9CA3AF] mt-1 leading-snug">
                     Hədlər: {LOYALTY_FIRST_THRESHOLD_AZN} AZN → {loyaltyPercentPreset.first}% ·{" "}

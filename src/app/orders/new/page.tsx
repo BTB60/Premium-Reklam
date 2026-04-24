@@ -576,7 +576,12 @@ export default function NewOrderPage() {
                     {getDiscountMessage(totals.discountTier, loyaltyPercentOverride, loyaltyEligibility)}
                   </p>
                   <p className="text-xs text-[#6B7280]">
-                    Bu ay əvvəlki sifarişlər: {priorOrderTotal.toFixed(2)} AZN • Bu sifarişlə birlikdə (cari ay):{" "}
+                    Bonus həddi üçün cari ayda yalnız admin tərəfindən təsdiqlənmiş sifarişlərin baza məbləği
+                    (loyalty endirimindən əvvəl) toplanır; gözləmədə (pending) sifarişlər bu məbləğə daxil deyil.
+                    Hazırkı sifarişin bazası indidən əlavə olunur.
+                  </p>
+                  <p className="text-xs text-[#6B7280] mt-1">
+                    Təsdiqlənmiş bu ay: {priorOrderTotal.toFixed(2)} AZN • Bu sifarişlə birlikdə (baza):{" "}
                     {totals.lifetimeTotal.toFixed(2)} AZN
                   </p>
                   {totals.discountRate > 0 && (
