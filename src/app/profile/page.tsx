@@ -208,7 +208,12 @@ export default function ProfilePage() {
                 Geri
               </Button>
             </Link>
-            <h1 className="text-2xl font-bold text-[#1F2937]">Profilim</h1>
+            <div>
+              <h1 className="text-2xl font-bold text-[#1F2937]">Tənzimləmələr</h1>
+              <p className="text-sm text-[#6B7280] mt-1">
+                Şəxsi məlumatlarınızı, profil şəklinizi və parolunuzu buradan dəyişə bilərsiniz.
+              </p>
+            </div>
           </motion.div>
 
           {loadError && (

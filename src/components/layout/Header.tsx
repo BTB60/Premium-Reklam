@@ -32,6 +32,7 @@ const decoratorNavItems = [
   { label: "Tarixçə", href: "/dashboard/orders" },
   { label: "Dəstək", href: "/dashboard/support" },
   { label: "Bildirişlər", href: "/notifications" },
+  { label: "Tənzimləmələr", href: "/profile" },
 ];
 
 const adminNavItems = [

@@ -8,7 +8,7 @@ import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotific
 import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNotificationsMarkAllButton";
 import { Button } from "@/components/ui/Button";
 import { 
-  LogOut, RefreshCw, User, ShoppingBag, Package, Store, Headphones 
+  LogOut, RefreshCw, User, ShoppingBag, Package, Store, Headphones, Settings
 } from "lucide-react";
 
 const TABS = [
@@ -17,6 +17,7 @@ const TABS = [
   { id: "orders", label: "Sifarişlərim", icon: Package, href: "/dashboard/orders" },
   { id: "store", label: "Mağazam", icon: Store, href: "/dashboard/store" },
   { id: "support", label: "Onlayn müraciət", icon: Headphones, href: "/dashboard/support" },
+  { id: "settings", label: "Tənzimləmələr", icon: Settings, href: "/profile" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -14,7 +14,7 @@ const decoratorItems = [
   { icon: Home, label: "Əsas", href: "/dashboard" },
   { icon: PlusCircle, label: "Sifariş", href: "/orders/new" },
   { icon: History, label: "Tarixçə", href: "/dashboard/orders" },
-  { icon: User, label: "Profil", href: "/profile" },
+  { icon: Settings, label: "Ayarlar", href: "/profile" },
 ];
 
 const adminItems = [
