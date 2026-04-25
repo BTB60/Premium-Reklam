@@ -135,8 +135,8 @@ function ImageCarousel() {
   }, []);
 
   return (
-    <div className="relative">
-      <div className="overflow-hidden rounded-2xl">
+    <div className="relative max-w-6xl mx-auto">
+      <div className="overflow-hidden rounded-[28px] shadow-2xl shadow-black/10 border border-white bg-white">
         <div
           className="flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${currentSlide * 100}%)` }}
@@ -144,17 +144,26 @@ function ImageCarousel() {
           {slides.map((slide, index) => (
             <div
               key={index}
-              className="w-full flex-shrink-0 aspect-[16/9] relative"
+              className="w-full flex-shrink-0 h-[320px] sm:h-[430px] lg:h-[560px] relative"
             >
               <img
                 src={slide.image}
                 alt={slide.title}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                <h3 className="text-2xl md:text-3xl font-bold mb-2">{slide.title}</h3>
-                <p className="text-white/80">{slide.description}</p>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
+              <div className="absolute left-0 right-0 bottom-0 p-5 sm:p-8 lg:p-10 text-white">
+                <div className="max-w-3xl">
+                  <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur-sm mb-3">
+                    Premium Reklam
+                  </span>
+                  <h3 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold mb-2 leading-tight">
+                    {slide.title}
+                  </h3>
+                  <p className="text-white/85 text-sm sm:text-lg lg:text-xl leading-relaxed">
+                    {slide.description}
+                  </p>
+                </div>
               </div>
             </div>
           ))}
@@ -164,25 +173,25 @@ function ImageCarousel() {
       {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+        className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 w-11 h-11 sm:w-12 sm:h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
       >
-        <ChevronLeft className="w-5 h-5 text-gray-700" />
+        <ChevronLeft className="w-6 h-6 text-gray-700" />
       </button>
       <button
         onClick={nextSlide}
-        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
+        className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 w-11 h-11 sm:w-12 sm:h-12 bg-white/90 rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-colors"
       >
-        <ChevronRight className="w-5 h-5 text-gray-700" />
+        <ChevronRight className="w-6 h-6 text-gray-700" />
       </button>
 
       {/* Dots */}
-      <div className="flex justify-center gap-2 mt-4">
+      <div className="flex justify-center gap-2 mt-5">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`w-2 h-2 rounded-full transition-all ${
-              currentSlide === index ? "w-6 bg-[#D90429]" : "bg-gray-300"
+            className={`h-2.5 rounded-full transition-all ${
+              currentSlide === index ? "w-8 bg-[#D90429]" : "w-2.5 bg-gray-300 hover:bg-gray-400"
             }`}
           />
         ))}

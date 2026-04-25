@@ -88,6 +88,15 @@ function parsePaymentCreatedAt(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function dateInYearMonth(d: Date, ym: string): boolean {
   const [y, m] = ym.split("-").map(Number);
   return d.getFullYear() === y && d.getMonth() + 1 === m;
@@ -661,60 +670,125 @@ export default function DashboardPage() {
     const periodLabel =
       historyDay !== null ? `${historyMonthLabel} — ${historyDay} gün` : historyMonthLabel;
 
-    const headerLines = [
-      ["Hesabat növü", "İstifadəçi şəxsi hesabatı"],
-      ["İstifadəçi", String(user?.fullName || user?.username || "-")],
-      ["Tarix", now.toLocaleString("az-AZ")],
-      ["Seçilmiş dövr (tarixçə filtri)", periodLabel],
-      ["Ümumi sifariş", String(summary.totalOrders || 0)],
-      ["Ümumi sifariş məbləği", `${Number(summary.totalAmount || 0).toFixed(2)} AZN`],
-      ["Ödənilmiş", `${Number(summary.totalPaid || 0).toFixed(2)} AZN`],
-      ["Qalıq borc", `${Number(summary.totalDebt || 0).toFixed(2)} AZN`],
-    ];
-
-    const orderHeader = [
-      ["", ""],
-      ["SİFARİŞ TARİXÇƏSİ (ekranda görünən siyahı)", ""],
-      ["No", "Tarix", "Müştəri", "Məbləğ (AZN)", "Status", "Ödəniş statusu"],
-    ];
-    const orderRows = filteredOrders.map((o: any) => [
-      String(o.orderNumber || o.order_number || o.id || "-"),
-      new Date(o.createdAt).toLocaleString("az-AZ"),
-      String(o.customerName || o.customer_name || "-"),
-      Number(o.totalAmount || 0).toFixed(2),
-      String(o.status || "-"),
-      String(o.paymentStatus || o.payment_status || "-"),
-    ]);
-
-    const payHeader = [["", ""], ["ÖDƏNİŞ TARİXÇƏSİ (ekranda görünən siyahı)", ""], ["ID", "Tarix", "Məbləğ (AZN)", "Status"]];
-    const payRows = filteredPayments.map((p) => [
-      String(p.id),
-      new Date(p.createdAt).toLocaleString("az-AZ"),
-      Number(p.amount || 0).toFixed(2),
-      String(p.status || "-"),
-    ]);
-
     const includeOrders = historyType === "all" || historyType === "orders";
     const includePayments = historyType === "all" || historyType === "payments";
-    const csvRows: (string | number)[][] = [...headerLines];
-    if (includeOrders) csvRows.push(...orderHeader, ...orderRows);
-    if (includePayments) csvRows.push(...payHeader, ...payRows);
+    const orderRows = filteredOrders
+      .map((o: any, index) => {
+        const orderNo = String(o.orderNumber || o.order_number || o.id || "-");
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapeHtml(orderNo)}</td>
+            <td>${escapeHtml(new Date(o.createdAt).toLocaleString("az-AZ"))}</td>
+            <td>${escapeHtml(o.customerName || o.customer_name || "-")}</td>
+            <td class="right">${Number(o.totalAmount || 0).toFixed(2)}</td>
+            <td>${escapeHtml(o.status || "-")}</td>
+            <td>${escapeHtml(o.paymentStatus || o.payment_status || "-")}</td>
+          </tr>`;
+      })
+      .join("");
 
-    const lines = csvRows
-      .map((row) =>
-        row
-          .map((cell) => `"${String(cell ?? "").replaceAll('"', '""')}"`)
-          .join(",")
-      )
-      .join("\n");
+    const paymentRows = filteredPayments
+      .map((p, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(String(p.id))}</td>
+          <td>${escapeHtml(new Date(p.createdAt).toLocaleString("az-AZ"))}</td>
+          <td class="right">${Number(p.amount || 0).toFixed(2)}</td>
+          <td>${escapeHtml(p.status || "-")}</td>
+        </tr>`)
+      .join("");
 
-    const blob = new Blob([`\uFEFF${lines}`], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `hesabat_${String(user?.username || "user")}_${stamp}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Qaimə hesabatı - ${escapeHtml(String(user?.username || "user"))}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; color: #1f2937; margin: 28px; }
+    .top { display: flex; justify-content: space-between; gap: 24px; border-bottom: 3px solid #D90429; padding-bottom: 18px; margin-bottom: 22px; }
+    .brand { font-size: 26px; font-weight: 800; color: #D90429; }
+    .muted { color: #6b7280; font-size: 12px; }
+    h1 { margin: 8px 0 0; font-size: 22px; }
+    h2 { font-size: 15px; margin: 24px 0 10px; color: #111827; }
+    .boxgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; }
+    .box { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; background: #fafafa; }
+    .box b { display: block; margin-top: 4px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    th, td { border: 1px solid #e5e7eb; padding: 8px; vertical-align: top; }
+    th { background: #f3f4f6; text-align: left; font-weight: 700; }
+    .right { text-align: right; }
+    .total { margin-top: 16px; display: flex; justify-content: flex-end; }
+    .total-card { min-width: 260px; border: 1px solid #D90429; border-radius: 12px; padding: 12px; }
+    .footer { margin-top: 34px; padding-top: 14px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #6b7280; text-align: center; }
+    @media print { body { margin: 16px; } .no-print { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div>
+      <div class="brand">Premium Reklam</div>
+      <div class="muted">Qaimə formasında istifadəçi hesabatı</div>
+      <h1>Hesabat / Qaimə</h1>
+    </div>
+    <div class="right">
+      <div><b>Qaimə tarixi:</b> ${escapeHtml(now.toLocaleString("az-AZ"))}</div>
+      <div><b>Dövr:</b> ${escapeHtml(periodLabel)}</div>
+      <div><b>İstifadəçi:</b> ${escapeHtml(user?.fullName || user?.username || "-")}</div>
+    </div>
+  </div>
+
+  <div class="boxgrid">
+    <div class="box"><span class="muted">Ümumi sifariş</span><b>${Number(summary.totalOrders || 0)}</b></div>
+    <div class="box"><span class="muted">Sifariş məbləği</span><b>${Number(summary.totalAmount || 0).toFixed(2)} AZN</b></div>
+    <div class="box"><span class="muted">Ödənilmiş</span><b>${Number(summary.totalPaid || 0).toFixed(2)} AZN</b></div>
+    <div class="box"><span class="muted">Qalıq borc</span><b>${Number(summary.totalDebt || 0).toFixed(2)} AZN</b></div>
+  </div>
+
+  ${includeOrders ? `
+    <h2>Sifariş tarixçəsi</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>Sifariş No</th><th>Tarix</th><th>Dekor adı</th><th class="right">Məbləğ (AZN)</th><th>Status</th><th>Ödəniş</th></tr>
+      </thead>
+      <tbody>${orderRows || `<tr><td colspan="7" class="muted">Seçilmiş dövrdə sifariş yoxdur.</td></tr>`}</tbody>
+    </table>
+  ` : ""}
+
+  ${includePayments ? `
+    <h2>Ödəniş tarixçəsi</h2>
+    <table>
+      <thead>
+        <tr><th>#</th><th>ID</th><th>Tarix</th><th class="right">Məbləğ (AZN)</th><th>Status</th></tr>
+      </thead>
+      <tbody>${paymentRows || `<tr><td colspan="5" class="muted">Seçilmiş dövrdə ödəniş yoxdur.</td></tr>`}</tbody>
+    </table>
+  ` : ""}
+
+  <div class="total">
+    <div class="total-card">
+      <div class="muted">Qaimə üzrə görünən sifariş cəmi</div>
+      <b>${filteredOrders.reduce((sum: number, o: any) => sum + Number(o.totalAmount || 0), 0).toFixed(2)} AZN</b>
+      <div class="muted" style="margin-top:6px">Görünən ödəniş cəmi: ${filteredPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0).toFixed(2)} AZN</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Bu qaimə Premium Reklam sistemi tərəfindən avtomatik yaradılıb. PDF kimi saxlamaq üçün çap pəncərəsində “Save as PDF / PDF olaraq saxla” seçin.
+  </div>
+  <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); };</script>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("PDF qaimə üçün popup icazəsi verin.");
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   if (loading) {
@@ -1291,7 +1365,7 @@ export default function DashboardPage() {
                     icon={<FileDown className="w-4 h-4" />}
                     className="text-white border border-white/30 hover:bg-white/10 shrink-0"
                   >
-                    CSV yüklə
+                    PDF qaimə
                   </Button>
                 </div>
 
