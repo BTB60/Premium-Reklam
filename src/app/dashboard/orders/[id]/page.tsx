@@ -15,7 +15,12 @@ import {
 import { orders as ordersDb } from "@/lib/db/orders";
 import { auth } from "@/lib/db/auth";
 import type { Order } from "@/lib/db/types";
-import { isOrderOverdue } from "@/lib/orderDelay";
+import {
+  formatReadyCountdown,
+  getReadyCountdownParts,
+  isOrderOverdue,
+  shouldShowReadyCountdown,
+} from "@/lib/orderDelay";
 import { 
   ChevronLeft, 
   Download, 
@@ -27,7 +32,8 @@ import {
   Calendar,
   User,
   Phone,
-  MapPin
+  MapPin,
+  Timer
 } from "lucide-react";
 import Link from "next/link";
 
@@ -74,13 +80,21 @@ const orderData = {
     { status: "production", date: "11.03.2024 10:30", note: "Hazırlanır" },
   ],
   estimatedReady: "13.03.2024",
+  estimatedReadyAt: null,
   overdue: false,
+  countdownActive: false,
 };
 
 export default function OrderDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const currentUser = auth.getCurrentUser();
@@ -148,8 +162,16 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         status: order.workflowStatus || order.status,
         estimatedReadyAt: order.estimatedReadyAt,
       }),
+      countdownActive: shouldShowReadyCountdown({
+        status: order.workflowStatus || order.status,
+        estimatedReadyAt: order.estimatedReadyAt,
+      }),
+      estimatedReadyAt: order.estimatedReadyAt || null,
     };
   }, [order]);
+
+  const countdownParts = getReadyCountdownParts(displayOrder.estimatedReadyAt, nowMs);
+  const countdownText = formatReadyCountdown(displayOrder.estimatedReadyAt, nowMs);
 
   if (loading) {
     return (
@@ -391,7 +413,22 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               <div>
                 <p className="text-sm text-[#6B7280]">Təyin edilmiş təhvil tarixi</p>
                 <p className="font-bold text-[#1F2937]">{displayOrder.estimatedReady}</p>
-                {displayOrder.overdue && (
+                {displayOrder.countdownActive && countdownParts && (
+                  <div
+                    className={`mt-3 rounded-xl border p-3 ${
+                      countdownParts.overdue
+                        ? "bg-red-100 border-red-200 text-red-800"
+                        : "bg-white border-[#F3F4F6] text-[#1F2937]"
+                    }`}
+                  >
+                    <p className="text-xs font-medium flex items-center gap-1 mb-2">
+                      <Timer className="w-4 h-4" />
+                      {countdownParts.overdue ? "Təhvil vaxtı keçib" : "Təhvil vaxtına geri sayım"}
+                    </p>
+                    <p className="text-xl font-black tracking-tight">{countdownText}</p>
+                  </div>
+                )}
+                {displayOrder.overdue && !displayOrder.countdownActive && (
                   <p className="text-xs font-semibold text-red-700 mt-1">
                     Bu sifariş təyin edilmiş tarixdən gecikir.
                   </p>

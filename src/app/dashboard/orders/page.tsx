@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CompactOrderTimeline } from "@/components/ui/OrderTimeline";
+import { formatReadyCountdown, shouldShowReadyCountdown } from "@/lib/orderDelay";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Plus, DollarSign, CheckCircle, RefreshCw, Package, X, Wallet, Trash2, Edit3, Phone 
+  Plus, DollarSign, CheckCircle, RefreshCw, Package, X, Wallet, Trash2, Edit3, Phone, Timer
 } from "lucide-react";
 
 export default function OrdersListPage() {
@@ -19,6 +20,7 @@ export default function OrdersListPage() {
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0); // ✅ Триггер для принудительной перезагрузки
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   // ✅ Модальное окно-заглушка для оплаты
   const [showPaymentStub, setShowPaymentStub] = useState(false);
@@ -46,6 +48,11 @@ export default function OrdersListPage() {
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // ✅ Кросс-таб синхронизация: мгновенное обновление при изменении decor_orders
   useEffect(() => {
@@ -129,6 +136,9 @@ export default function OrdersListPage() {
             const paymentStatusRaw = String(getFieldValue(order, "paymentStatus", "payment_status", "pending")).toLowerCase();
             const orderNumber = getFieldValue(order, "orderNumber", "order_number", order.id?.toString().slice(-4) || "");
             const canDelete = paymentStatusRaw !== "paid" && paymentStatusRaw !== "cancelled";
+            const estimatedReadyAt = getFieldValue(order, "estimatedReadyAt", "estimated_ready_at", null);
+            const showCountdown = shouldShowReadyCountdown({ status, estimatedReadyAt });
+            const countdown = showCountdown ? formatReadyCountdown(estimatedReadyAt, nowMs) : "";
 
             return (
               <Card key={order.id} className="p-5 hover:shadow-md transition-shadow relative group">
@@ -206,6 +216,22 @@ export default function OrdersListPage() {
                 </div>
 
                 <CompactOrderTimeline status={status} className="mb-4" />
+
+                {showCountdown && countdown && (
+                  <div
+                    className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm ${
+                      countdown.startsWith("Gecikir")
+                        ? "bg-red-50 border-red-200 text-red-700"
+                        : "bg-[#D90429]/5 border-[#D90429]/15 text-[#1F2937]"
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2 font-medium">
+                      <Timer className="w-4 h-4" />
+                      Təhvil geri sayımı
+                    </span>
+                    <span className="font-bold">{countdown}</span>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
                   <div>
