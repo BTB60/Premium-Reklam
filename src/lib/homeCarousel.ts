@@ -1,3 +1,5 @@
+import { getBackendOrigin } from "@/lib/restApiBase";
+
 export type HomeCarouselSlide = {
   id: string;
   title: string;
@@ -6,7 +8,10 @@ export type HomeCarouselSlide = {
 };
 
 const HOME_CAROUSEL_KEY = "premium_home_carousel_slides";
-const API_BASE = "/api/backend";
+const PROXY_API_BASE = "/api/backend";
+const DIRECT_API_BASE = `${getBackendOrigin()}/api`;
+const MAX_CAROUSEL_IMAGE_WIDTH = 1600;
+const MAX_CAROUSEL_IMAGE_HEIGHT = 900;
 
 function authHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
@@ -96,7 +101,7 @@ export function saveHomeCarouselSlides(slides: HomeCarouselSlide[]): void {
 }
 
 export async function fetchHomeCarouselSlides(admin = false): Promise<HomeCarouselSlide[]> {
-  const res = await fetch(`${API_BASE}/home-carousel${admin ? "/admin" : ""}`, {
+  const res = await fetch(`${PROXY_API_BASE}/home-carousel${admin ? "/admin" : ""}`, {
     headers: admin ? authHeader() : undefined,
     cache: "no-store",
   });
@@ -118,21 +123,23 @@ export async function loadHomeCarouselSlides(admin = false): Promise<HomeCarouse
 }
 
 export async function saveHomeCarouselSlidesRemote(slides: HomeCarouselSlide[]): Promise<HomeCarouselSlide[]> {
-  const res = await fetch(`${API_BASE}/home-carousel`, {
+  const payload = JSON.stringify(
+    slides.map((slide, index) => ({
+      title: slide.title,
+      description: slide.description,
+      image: slide.image,
+      sortOrder: index,
+      isActive: true,
+    }))
+  );
+
+  const res = await fetch(`${DIRECT_API_BASE}/home-carousel`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       ...authHeader(),
     },
-    body: JSON.stringify(
-      slides.map((slide, index) => ({
-        title: slide.title,
-        description: slide.description,
-        image: slide.image,
-        sortOrder: index,
-        isActive: true,
-      }))
-    ),
+    body: payload,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -152,7 +159,59 @@ export function resetHomeCarouselSlides(): HomeCarouselSlide[] {
   return defaultHomeCarouselSlides;
 }
 
-export function fileToDataUrl(file: File): Promise<string> {
+function imageToCanvasDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          MAX_CAROUSEL_IMAGE_WIDTH / img.width,
+          MAX_CAROUSEL_IMAGE_HEIGHT / img.height
+        );
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas dəstəklənmir");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const qualities = [0.82, 0.72, 0.62, 0.52];
+        let best = canvas.toDataURL("image/jpeg", qualities[0]);
+        for (const q of qualities) {
+          const next = canvas.toDataURL("image/jpeg", q);
+          best = next;
+          // Keep each slide comfortably below serverless/proxy body limits.
+          if (next.length < 900_000) break;
+        }
+        resolve(best);
+      } catch (e) {
+        reject(e);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Şəkil oxunmadı"));
+    };
+    img.src = url;
+  });
+}
+
+export async function fileToDataUrl(file: File): Promise<string> {
+  if (typeof window !== "undefined" && file.type.startsWith("image/")) {
+    try {
+      return await imageToCanvasDataUrl(file);
+    } catch {
+      // Fallback below preserves previous behavior if canvas conversion fails.
+    }
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
