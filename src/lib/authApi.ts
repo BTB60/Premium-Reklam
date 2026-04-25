@@ -182,6 +182,8 @@ export interface Order {
   paymentMethod: string;
   isCredit: boolean;
   note?: string;
+  estimatedReadyAt?: string | null;
+  internalAdminNote?: string | null;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -823,6 +825,8 @@ function normalizeOrder(order: any): Order {
     paymentMethod: order.paymentMethod ?? order.payment_method ?? "CASH",
     isCredit: Boolean(order.isCredit ?? order.is_credit ?? false),
     note: order.note ?? "",
+    estimatedReadyAt: order.estimatedReadyAt ?? order.estimated_ready_at ?? null,
+    internalAdminNote: order.internalAdminNote ?? order.internal_admin_note ?? null,
     createdAt: order.createdAt ?? order.created_at ?? new Date().toISOString(),
     updatedAt: order.updatedAt ?? order.updated_at ?? new Date().toISOString(),
     items: Array.isArray(order.items)
@@ -972,6 +976,17 @@ export const orderApi = {
   async updateStatus(id: string | number, status: string): Promise<Order> {
     const data = await fetchApi(`/orders/${id}/status?status=${encodeURIComponent(mapStatus(status))}`, {
       method: "PUT",
+    });
+    return normalizeOrder(data.order || data);
+  },
+
+  async updateAdminMeta(
+    id: string | number,
+    body: { estimatedReadyAt?: string | null; internalAdminNote?: string | null }
+  ): Promise<Order> {
+    const data = await fetchApi(`/orders/${id}/admin-meta`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
     });
     return normalizeOrder(data.order || data);
   },

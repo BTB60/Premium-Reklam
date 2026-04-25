@@ -35,14 +35,19 @@ public class OrderService {
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
 
         enforceOrderEligibility(user);
+        String customerName = request.getCustomerName() == null ? "" : request.getCustomerName().trim();
+        if (customerName.isBlank()) {
+            throw new RuntimeException("Dekor adı məcburidir");
+        }
 
         Order order = Order.builder()
                 .orderNumber(generateOrderNumber())
-                .customerName(request.getCustomerName())
+                .customerName(customerName)
                 .customerPhone(request.getCustomerPhone())
                 .customerWhatsapp(request.getCustomerWhatsapp())
                 .customerAddress(request.getCustomerAddress())
                 .note(request.getNote())
+                .estimatedReadyAt(request.getEstimatedReadyAt())
                 .paymentMethod(request.getPaymentMethod())
                 .discountPercent(defaultBigDecimal(request.getDiscountPercent()))
                 .status(OrderStatus.PENDING)
@@ -171,6 +176,15 @@ public class OrderService {
     public Order getOrderById(Long id) {
         return orderRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
+    }
+
+    @Transactional
+    public Order updateAdminMeta(Long id, java.time.LocalDateTime estimatedReadyAt, String internalAdminNote) {
+        Order order = orderRepository.findWithDetailsById(id)
+                .orElseThrow(() -> new RuntimeException("Sifariş tapılmadı"));
+        order.setEstimatedReadyAt(estimatedReadyAt);
+        order.setInternalAdminNote(internalAdminNote == null ? null : internalAdminNote.trim());
+        return orderRepository.save(order);
     }
 
     @Transactional

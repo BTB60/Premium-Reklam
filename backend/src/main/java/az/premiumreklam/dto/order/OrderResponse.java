@@ -36,6 +36,8 @@ public class OrderResponse {
     private String paymentMethod;
     private Boolean isCredit;
     private String note;
+    private LocalDateTime estimatedReadyAt;
+    private String internalAdminNote;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<OrderItemResponse> items;
@@ -59,6 +61,10 @@ public class OrderResponse {
     }
 
     public static OrderResponse fromEntity(Order order) {
+        return fromEntity(order, false);
+    }
+
+    public static OrderResponse fromEntity(Order order, boolean includeInternalAdminNote) {
         OrderResponseBuilder builder = OrderResponse.builder()
                 .id(order.getId())
                 .orderNumber(order.getOrderNumber())
@@ -76,6 +82,8 @@ public class OrderResponse {
                 .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : "CASH")
                 .isCredit(order.getIsCredit())
                 .note(order.getNote())
+                .estimatedReadyAt(order.getEstimatedReadyAt())
+                .internalAdminNote(includeInternalAdminNote ? order.getInternalAdminNote() : null)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt());
 

@@ -263,7 +263,7 @@ export function PriceCalculator({
             </div>
           </div>
 
-          <Link href="/dashboard/orders/new" className="block mt-4">
+          <Link href="/orders/new" className="block mt-4">
             <Button
               disabled={!items.some((i) => i.productId)}
               className="w-full"

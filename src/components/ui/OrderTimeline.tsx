@@ -82,16 +82,44 @@ const timelineSteps: TimelineStep[] = [
   },
 ];
 
+const workflowToTimelineStatus: Record<string, OrderStatus> = {
+  "təsdiq": "pending",
+  "tesdiq": "pending",
+  "ödəniş": "approved",
+  "odenis": "approved",
+  "dizayn": "design",
+  "istehsal": "production",
+  "kuryer": "delivering",
+  "bitdi": "completed",
+  pending: "pending",
+  approved: "approved",
+  confirmed: "approved",
+  design: "design",
+  printing: "printing",
+  production: "production",
+  ready: "ready",
+  delivering: "delivering",
+  completed: "completed",
+  cancelled: "cancelled",
+  canceled: "cancelled",
+};
+
+export function normalizeOrderTimelineStatus(status?: string | null): OrderStatus {
+  const key = String(status || "pending").toLowerCase().trim();
+  return workflowToTimelineStatus[key] || "pending";
+}
+
 interface OrderTimelineProps {
   currentStatus: OrderStatus;
   className?: string;
 }
 
 export function OrderTimeline({ currentStatus, className }: OrderTimelineProps) {
-  const currentIndex = timelineSteps.findIndex(step => step.status === currentStatus);
+  const normalizedStatus = normalizeOrderTimelineStatus(currentStatus);
+  const currentIndex = timelineSteps.findIndex(step => step.status === normalizedStatus);
   
   // Filter out cancelled from normal flow
-  if (currentStatus === "cancelled") {
+  if (normalizedStatus === "cancelled") {
     return (
       <div className={cn("p-4 bg-[#DC2626]/10 rounded-xl border border-[#DC2626]/20", className)}>
         <div className="flex items-center gap-3 text-[#DC2626]">
@@ -171,6 +199,65 @@ export function OrderTimeline({ currentStatus, className }: OrderTimelineProps) 
   );
 }
 
+export function CompactOrderTimeline({ status, className }: { status: string; className?: string }) {
+  const normalizedStatus = normalizeOrderTimelineStatus(status);
+
+  if (normalizedStatus === "cancelled") {
+    return (
+      <div className={cn("flex items-center gap-2 text-xs text-red-600", className)}>
+        <span className="w-2 h-2 rounded-full bg-red-500" />
+        Sifariş ləğv edilib
+      </div>
+    );
+  }
+
+  const currentIndex = Math.max(0, timelineSteps.findIndex((step) => step.status === normalizedStatus));
+  const visibleSteps = timelineSteps.filter((step) =>
+    ["pending", "approved", "design", "production", "delivering", "completed"].includes(step.status)
+  );
+  const visibleCurrentIndex = Math.max(
+    0,
+    visibleSteps.findIndex((step) => step.status === normalizedStatus)
+  );
+  const progress = timelineSteps.length > 1 ? (currentIndex / (timelineSteps.length - 1)) * 100 : 0;
+
+  return (
+    <div className={cn("space-y-2", className)}>
+      <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-[#D90429] transition-all"
+          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+        />
+      </div>
+      <div className="flex justify-between gap-1">
+        {visibleSteps.map((step, index) => {
+          const active = index <= visibleCurrentIndex;
+          const current = index === visibleCurrentIndex;
+          return (
+            <div key={step.status} className="flex flex-col items-center gap-1 min-w-0">
+              <span
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full ring-2 ring-white",
+                  active ? "bg-[#D90429]" : "bg-gray-300",
+                  current && "shadow-[0_0_0_4px_rgba(217,4,41,0.12)]"
+                )}
+              />
+              <span
+                className={cn(
+                  "hidden sm:block text-[10px] truncate max-w-[4.5rem]",
+                  current ? "text-[#D90429] font-semibold" : "text-[#9CA3AF]"
+                )}
+              >
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Compact version for cards
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const statusConfig = {
@@ -185,7 +272,7 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
     cancelled: { label: "Ləğv edildi", color: "bg-[#DC2626]/10 text-[#DC2626]" },
   };
 
-  const config = statusConfig[status];
+  const config = statusConfig[normalizeOrderTimelineStatus(status)];
 
   return (
     <span className={cn("px-3 py-1 rounded-full text-sm font-medium", config.color)}>

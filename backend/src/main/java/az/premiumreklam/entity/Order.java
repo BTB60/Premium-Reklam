@@ -83,6 +83,12 @@ public class Order {
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    @Column(name = "estimated_ready_at")
+    private LocalDateTime estimatedReadyAt;
+
+    @Column(name = "internal_admin_note", columnDefinition = "TEXT")
+    private String internalAdminNote;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

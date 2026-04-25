@@ -70,6 +70,7 @@ export default function NewOrderPage() {
     { id: "1", width: 1.8, height: 1.8, area: 3.24, basePrice: 16.2, finalPrice: 16.2 },
   ]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "debt">("cash");
+  const [decorName, setDecorName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [note, setNote] = useState("");
   /** Cari ayda (təqvim ayı) əvvəlki sifarişlərin cəmi — bonus həddi üçün; ay sonunda sıfırlanır. */
@@ -88,6 +89,7 @@ export default function NewOrderPage() {
       return;
     }
     setUser(currentUser);
+    setDecorName(currentUser.fullName || "");
     setCustomerPhone(currentUser.phone || "");
 
     void (async () => {
@@ -124,7 +126,11 @@ export default function NewOrderPage() {
         }));
         setCatalog(rows);
         if (rows.length > 0) {
-          const first = rows[0];
+          const requestedProductId =
+            typeof window !== "undefined"
+              ? new URLSearchParams(window.location.search).get("productId")
+              : null;
+          const first = rows.find((row) => row.id === requestedProductId) || rows[0];
           setSelectedProduct(first);
           setSizes((prev) =>
             prev.map((s) => ({
@@ -274,6 +280,15 @@ export default function NewOrderPage() {
 
   const handleSubmit = async () => {
     if (!user || !selectedProduct) return;
+    const cleanDecorName = decorName.trim();
+    if (!cleanDecorName) {
+      alert("Dekor adı məcburidir");
+      return;
+    }
+    if (sizes.some((s) => s.width <= 0 || s.height <= 0)) {
+      alert("Bütün ölçülərdə en və hündürlük 0-dan böyük olmalıdır");
+      return;
+    }
 
     setSubmitting(true);
 
@@ -292,7 +307,7 @@ export default function NewOrderPage() {
 
       await orderApi.create({
         userId: user.userId,
-        customerName: user.fullName,
+        customerName: cleanDecorName,
         customerPhone: customerPhone || undefined,
         customerWhatsapp: customerPhone || undefined,
         items: orderItems,
@@ -411,6 +426,25 @@ export default function NewOrderPage() {
                     </option>
                   ))}
                 </select>
+              </Card>
+
+              {/* Decor Name */}
+              <Card className="p-6">
+                <label className="flex items-center gap-2 text-sm font-medium text-[#6B7280] mb-3">
+                  <Package className="w-4 h-4" />
+                  Dekor adı <span className="text-[#D90429]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={decorName}
+                  onChange={(e) => setDecorName(e.target.value)}
+                  placeholder="Məsələn: Aysel Dekor"
+                  required
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D90429]"
+                />
+                <p className="text-xs text-[#9CA3AF] mt-2">
+                  Bu ad sifarişlər siyahısında və admin paneldə görünəcək.
+                </p>
               </Card>
 
               {/* Payment Method */}
@@ -635,7 +669,7 @@ export default function NewOrderPage() {
                 <Button
                   onClick={handleSubmit}
                   loading={submitting}
-                  disabled={submitting}
+                  disabled={submitting || !decorName.trim()}
                   className="w-full"
                   icon={submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CreditCard className="w-5 h-5" />}
                 >

@@ -3,11 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Search, Trash2, Download, RefreshCw } from "lucide-react";
+import { Search, Trash2, Download, RefreshCw, AlertTriangle, Save } from "lucide-react";
 import { authApi, orderApi, type Order as BackendOrder } from "@/lib/authApi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { logAdminAction } from "@/lib/auditLog";
 import { playPremiumNotificationIfOrderWaitToApproved } from "@/lib/notificationSound";
+import {
+  dateTimeLocalToIso,
+  formatDateTimeLocalValue,
+  isOrderOverdue,
+  isOrderStale,
+} from "@/lib/orderDelay";
 
 type Order = BackendOrder;
 
@@ -15,6 +21,52 @@ interface UserSummary {
   id: string | number;
   fullName: string;
   username: string;
+}
+
+function AdminMetaEditor({
+  order,
+  saving,
+  onSave,
+}: {
+  order: Order;
+  saving: boolean;
+  onSave: (estimatedReadyAt: string, internalAdminNote: string) => void;
+}) {
+  const [estimatedReadyAt, setEstimatedReadyAt] = useState(formatDateTimeLocalValue(order.estimatedReadyAt));
+  const [internalAdminNote, setInternalAdminNote] = useState(order.internalAdminNote || "");
+
+  useEffect(() => {
+    setEstimatedReadyAt(formatDateTimeLocalValue(order.estimatedReadyAt));
+    setInternalAdminNote(order.internalAdminNote || "");
+  }, [order.id, order.estimatedReadyAt, order.internalAdminNote]);
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="datetime-local"
+        value={estimatedReadyAt}
+        onChange={(e) => setEstimatedReadyAt(e.target.value)}
+        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-[#D90429]"
+        title="Təyin edilmiş təhvil tarixi"
+      />
+      <textarea
+        value={internalAdminNote}
+        onChange={(e) => setInternalAdminNote(e.target.value)}
+        rows={2}
+        placeholder="Daxili admin qeydi (müştəri görmür)"
+        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs resize-none focus:outline-none focus:ring-2 focus:ring-[#D90429]"
+      />
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => onSave(estimatedReadyAt, internalAdminNote)}
+        className="inline-flex items-center gap-1 text-xs font-medium text-[#D90429] hover:underline disabled:opacity-50"
+      >
+        <Save className="w-3.5 h-3.5" />
+        {saving ? "Saxlanır..." : "Saxla"}
+      </button>
+    </div>
+  );
 }
 
 export default function OrdersTable() {
@@ -28,6 +80,7 @@ export default function OrdersTable() {
   const [minAmount, setMinAmount] = useState("");
   const [maxAmount, setMaxAmount] = useState("");
   const [pollingEnabled, setPollingEnabled] = useState(true);
+  const [savingMetaId, setSavingMetaId] = useState<string | number | null>(null);
 
   useEffect(() => {
     void loadOrders();
@@ -96,6 +149,27 @@ export default function OrdersTable() {
     } catch (error) {
       console.error("[OrdersTable] Delete error:", error);
       alert("Sifariş silinmədi");
+    }
+  };
+
+  const updateOrderMeta = async (
+    orderId: string | number,
+    estimatedReadyAt: string,
+    internalAdminNote: string
+  ) => {
+    setSavingMetaId(orderId);
+    try {
+      await orderApi.updateAdminMeta(orderId, {
+        estimatedReadyAt: dateTimeLocalToIso(estimatedReadyAt),
+        internalAdminNote,
+      });
+      await logAdminAction("ORDER_ADMIN_META_UPDATED", { orderId });
+      await loadOrders(false);
+    } catch (error) {
+      console.error("[OrdersTable] Update admin meta error:", error);
+      alert("Təhvil tarixi və ya daxili qeyd saxlanmadı");
+    } finally {
+      setSavingMetaId(null);
     }
   };
 
@@ -247,7 +321,8 @@ export default function OrdersTable() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Sifariş ID</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">İstifadəçi</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Dekor adı</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Təhvil / daxili qeyd</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Məhsullar</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Tarix</th>
                 <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Məbləğ</th>
@@ -258,26 +333,69 @@ export default function OrdersTable() {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-[#6B7280]">
+                  <td colSpan={8} className="py-12 text-center text-[#6B7280]">
                     Sifariş tapılmadı
                   </td>
                 </tr>
               ) : (
                 filteredOrders.map((order) => {
                   const orderUser = users.find((u) => String(u.id) === String(order.userId));
+                  const overdue = isOrderOverdue(order);
+                  const stale = isOrderStale(order);
                   return (
-                    <tr key={order.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <tr
+                      key={order.id}
+                      className={`border-t border-gray-100 hover:bg-gray-50 ${
+                        overdue ? "bg-red-50/70" : stale ? "bg-amber-50/60" : ""
+                      }`}
+                    >
                       <td className="py-3 px-4 font-medium">#{order.orderNumber || order.id}</td>
                       <td className="py-3 px-4">
-                        <p className="font-medium">{orderUser?.fullName || order.customerName || "Naməlum"}</p>
+                        <p className="font-medium">{order.customerName || orderUser?.fullName || "Naməlum"}</p>
                         <p className="text-xs text-[#6B7280]">@{orderUser?.username || "-"}</p>
                       </td>
+                      <td className="py-3 px-4 min-w-[15rem]">
+                        <AdminMetaEditor
+                          order={order}
+                          saving={savingMetaId === order.id}
+                          onSave={(estimatedReadyAt, internalAdminNote) =>
+                            updateOrderMeta(order.id, estimatedReadyAt, internalAdminNote)
+                          }
+                        />
+                        {overdue && (
+                          <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red-700">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Gecikib
+                          </p>
+                        )}
+                        {!overdue && stale && (
+                          <p className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-amber-700">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            Status uzun müddətdir dəyişmir
+                          </p>
+                        )}
+                      </td>
                       <td className="py-3 px-4">
-                        {(order.items || []).slice(0, 2).map((item, idx) => (
-                          <span key={idx} className="text-xs px-2 py-1 bg-gray-100 rounded mr-1">
-                            {item.productName}
-                          </span>
-                        ))}
+                        <div className="space-y-1">
+                          {(order.items || []).slice(0, 2).map((item, idx) => {
+                            const width = Number((item as any).width || 0);
+                            const height = Number((item as any).height || 0);
+                            const area = Number((item as any).area || width * height || 0);
+                            return (
+                              <div key={idx} className="text-xs px-2 py-1 bg-gray-100 rounded">
+                                <p className="font-medium text-[#1F2937]">{item.productName}</p>
+                                {(width > 0 || height > 0 || area > 0) && (
+                                  <p className="text-[#6B7280]">
+                                    {width > 0 ? `En: ${width}m` : ""}
+                                    {width > 0 && height > 0 ? " • " : ""}
+                                    {height > 0 ? `Hündürlük: ${height}m` : ""}
+                                    {area > 0 ? ` • Sahə: ${area.toFixed(2)}m²` : ""}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-[#6B7280]">{new Date(order.createdAt).toLocaleDateString("az-AZ")}</td>
                       <td className="py-3 px-4 font-bold text-[#1F2937]">{order.totalAmount?.toFixed(2)} AZN</td>

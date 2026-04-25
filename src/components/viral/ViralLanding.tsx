@@ -21,6 +21,11 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import {
+  getHomeCarouselSlides,
+  loadHomeCarouselSlides,
+  type HomeCarouselSlide,
+} from "@/lib/homeCarousel";
 
 // Before/After Comparison Component
 function BeforeAfterCard() {
@@ -96,29 +101,24 @@ function BeforeAfterCard() {
 // Image Carousel Section
 function ImageCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [slides, setSlides] = useState<HomeCarouselSlide[]>(() => getHomeCarouselSlides());
 
-  const slides = [
-    {
-      title: "Premium Reklam",
-      description: "Professional reklam və dekor xidmətləri",
-      image: "/ChatGPT Image 28 Ara 2025 18_45_45.png"
-    },
-    {
-      title: "Sürətli Xidmət",
-      description: "24 saat ərzində çatdırılma",
-      image: "/ChatGPT Image 28 Ara 2025 19_03_41.png"
-    },
-    {
-      title: "Keyfiyyət Zəmanəti",
-      description: "100% müştəri məmnuniyyəti",
-      image: "/ChatGPT Image 28 Ara 2025 19_13_34.png"
-    },
-    {
-      title: "Uyğun Qiymət",
-      description: "Sərfəli və şəffaf qiymətlər",
-      image: "/ChatGPT Image 28 Ara 2025 19_28_42.png"
-    }
-  ];
+  useEffect(() => {
+    void loadHomeCarouselSlides().then((loaded) => {
+      setSlides(loaded);
+      setCurrentSlide(0);
+    });
+    const reload = () => {
+      setSlides(getHomeCarouselSlides());
+      setCurrentSlide(0);
+    };
+    window.addEventListener("premium:home-carousel-changed", reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener("premium:home-carousel-changed", reload);
+      window.removeEventListener("storage", reload);
+    };
+  }, []);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);

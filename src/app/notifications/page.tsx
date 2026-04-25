@@ -24,6 +24,7 @@ import { auth, notifications as notificationsStore, type Notification } from "@/
 import { announcementApi, type Announcement } from "@/lib/authApi";
 import {
   getUnreadSupportNotifications,
+  markAllSupportNotificationsAsRead,
   markNotificationAsRead,
 } from "@/lib/db/messages";
 import type { SupportNotification } from "@/lib/db/types";
@@ -124,6 +125,7 @@ export default function NotificationsPage() {
 
   const markAllAsRead = async () => {
     const idsToDismiss = notifications.filter((n: Notification) => !n.isRead).map((n) => n.id);
+    const uid = getSessionUserId();
     notifications.forEach((n: Notification) => {
       if (!n.isRead && !n.id.startsWith("srv-")) notificationsStore.markAsRead(n.id);
     });
@@ -137,6 +139,11 @@ export default function NotificationsPage() {
     if (idsToDismiss.length > 0) {
       window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: idsToDismiss } }));
     }
+    if (uid) {
+      markAllSupportNotificationsAsRead(uid);
+      setSupportUnread([]);
+    }
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
     setNotifications([]);
   };
 
@@ -149,6 +156,7 @@ export default function NotificationsPage() {
 
   const handleSupportRead = (n: SupportNotification) => {
     markNotificationAsRead(n.id);
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
     setSupportUnread((prev) => prev.filter((x) => x.id !== n.id));
   };
 
@@ -204,9 +212,9 @@ export default function NotificationsPage() {
                 )}
               </div>
             </div>
-            {unreadPersonal > 0 && (
+            {(unreadPersonal > 0 || supportUnread.length > 0) && (
               <Button variant="ghost" size="sm" onClick={() => void markAllAsRead()}>
-                Şəxsi bildirişləri oxu
+                Hamısını oxu
               </Button>
             )}
           </motion.div>
@@ -248,7 +256,7 @@ export default function NotificationsPage() {
                               </p>
                             </div>
                             <div className="flex flex-col gap-2 shrink-0">
-                              <Link href="/dashboard/support">
+                              <Link href="/dashboard/support" onClick={() => handleSupportRead(sn)}>
                                 <Button size="sm" variant="secondary">
                                   Aç
                                 </Button>

@@ -7,6 +7,9 @@ import Link from "next/link";
 import { useState, useEffect, useRef, useMemo, type MouseEvent } from "react";
 import { notifications } from "@/lib/db";
 import type { Notification } from "@/lib/db";
+import { useUnreadActivityDots } from "@/hooks/useUnreadActivityDots";
+import { markAllSupportNotificationsAsRead } from "@/lib/db/messages";
+import { markAllInAppNotificationsRead } from "@/lib/clientPaymentNotificationsApi";
 
 interface HeaderProps {
   variant?: "public" | "decorator" | "admin";
@@ -25,7 +28,7 @@ const publicNavItems = [
 const decoratorNavItems = [
   { label: "Ana Səhvə", href: "/" },
   { label: "Marketplace", href: "/marketplace" },
-  { label: "Sifariş Yarat", href: "/dashboard/orders/new" },
+  { label: "Sifariş Yarat", href: "/orders/new" },
   { label: "Tarixçə", href: "/dashboard/orders" },
   { label: "Dəstək", href: "/dashboard/support" },
   { label: "Bildirişlər", href: "/notifications" },
@@ -69,6 +72,7 @@ export function Header({ variant = "public", userName, notifications: propNotifi
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const activity = useUnreadActivityDots(variant === "decorator");
 
   const navItems =
     variant === "public"
@@ -114,12 +118,41 @@ export function Header({ variant = "public", userName, notifications: propNotifi
   const handleMarkAsRead = (id: string) => {
     notifications.markAsRead(id);
     window.dispatchEvent(new CustomEvent("premium:inapp-mark-read", { detail: { ids: [id] } }));
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
     const uid = getSessionUserId();
     const all = uid ? notifications.getByUserId(uid) : [];
     const unread = all.filter(n => !n.isRead);
     setUserNotifications(unread.slice(0, 5));
     setUnreadCount(unread.length);
+    void activity.refresh();
   };
+
+  const handleMarkAllNotificationsRead = async () => {
+    const uid = getSessionUserId();
+    if (!uid) return;
+
+    const unread = notifications.getByUserId(uid).filter((n) => !n.isRead);
+    unread.forEach((n) => notifications.markAsRead(n.id));
+    try {
+      await markAllInAppNotificationsRead();
+    } catch {
+      // Lokal bildirişlər oxundu edildi; server nöqtəsi növbəti refresh-də yenilənəcək.
+    }
+    window.dispatchEvent(new CustomEvent("premium:inapp-dismiss-all"));
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
+    setUserNotifications([]);
+    setUnreadCount(0);
+    void activity.refresh();
+  };
+
+  useEffect(() => {
+    if (!supportOpen) return;
+    const uid = getSessionUserId();
+    if (!uid) return;
+    markAllSupportNotificationsAsRead(uid);
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
+    void activity.refresh();
+  }, [supportOpen, activity.refresh]);
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-[#E5E5E5] shadow-sm">
@@ -137,16 +170,26 @@ export function Header({ variant = "public", userName, notifications: propNotifi
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={(e) => variant === "public" && handlePublicHashNav(e, item.href)}
-                className="px-4 py-2 text-[#4A4A4A] hover:text-[#C41E3A] font-medium text-sm transition-colors rounded-lg hover:bg-gray-50"
-              >
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const msgDot = variant === "decorator" && item.href === "/dashboard/support" && activity.supportUnread > 0;
+              const bellDot = variant === "decorator" && item.href === "/notifications" && activity.notifyUnread > 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={(e) => variant === "public" && handlePublicHashNav(e, item.href)}
+                  className="relative inline-flex items-center gap-1.5 px-4 py-2 text-[#4A4A4A] hover:text-[#C41E3A] font-medium text-sm transition-colors rounded-lg hover:bg-gray-50"
+                >
+                  {item.label}
+                  {(msgDot || bellDot) && (
+                    <span
+                      className="w-2 h-2 rounded-full bg-[#C41E3A] shrink-0"
+                      aria-hidden
+                    />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Right Section */}
@@ -158,12 +201,15 @@ export function Header({ variant = "public", userName, notifications: propNotifi
                   <button 
                     onClick={() => setNotificationOpen(!notificationOpen)}
                     className="relative p-2.5 text-[#4A4A4A] hover:text-[#C41E3A] hover:bg-gray-100 rounded-xl transition-all"
+                    type="button"
+                    title={activity.notifyUnread > 0 ? "Yeni bildiriş" : "Bildirişlər"}
                   >
                     <Bell className="w-5 h-5" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-[#C41E3A] text-white text-xs font-bold rounded-full flex items-center justify-center shadow-sm">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
+                    {activity.notifyUnread > 0 && (
+                      <span
+                        className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#C41E3A] ring-2 ring-white shadow-sm"
+                        aria-label={`${activity.notifyUnread} oxunmamış`}
+                      />
                     )}
                   </button>
 
@@ -178,13 +224,24 @@ export function Header({ variant = "public", userName, notifications: propNotifi
                       >
                         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                           <h3 className="font-semibold text-[#1F2937]">Bildirişlər</h3>
-                          <Link 
-                            href="/notifications"
-                            onClick={() => setNotificationOpen(false)}
-                            className="text-sm text-[#D90429] hover:underline"
-                          >
-                            Hamısı
-                          </Link>
+                          <div className="flex items-center gap-3">
+                            {activity.notifyUnread > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => void handleMarkAllNotificationsRead()}
+                                className="text-sm text-emerald-700 hover:underline"
+                              >
+                                Hamısını oxu
+                              </button>
+                            )}
+                            <Link 
+                              href="/notifications"
+                              onClick={() => setNotificationOpen(false)}
+                              className="text-sm text-[#D90429] hover:underline"
+                            >
+                              Hamısı
+                            </Link>
+                          </div>
                         </div>
                         <div className="max-h-80 overflow-y-auto">
                           {userNotifications.length === 0 ? (
@@ -248,8 +305,15 @@ export function Header({ variant = "public", userName, notifications: propNotifi
                   onClick={() => setSupportOpen(true)}
                   className="relative p-2.5 text-[#4A4A4A] hover:text-[#059669] hover:bg-gray-100 rounded-xl transition-all"
                   title="Canlı Dəstək"
+                  type="button"
                 >
                   <MessageCircle className="w-5 h-5" />
+                  {activity.supportUnread > 0 && (
+                    <span
+                      className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#059669] ring-2 ring-white shadow-sm"
+                      aria-label={`${activity.supportUnread} oxunmamış mesaj`}
+                    />
+                  )}
                 </button>
 
                 <div className="hidden sm:flex items-center gap-3 pl-2 border-l border-gray-200">
@@ -299,22 +363,31 @@ export function Header({ variant = "public", userName, notifications: propNotifi
             className="lg:hidden bg-white border-t border-[#E5E5E5] shadow-lg"
           >
             <nav className="px-4 py-4 space-y-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={(e) => {
-                    if (variant === "public") {
-                      handlePublicHashNav(e, item.href, () => setMobileMenuOpen(false));
-                      if (e.defaultPrevented) return;
-                    }
-                    setMobileMenuOpen(false);
-                  }}
-                  className="block px-4 py-3.5 text-[#4A4A4A] hover:text-[#C41E3A] hover:bg-gray-50 rounded-xl font-medium transition-colors"
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {navItems.map((item) => {
+                const msgDotM =
+                  variant === "decorator" && item.href === "/dashboard/support" && activity.supportUnread > 0;
+                const bellDotM =
+                  variant === "decorator" && item.href === "/notifications" && activity.notifyUnread > 0;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => {
+                      if (variant === "public") {
+                        handlePublicHashNav(e, item.href, () => setMobileMenuOpen(false));
+                        if (e.defaultPrevented) return;
+                      }
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center justify-between gap-2 px-4 py-3.5 text-[#4A4A4A] hover:text-[#C41E3A] hover:bg-gray-50 rounded-xl font-medium transition-colors"
+                  >
+                    <span>{item.label}</span>
+                    {(msgDotM || bellDotM) && (
+                      <span className="w-2 h-2 rounded-full bg-[#C41E3A] shrink-0" aria-hidden />
+                    )}
+                  </Link>
+                );
+              })}
               {variant === "public" && (
                 <div className="pt-4 mt-4 border-t border-[#E5E5E5] space-y-2">
                   <Link

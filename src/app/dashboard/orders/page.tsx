@@ -8,6 +8,7 @@ import { auth } from "@/lib/db/auth";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { CompactOrderTimeline } from "@/components/ui/OrderTimeline";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, DollarSign, CheckCircle, RefreshCw, Package, X, Wallet, Trash2, Edit3, Phone 
@@ -97,7 +98,7 @@ export default function OrdersListPage() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#1F2937]">Sifarişlərim</h1>
-        <Button onClick={() => router.push("/dashboard/orders/new")} icon={<Plus className="w-4 h-4" />}>
+        <Button onClick={() => router.push("/orders/new")} icon={<Plus className="w-4 h-4" />}>
           Yeni Sifariş
         </Button>
       </div>
@@ -111,7 +112,7 @@ export default function OrdersListPage() {
           <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-[#1F2937] mb-2">Sifariş yoxdur</h3>
           <p className="text-[#6B7280] mb-6">İlk sifarişinizi verin</p>
-          <Button onClick={() => router.push("/dashboard/orders/new")} icon={<Plus className="w-4 h-4" />}>
+          <Button onClick={() => router.push("/orders/new")} icon={<Plus className="w-4 h-4" />}>
             Sifariş Et
           </Button>
         </Card>
@@ -179,21 +180,36 @@ export default function OrdersListPage() {
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  {order.items?.map((item: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
-                      <span className="text-[#1F2937]">{getFieldValue(item, "productName", "product_name")}</span>
-                      <span className="text-[#6B7280]">
-                        {item.width && item.height ? `${item.width}×${item.height}m` : ""} 
-                        {item.quantity > 1 ? ` × ${item.quantity}` : ""}
-                      </span>
-                      <span className="font-semibold text-[#1F2937]">{(getFieldValue(item, "lineTotal", "line_total", item.totalPrice || 0)).toFixed(2)} AZN</span>
-                    </div>
-                  ))}
+                  {order.items?.map((item: any, idx: number) => {
+                    const width = Number(getFieldValue(item, "width", "width", 0));
+                    const height = Number(getFieldValue(item, "height", "height", 0));
+                    const area = Number(getFieldValue(item, "area", "area", width * height));
+                    const qty = Number(getFieldValue(item, "quantity", "quantity", 1));
+                    const lineTotal = Number(getFieldValue(item, "lineTotal", "line_total", item.totalPrice || 0));
+                    return (
+                      <div key={idx} className="text-sm bg-[#F9FAFB] rounded-lg p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[#1F2937] font-medium">
+                            {getFieldValue(item, "productName", "product_name")}
+                          </span>
+                          <span className="font-semibold text-[#1F2937]">{lineTotal.toFixed(2)} AZN</span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-[#6B7280]">
+                          {width > 0 && <span className="px-2 py-1 bg-white rounded border border-gray-100">En: {width} m</span>}
+                          {height > 0 && <span className="px-2 py-1 bg-white rounded border border-gray-100">Hündürlük: {height} m</span>}
+                          {area > 0 && <span className="px-2 py-1 bg-white rounded border border-gray-100">Sahə: {area.toFixed(2)} m²</span>}
+                          {qty > 1 && <span className="px-2 py-1 bg-white rounded border border-gray-100">Say: {qty}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+
+                <CompactOrderTimeline status={status} className="mb-4" />
 
                 <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
                   <div>
-                    <p className="text-sm text-[#6B7280]">Müştəri</p>
+                    <p className="text-sm text-[#6B7280]">Dekor adı</p>
                     <p className="font-semibold text-[#1F2937]">{getFieldValue(order, "customerName", "customer_name", "Naməlum")}</p>
                   </div>
                   <div className="text-right">

@@ -22,6 +22,7 @@ import {
   readSupportChatSoundEnabled,
   writeSupportChatSoundEnabled,
 } from "@/lib/notificationSound";
+import { markAllSupportNotificationsAsRead } from "@/lib/db/messages";
 
 function mediaSrc(m: SupportChatMessageDto): string | null {
   if (!m.attachmentBase64 || !m.attachmentMimeType) return null;
@@ -62,6 +63,9 @@ export default function SupportPage() {
       router.push("/admin/dashboard");
       return;
     }
+
+    markAllSupportNotificationsAsRead(String(user.id));
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
 
     let cancelled = false;
     (async () => {

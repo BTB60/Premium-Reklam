@@ -284,7 +284,7 @@ export default function LevelPage() {
 
           {/* CTA */}
           <div className="mt-6 text-center">
-            <Link href="/dashboard/orders/new">
+            <Link href="/orders/new">
               <Button icon={<TrendingUp className="w-5 h-5" />}>
                 Sifariş Et, XP Qazan
               </Button>

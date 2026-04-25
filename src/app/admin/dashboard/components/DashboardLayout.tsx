@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import StatsCards from "./StatsCards";
@@ -17,6 +17,7 @@ import SupportManager from "./SupportManager";
 import ElanManager from "./ElanManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
+import HomeCarouselManager from "./HomeCarouselManager";
 import AuditLogsPanel from "./AuditLogsPanel";
 import UserPricesManager from "./UserPricesManager";
 import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
@@ -24,14 +25,19 @@ import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNo
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
-  TrendingUp, Award, Megaphone, History, Tag, Lock
+  TrendingUp, Award, Megaphone, History, Tag, Lock, Image as ImageIcon
 } from "lucide-react";
-import { authApi } from "@/lib/authApi";
+import { authApi, orderApi } from "@/lib/authApi";
+import { fetchMyInAppNotifications } from "@/lib/clientPaymentNotificationsApi";
+import { getAdminMockPendingBreakdown } from "@/lib/adminPendingActivity";
+import { adminSupportChatFetchThreads } from "@/lib/adminSupportChatApi";
+import { isOrderOverdue, isOrderStale } from "@/lib/orderDelay";
+import AdminNotificationBell from "./AdminNotificationBell";
 
 // 🔥 ТИПЫ
 type PermissionLevel = "none" | "view" | "edit";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "homeCarousel" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface SubadminSession {
   subadminId: string;
@@ -60,6 +66,7 @@ const ALL_NAV_ITEMS: { id: ActiveTab; labelAz: string; labelEn: string; icon: an
   { id: "orders", labelAz: "Sifarişlər", labelEn: "Orders", icon: Package, permission: "orders" },
   { id: "shops", labelAz: "Mağazalar", labelEn: "Shops", icon: Store, permission: "products" },
   { id: "elan", labelAz: "Elanlar", labelEn: "Announcements", icon: Megaphone, adminOnly: true },
+  { id: "homeCarousel", labelAz: "Ana səhifə karuseli", labelEn: "Home carousel", icon: ImageIcon, adminOnly: true },
   { id: "notifications", labelAz: "Bildirişlər", labelEn: "Notifications", icon: Bell, permission: "support" },
   { id: "analytics", labelAz: "Analitika", labelEn: "Analytics", icon: BarChart3, permission: "analytics" },
   { id: "products", labelAz: "Məhsullar", labelEn: "Products", icon: Store, permission: "products" },
@@ -94,6 +101,48 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
     const saved = localStorage.getItem("premium_admin_lang");
     return saved === "en" ? "en" : "az";
   });
+
+  const [adminNavDots, setAdminNavDots] = useState({ serverUnread: 0, orders: 0, shops: 0, support: 0 });
+
+  const refreshAdminNavDots = useCallback(async () => {
+    try {
+      const m = getAdminMockPendingBreakdown();
+      const [rows, supportThreads, orderData] = await Promise.all([
+        fetchMyInAppNotifications().catch(() => []),
+        adminSupportChatFetchThreads().catch(() => []),
+        orderApi.getOrdersFromBackend().catch(() => ({ orders: [] })),
+      ]);
+      const serverUnread = rows.filter((r) => !r.isRead).length;
+      const support = supportThreads.reduce((sum, t) => sum + Number(t.unreadForAdmin || 0), 0);
+      const delayedOrders = (orderData.orders || []).filter((o) => isOrderOverdue(o) || isOrderStale(o)).length;
+      setAdminNavDots({
+        serverUnread,
+        orders: m.newOrdersPendingApproval + delayedOrders,
+        shops: m.storeRequests,
+        support,
+      });
+    } catch {
+      setAdminNavDots({ serverUnread: 0, orders: 0, shops: 0, support: 0 });
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshAdminNavDots();
+    const id = setInterval(() => void refreshAdminNavDots(), 30000);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "decor_store_requests" || e.key === "decor_orders") void refreshAdminNavDots();
+    };
+    const onInApp = () => void refreshAdminNavDots();
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("premium:inapp-dismiss-all", onInApp);
+    window.addEventListener("premium:inapp-mark-read", onInApp);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("premium:inapp-dismiss-all", onInApp);
+      window.removeEventListener("premium:inapp-mark-read", onInApp);
+    };
+  }, [refreshAdminNavDots]);
 
   const isAdmin = normalizeRole(user?.role) === "ADMIN";
   const permissions = subadminSession?.permissions;
@@ -171,6 +220,7 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
               </span>
             </div>
             <div className="flex items-center gap-4">
+              <AdminNotificationBell />
               <ServerNotificationsMarkAllButton className="hidden sm:inline text-[#ffb383] hover:text-[#ff6600]" />
               {isAdmin && (
                 <Button
@@ -218,20 +268,45 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             </button>
           </div>
           <nav className="p-4 space-y-2">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => { onTabChange(item.id); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  activeTab === item.id
-                    ? "bg-gradient-to-r from-[#ff6600] to-[#de5800] text-white shadow-[0_0_18px_rgba(255,102,0,0.32)]"
-                    : "text-[var(--text-secondary)] hover:bg-[#fff1e9] hover:text-[#101010]"
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="text-sm">{lang === "az" ? item.labelAz : item.labelEn}</span>
-              </button>
-            ))}
+            {navItems.map((item) => {
+              const showDot =
+                (item.id === "notifications" && adminNavDots.serverUnread > 0) ||
+                (item.id === "orders" && adminNavDots.orders > 0) ||
+                (item.id === "shops" && adminNavDots.shops > 0) ||
+                (item.id === "support" && adminNavDots.support > 0);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    onTabChange(item.id);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    activeTab === item.id
+                      ? "bg-gradient-to-r from-[#ff6600] to-[#de5800] text-white shadow-[0_0_18px_rgba(255,102,0,0.32)]"
+                      : "text-[var(--text-secondary)] hover:bg-[#fff1e9] hover:text-[#101010]"
+                  }`}
+                >
+                  <span className="relative inline-flex">
+                    <item.icon className="w-5 h-5" />
+                    {showDot && (
+                      <span
+                        className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ring-2 ${
+                          activeTab === item.id
+                            ? "bg-white ring-[#de5800]"
+                            : "bg-[#D90429] ring-[var(--card-glass)]"
+                        }`}
+                        aria-hidden
+                      />
+                    )}
+                  </span>
+                  <span className="text-sm flex-1 text-left">
+                    {lang === "az" ? item.labelAz : item.labelEn}
+                  </span>
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
@@ -260,6 +335,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             {activeTab === "elan" && (
               <motion.div key="elan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <ElanManager />
+              </motion.div>
+            )}
+            {activeTab === "homeCarousel" && (
+              <motion.div key="homeCarousel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <HomeCarouselManager />
               </motion.div>
             )}
             {activeTab === "notifications" && (

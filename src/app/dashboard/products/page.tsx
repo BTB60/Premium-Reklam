@@ -54,7 +54,7 @@ export default function ProductsPage() {
             <Card 
               key={product.id} 
               className="p-5 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => router.push(`/dashboard/orders/new?productId=${product.id}`)}
+              onClick={() => router.push(`/orders/new?productId=${product.id}`)}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="w-12 h-12 bg-[#D90429]/10 rounded-xl flex items-center justify-center">
@@ -81,7 +81,7 @@ export default function ProductsPage() {
                 icon={<Plus className="w-4 h-4" />}
                 onClick={(e) => {
                   e.stopPropagation();
-                  router.push(`/dashboard/orders/new?productId=${product.id}`);
+                  router.push(`/orders/new?productId=${product.id}`);
                 }}
               >
                 Sifariş Et

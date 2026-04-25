@@ -4,11 +4,17 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Bell, Megaphone, Headphones } from "lucide-react";
 import { announcementApi } from "@/lib/authApi";
 import { notifications as notificationsStore } from "@/lib/db";
-import { getUnreadSupportNotifications } from "@/lib/db/messages";
+import {
+  getUnreadSupportNotifications,
+  markAllSupportNotificationsAsRead,
+} from "@/lib/db/messages";
 import type { Notification } from "@/lib/db/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { fetchMyInAppNotifications } from "@/lib/clientPaymentNotificationsApi";
+import {
+  fetchMyInAppNotifications,
+  markAllInAppNotificationsRead,
+} from "@/lib/clientPaymentNotificationsApi";
 
 function getSessionUserId(): string | null {
   if (typeof window === "undefined") return null;
@@ -77,6 +83,31 @@ export function NotificationBell() {
     if (open) void load();
   }, [open, load]);
 
+  const markAllAsRead = useCallback(async () => {
+    const uid = getSessionUserId();
+    if (!uid) return;
+
+    const localUnreadIds = notificationsStore
+      .getByUserId(uid)
+      .filter((n) => !n.isRead)
+      .map((n) => n.id);
+    localUnreadIds.forEach((id) => notificationsStore.markAsRead(id));
+
+    try {
+      await markAllInAppNotificationsRead();
+    } catch {
+      // Lokal bildirişlər onsuz da oxundu edildi; server xətası nöqtəni növbəti yükləmədə düzəldəcək.
+    }
+
+    markAllSupportNotificationsAsRead(uid);
+    window.dispatchEvent(new CustomEvent("premium:inapp-dismiss-all"));
+    window.dispatchEvent(new Event("premium:local-notifications-changed"));
+    setPersonalUnread(0);
+    setSupportUnread(0);
+    setPreview((prev) => ({ ...prev, personal: [] }));
+    void load();
+  }, [load]);
+
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -99,9 +130,10 @@ export function NotificationBell() {
       >
         <Bell className="w-5 h-5" />
         {loaded && totalBadge > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 bg-[#C41E3A] text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm">
-            {totalBadge > 9 ? "9+" : totalBadge}
-          </span>
+          <span
+            className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-[#C41E3A] ring-2 ring-white shadow-sm"
+            aria-label={`${totalBadge} yeni bildiriş və ya mesaj`}
+          />
         )}
       </button>
 
@@ -113,13 +145,24 @@ export function NotificationBell() {
         >
           <div className="p-3 border-b border-gray-100 flex items-center justify-between gap-2">
             <span className="font-semibold text-[#1F2937] text-sm">Bildirişlər</span>
-            <Link
-              href="/notifications"
-              className="text-xs text-[#D90429] font-medium hover:underline shrink-0"
-              onClick={() => setOpen(false)}
-            >
-              Hamısı
-            </Link>
+            <div className="flex items-center gap-3 shrink-0">
+              {(personalUnread > 0 || supportUnread > 0) && (
+                <button
+                  type="button"
+                  onClick={() => void markAllAsRead()}
+                  className="text-xs text-emerald-700 font-medium hover:underline"
+                >
+                  Hamısını oxu
+                </button>
+              )}
+              <Link
+                href="/notifications"
+                className="text-xs text-[#D90429] font-medium hover:underline"
+                onClick={() => setOpen(false)}
+              >
+                Hamısı
+              </Link>
+            </div>
           </div>
 
           <div className="max-h-[min(70vh,320px)] overflow-y-auto text-sm">

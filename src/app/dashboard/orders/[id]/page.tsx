@@ -1,10 +1,21 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { OrderTimeline, OrderStatusBadge, OrderStatus } from "@/components/ui/OrderTimeline";
+import {
+  OrderTimeline,
+  OrderStatusBadge,
+  OrderStatus,
+  normalizeOrderTimelineStatus,
+} from "@/components/ui/OrderTimeline";
+import { orders as ordersDb } from "@/lib/db/orders";
+import { auth } from "@/lib/db/auth";
+import type { Order } from "@/lib/db/types";
+import { isOrderOverdue } from "@/lib/orderDelay";
 import { 
   ChevronLeft, 
   Download, 
@@ -63,12 +74,116 @@ const orderData = {
     { status: "production", date: "11.03.2024 10:30", note: "Hazırlanır" },
   ],
   estimatedReady: "13.03.2024",
+  overdue: false,
 };
 
 export default function OrderDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const currentUser = auth.getCurrentUser();
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+
+    const found = ordersDb.getById(params.id);
+    if (found && String(found.userId) === String(currentUser.id)) {
+      setOrder(found);
+    } else {
+      setOrder(null);
+    }
+    setLoading(false);
+  }, [params.id, router]);
+
+  const displayOrder = useMemo(() => {
+    if (!order) return orderData;
+
+    const firstItem = order.items?.[0];
+    const sizes = (order.items || []).map((item) => ({
+      width: Number(item.width || 0),
+      height: Number(item.height || 0),
+      area: Number(item.width || 0) * Number(item.height || 0) * Number(item.quantity || 1),
+    }));
+    const subtotal = Number(order.subtotal ?? order.finalTotal ?? order.totalAmount ?? 0);
+    const total = Number(order.finalTotal ?? order.totalAmount ?? subtotal);
+    const paid = Number(order.paidAmount ?? 0);
+
+    return {
+      id: order.orderNumber || order.id,
+      status: normalizeOrderTimelineStatus(order.workflowStatus || order.status),
+      createdAt: new Date(order.createdAt).toLocaleString("az-AZ"),
+      customer: {
+        name: order.customerName || "Müştəri",
+        phone: order.customerPhone || order.customerWhatsapp || "-",
+        address: order.customerAddress || "-",
+      },
+      product: {
+        name: firstItem?.productName || "Sifariş məhsulu",
+        category: (order.items || []).length > 1 ? `${order.items.length} məhsul` : "Məhsul",
+        pricePerUnit: Number(firstItem?.unitPrice || 0),
+      },
+      sizes,
+      files: [],
+      notes: order.note || "Əlavə qeyd yoxdur.",
+      payment: {
+        method: order.paymentMethod || "debt",
+        status: order.paymentStatus || "pending",
+        totalArea: sizes.reduce((sum, s) => sum + s.area, 0),
+        unitPrice: Number(firstItem?.unitPrice || 0),
+        subtotal,
+        discount: Number(order.discountTotal || 0),
+        total,
+        paid,
+        remaining: Number(order.remainingAmount ?? Math.max(0, total - paid)),
+      },
+      estimatedReady: order.estimatedReadyAt
+        ? new Date(order.estimatedReadyAt).toLocaleString("az-AZ")
+        : order.workflowStatus === "bitdi"
+          ? "Tamamlandı"
+          : "Admin təyin etdikdə burada görünəcək",
+      overdue: isOrderOverdue({
+        status: order.workflowStatus || order.status,
+        estimatedReadyAt: order.estimatedReadyAt,
+      }),
+    };
+  }, [order]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#F8F9FB] pb-24 md:pb-8">
+        <Header variant="decorator" />
+        <div className="max-w-4xl mx-auto px-4 py-20 text-center text-[#6B7280]">
+          Sifariş yüklənir...
+        </div>
+        <MobileNav variant="decorator" />
+      </main>
+    );
+  }
+
+  if (!order) {
+    return (
+      <main className="min-h-screen bg-[#F8F9FB] pb-24 md:pb-8">
+        <Header variant="decorator" />
+        <div className="max-w-4xl mx-auto px-4 py-20">
+          <Card className="p-8 text-center">
+            <h1 className="text-xl font-bold text-[#1F2937] mb-2">Sifariş tapılmadı</h1>
+            <p className="text-[#6B7280] mb-5">Bu sifariş mövcud deyil və ya sizin hesaba aid deyil.</p>
+            <Link href="/dashboard/orders">
+              <Button>Sifarişlərə qayıt</Button>
+            </Link>
+          </Card>
+        </div>
+        <MobileNav variant="decorator" />
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F8F9FB] pb-24 md:pb-8">
-      <Header variant="decorator" userName="Əli Vəliyev" />
+      <Header variant="decorator" />
       
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Back Button */}
@@ -84,13 +199,13 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold text-[#1F2937] font-[Manrope]">
-              Sifariş #{orderData.id}
+              Sifariş #{displayOrder.id}
             </h1>
             <p className="text-[#6B7280] text-sm mt-1">
-              Yaradılma tarixi: {orderData.createdAt}
+              Yaradılma tarixi: {displayOrder.createdAt}
             </p>
           </div>
-          <OrderStatusBadge status={orderData.status} />
+          <OrderStatusBadge status={displayOrder.status as OrderStatus} />
         </div>
 
         {/* Main Grid */}
@@ -101,13 +216,13 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               <h2 className="text-lg font-bold text-[#1F2937] font-[Manrope] mb-4">
                 Sifariş Vəziyyəti
               </h2>
-              <OrderTimeline currentStatus={orderData.status} />
+              <OrderTimeline currentStatus={displayOrder.status as OrderStatus} />
             </Card>
 
             {/* Customer Info */}
             <Card>
               <h2 className="text-lg font-bold text-[#1F2937] font-[Manrope] mb-4">
-                Müştəri Məlumatları
+                Dekor məlumatları
               </h2>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
@@ -115,8 +230,8 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                     <User className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm text-[#6B7280]">Ad Soyad</p>
-                    <p className="font-medium text-[#1F2937]">{orderData.customer.name}</p>
+                    <p className="text-sm text-[#6B7280]">Dekor adı</p>
+                    <p className="font-medium text-[#1F2937]">{displayOrder.customer.name}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -125,7 +240,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                   </div>
                   <div>
                     <p className="text-sm text-[#6B7280]">Telefon</p>
-                    <p className="font-medium text-[#1F2937]">{orderData.customer.phone}</p>
+                    <p className="font-medium text-[#1F2937]">{displayOrder.customer.phone}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -134,7 +249,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                   </div>
                   <div>
                     <p className="text-sm text-[#6B7280]">Ünvan</p>
-                    <p className="font-medium text-[#1F2937]">{orderData.customer.address}</p>
+                    <p className="font-medium text-[#1F2937]">{displayOrder.customer.address}</p>
                   </div>
                 </div>
               </div>
@@ -146,7 +261,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                 Əlavə Qeydlər
               </h2>
               <p className="text-[#6B7280] bg-gray-50 p-4 rounded-xl">
-                {orderData.notes}
+                {displayOrder.notes}
               </p>
             </Card>
           </div>
@@ -163,9 +278,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                   <Printer className="w-8 h-8 text-[#D90429]" />
                 </div>
                 <div>
-                  <p className="font-bold text-[#1F2937]">{orderData.product.name}</p>
-                  <p className="text-sm text-[#6B7280]">{orderData.product.category}</p>
-                  <p className="text-[#D90429] font-semibold">{orderData.product.pricePerUnit} AZN/m²</p>
+                  <p className="font-bold text-[#1F2937]">{displayOrder.product.name}</p>
+                  <p className="text-sm text-[#6B7280]">{displayOrder.product.category}</p>
+                  <p className="text-[#D90429] font-semibold">{displayOrder.product.pricePerUnit} AZN/m²</p>
                 </div>
               </div>
             </Card>
@@ -176,7 +291,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                 Ölçülər
               </h2>
               <div className="space-y-3">
-                {orderData.sizes.map((size, index) => (
+                {displayOrder.sizes.map((size, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
@@ -192,7 +307,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                 ))}
                 <div className="flex items-center justify-between pt-3 border-t border-[#E5E7EB]">
                   <span className="font-medium text-[#1F2937]">Ümumi Sahə</span>
-                  <span className="font-bold text-[#D90429]">{orderData.payment.totalArea} m²</span>
+                  <span className="font-bold text-[#D90429]">{displayOrder.payment.totalArea.toFixed(2)} m²</span>
                 </div>
               </div>
             </Card>
@@ -203,7 +318,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                 Fayllar
               </h2>
               <div className="space-y-3">
-                {orderData.files.map((file, index) => (
+                {displayOrder.files.length > 0 ? displayOrder.files.map((file, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
@@ -218,7 +333,9 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
                       Yüklə
                     </Button>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-[#6B7280] bg-gray-50 rounded-xl p-3">Bu sifarişə fayl əlavə edilməyib.</p>
+                )}
               </div>
             </Card>
 
@@ -230,24 +347,24 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[#6B7280]">Ödəniş üsulu</span>
-                  <span className="font-medium text-[#1F2937]">{orderData.payment.method}</span>
+                  <span className="font-medium text-[#1F2937]">{displayOrder.payment.method}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#6B7280]">Məhsul qiyməti</span>
-                  <span className="font-medium text-[#1F2937]">{orderData.payment.subtotal} AZN</span>
+                  <span className="font-medium text-[#1F2937]">{displayOrder.payment.subtotal.toFixed(2)} AZN</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#6B7280]">Endirim</span>
-                  <span className="font-medium text-[#16A34A]">-{orderData.payment.discount} AZN</span>
+                  <span className="font-medium text-[#16A34A]">-{displayOrder.payment.discount.toFixed(2)} AZN</span>
                 </div>
                 <div className="pt-3 border-t border-[#E5E7EB]">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-bold text-[#1F2937]">Ümumi</span>
-                    <span className="font-bold text-xl text-[#D90429] font-[Manrope]">{orderData.payment.total} AZN</span>
+                    <span className="font-bold text-xl text-[#D90429] font-[Manrope]">{displayOrder.payment.total.toFixed(2)} AZN</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6B7280]">Ödənilib: {orderData.payment.paid} AZN</span>
-                    <span className="text-[#DC2626]">Qalıq: {orderData.payment.remaining} AZN</span>
+                    <span className="text-[#6B7280]">Ödənilib: {displayOrder.payment.paid.toFixed(2)} AZN</span>
+                    <span className="text-[#DC2626]">Qalıq: {displayOrder.payment.remaining.toFixed(2)} AZN</span>
                   </div>
                 </div>
               </div>
@@ -257,13 +374,28 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
             </Card>
 
             {/* Estimated Ready */}
-            <div className="flex items-center gap-3 p-4 bg-[#D90429]/5 rounded-xl border border-[#D90429]/20">
-              <div className="w-10 h-10 rounded-lg bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
+            <div
+              className={`flex items-center gap-3 p-4 rounded-xl border ${
+                displayOrder.overdue
+                  ? "bg-red-50 border-red-200"
+                  : "bg-[#D90429]/5 border-[#D90429]/20"
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  displayOrder.overdue ? "bg-red-100 text-red-600" : "bg-[#D90429]/10 text-[#D90429]"
+                }`}
+              >
                 <Calendar className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm text-[#6B7280]">Təxmini hazır olma tarixi</p>
-                <p className="font-bold text-[#1F2937]">{orderData.estimatedReady}</p>
+                <p className="text-sm text-[#6B7280]">Təyin edilmiş təhvil tarixi</p>
+                <p className="font-bold text-[#1F2937]">{displayOrder.estimatedReady}</p>
+                {displayOrder.overdue && (
+                  <p className="text-xs font-semibold text-red-700 mt-1">
+                    Bu sifariş təyin edilmiş tarixdən gecikir.
+                  </p>
+                )}
               </div>
             </div>
           </div>

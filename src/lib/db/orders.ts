@@ -86,9 +86,13 @@ export const orders = {
       console.error("[orders.create] CRITICAL: userId is missing in order payload!");
       throw new Error("Невозможно создать заказ без userId");
     }
+    if (!String(orderData.customerName || "").trim()) {
+      throw new Error("Dekor adı məcburidir");
+    }
 
     const newOrder: Order = {
       ...orderData,
+      customerName: String(orderData.customerName).trim(),
       id: Date.now().toString(),
       workflowStatus: "təsdiq",
       bonusUsed: orderData.bonusUsed || 0, // ✅ Сохраняем переданное значение

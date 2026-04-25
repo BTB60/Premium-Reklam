@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Megaphone, Store, Package, ChevronRight, Bell } from "lucide-react";
 import { storeRequests, type StoreRequest } from "@/lib/db";
 import { orders, type Order } from "@/lib/db/orders";
+import { getAdminMockPendingActivityTotal } from "@/lib/adminPendingActivity";
 
 export default function AdminNotificationBell() {
   const router = useRouter();
@@ -46,7 +47,7 @@ export default function AdminNotificationBell() {
       );
 
       setEvents(all);
-      setBadgeCount(all.length);
+      setBadgeCount(getAdminMockPendingActivityTotal());
     } catch (e) {
       console.error("[AdminBell] Load error:", e);
       setEvents([]);
@@ -99,17 +100,19 @@ export default function AdminNotificationBell() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`relative p-2 rounded-lg transition-all duration-200 ${
-          badgeCount > 0 
-            ? "bg-[#D90429] text-white shadow-lg shadow-red-500/30 animate-pulse" 
+          badgeCount > 0
+            ? "bg-white/10 text-white ring-1 ring-[#D90429]/50"
             : "bg-transparent text-gray-400 hover:text-gray-600 hover:bg-gray-100"
         }`}
         title={badgeCount > 0 ? `${badgeCount} gözləyən hadisə` : "Gözləyən yoxdur"}
+        type="button"
       >
         <Megaphone className="w-5 h-5" />
         {badgeCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-white text-[#D90429] text-[10px] font-black rounded-full flex items-center justify-center border-2 border-[#D90429]">
-            {badgeCount > 9 ? "9+" : badgeCount}
-          </span>
+          <span
+            className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#D90429] ring-2 ring-white/90 shadow-sm"
+            aria-hidden
+          />
         )}
       </button>
 

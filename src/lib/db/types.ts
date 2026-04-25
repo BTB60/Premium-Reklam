@@ -167,6 +167,8 @@ export interface Order {
   remainingAmount?: number;
   isCredit?: boolean;
   note?: string;
+  estimatedReadyAt?: string | null;
+  internalAdminNote?: string | null;
   bonusUsed: number;
   paymentBreakdown: {
     cash: number;

@@ -143,6 +143,25 @@ export function markNotificationAsRead(notificationId: string): boolean {
   return true;
 }
 
+export function markAllSupportNotificationsAsRead(userId: string): number {
+  const notifications = getFromStorage<SupportNotification[]>(NOTIFICATIONS_KEY, []);
+  let updated = 0;
+
+  notifications.forEach((n) => {
+    if (String(n.userId) === String(userId) && !n.read) {
+      n.read = true;
+      updated++;
+    }
+  });
+
+  if (updated > 0) {
+    saveToStorage(NOTIFICATIONS_KEY, notifications);
+    dispatchStorageEvent(NOTIFICATIONS_KEY, notifications);
+  }
+
+  return updated;
+}
+
 // ===== Валидация файлов =====
 export const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
@@ -172,6 +191,7 @@ export const messagesApi = {
   markAllAsRead,
   getUnreadSupportNotifications,
   markNotificationAsRead,
+  markAllSupportNotificationsAsRead,
 };
 
-console.log("[messages.ts] Module loaded, exports:", Object.keys({ send, getConversation, getUnreadCount, markAsRead, markAllAsRead, getUnreadSupportNotifications, markNotificationAsRead, messagesApi }));
+console.log("[messages.ts] Module loaded, exports:", Object.keys({ send, getConversation, getUnreadCount, markAsRead, markAllAsRead, getUnreadSupportNotifications, markNotificationAsRead, markAllSupportNotificationsAsRead, messagesApi }));

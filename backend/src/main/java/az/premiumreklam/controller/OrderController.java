@@ -2,6 +2,7 @@ package az.premiumreklam.controller;
 
 import az.premiumreklam.dto.order.OrderRequest;
 import az.premiumreklam.dto.order.OrderResponse;
+import az.premiumreklam.dto.order.AdminOrderMetaRequest;
 import az.premiumreklam.entity.Order;
 import az.premiumreklam.enums.OrderStatus;
 import az.premiumreklam.service.OrderService;
@@ -31,7 +32,7 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<OrderResponse> getAll() {
         return orderService.getAllOrders().stream()
-                .map(OrderResponse::fromEntity)
+                .map(order -> OrderResponse.fromEntity(order, true))
                 .collect(Collectors.toList());
     }
 
@@ -51,7 +52,15 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public OrderResponse updateStatus(@PathVariable Long id, @RequestParam String status) {
         OrderStatus orderStatus = OrderStatus.fromValue(status);
-        return OrderResponse.fromEntity(orderService.updateOrderStatus(id, orderStatus));
+        return OrderResponse.fromEntity(orderService.updateOrderStatus(id, orderStatus), true);
+    }
+
+    @PatchMapping("/{id}/admin-meta")
+    @PreAuthorize("hasRole('ADMIN')")
+    public OrderResponse updateAdminMeta(@PathVariable Long id, @RequestBody AdminOrderMetaRequest request) {
+        return OrderResponse.fromEntity(
+                orderService.updateAdminMeta(id, request.getEstimatedReadyAt(), request.getInternalAdminNote()),
+                true);
     }
 
     @DeleteMapping("/{id}")
