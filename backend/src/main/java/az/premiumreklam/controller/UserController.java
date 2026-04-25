@@ -49,7 +49,12 @@ public class UserController {
             @RequestBody ProfileUpdateRequest body) {
         User u = requireUserFromBearer(authorization);
         try {
-            User updated = userService.updateProfile(u.getId(), body.getFullName(), body.getPhone(), body.getEmail());
+            User updated = userService.updateProfile(
+                    u.getId(),
+                    body.getFullName(),
+                    body.getPhone(),
+                    body.getEmail(),
+                    body.getProfileImage());
             return profilePayload(updated);
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
@@ -121,6 +126,7 @@ public class UserController {
         map.put("fullName", u.getFullName());
         map.put("email", u.getEmail() != null ? u.getEmail() : "");
         map.put("phone", u.getPhone() != null ? u.getPhone() : "");
+        map.put("profileImage", u.getProfileImage() != null ? u.getProfileImage() : "");
         map.put("role", u.getRole().getValue());
         map.put("totalDebt", u.getTotalDebt());
         map.put("orderBlocked", Boolean.TRUE.equals(u.getOrderBlocked()));

@@ -123,6 +123,7 @@ export interface UserData {
   role: string;
   email?: string;
   phone?: string;
+  profileImage?: string;
   /** Subadmin JWT cavabında ola bilər */
   permissions?: Record<string, string>;
 }
@@ -576,6 +577,7 @@ export const authApi = {
     fullName: string;
     email: string;
     phone: string;
+    profileImage: string;
     role: string;
     totalDebt?: number;
     bonusLoyalty500Percent?: number | null;
@@ -593,12 +595,14 @@ export const authApi = {
     fullName?: string;
     phone?: string;
     email?: string;
+    profileImage?: string;
   }): Promise<{
     userId: string;
     username: string;
     fullName: string;
     email: string;
     phone: string;
+    profileImage: string;
     role: string;
     totalDebt?: number;
   }> {

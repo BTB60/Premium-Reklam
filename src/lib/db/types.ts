@@ -19,6 +19,7 @@ export interface User {
   username: string;
   phone?: string;                // ✅ Привязан при регистрации
   email?: string;                // ✅ Привязан при регистрации
+  profileImage?: string;
   password: string;
   role: UserRole;
   level: number;

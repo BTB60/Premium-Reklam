@@ -16,6 +16,8 @@ import {
   Package,
   ArrowLeft,
   Save,
+  Camera,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +28,7 @@ export default function ProfilePage() {
   const [session, setSession] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [orderCount, setOrderCount] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
@@ -33,6 +36,12 @@ export default function ProfilePage() {
     fullName: "",
     phone: "",
     email: "",
+    profileImage: "",
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   useEffect(() => {
@@ -46,6 +55,7 @@ export default function ProfilePage() {
       fullName: current.fullName || "",
       phone: current.phone || "",
       email: current.email || "",
+      profileImage: current.profileImage || "",
     });
 
     void (async () => {
@@ -55,6 +65,7 @@ export default function ProfilePage() {
           fullName: profile.fullName || "",
           phone: profile.phone || "",
           email: profile.email || "",
+          profileImage: profile.profileImage || "",
         });
         const merged: UserData = {
           ...current,
@@ -62,6 +73,7 @@ export default function ProfilePage() {
           fullName: profile.fullName,
           phone: profile.phone || undefined,
           email: profile.email || undefined,
+          profileImage: profile.profileImage || undefined,
           role: profile.role,
         };
         authApi.saveCurrentUser(merged);
@@ -98,6 +110,7 @@ export default function ProfilePage() {
         fullName: formData.fullName,
         phone: formData.phone,
         email: formData.email,
+        profileImage: formData.profileImage,
       });
       const next: UserData = {
         ...session,
@@ -105,6 +118,7 @@ export default function ProfilePage() {
         fullName: updated.fullName,
         phone: updated.phone || undefined,
         email: updated.email || undefined,
+        profileImage: updated.profileImage || undefined,
         role: updated.role,
       };
       authApi.saveCurrentUser(next);
@@ -113,12 +127,56 @@ export default function ProfilePage() {
         fullName: updated.fullName || "",
         phone: updated.phone || "",
         email: updated.email || "",
+        profileImage: updated.profileImage || "",
       });
+      alert("Profil məlumatları yeniləndi");
     } catch (error: any) {
       console.error("[Profile] Save error:", error);
       alert(error?.message || "Profil yenilənmədi");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleProfileImage = (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Yalnız şəkil faylı seçin");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Profil şəkli 2 MB-dan böyük olmamalıdır");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((prev) => ({ ...prev, profileImage: String(reader.result || "") }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword) {
+      alert("Cari və yeni şifrəni daxil edin");
+      return;
+    }
+    if (passwordForm.newPassword.length < 6) {
+      alert("Yeni şifrə ən az 6 simvol olmalıdır");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert("Yeni şifrələr uyğun gəlmir");
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      await authApi.changeMyPassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      alert("Şifrə uğurla dəyişdirildi");
+    } catch (error: any) {
+      alert(error?.message || "Şifrə dəyişdirilmədi");
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -173,6 +231,39 @@ export default function ProfilePage() {
                 </h2>
 
                 <div className="space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-xl bg-gray-50 p-4">
+                    <div className="w-24 h-24 rounded-full overflow-hidden bg-[#D90429]/10 flex items-center justify-center border-4 border-white shadow-sm">
+                      {formData.profileImage ? (
+                        <img src={formData.profileImage} alt="Profil" className="w-full h-full object-cover" />
+                      ) : (
+                        <UserIcon className="w-10 h-10 text-[#D90429]" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-[#1F2937]">Profil şəkli</p>
+                      <p className="text-sm text-[#6B7280] mb-3">JPG/PNG, maksimum 2 MB.</p>
+                      <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-gray-200 text-sm font-medium text-[#1F2937] hover:border-[#D90429] cursor-pointer">
+                        <Camera className="w-4 h-4 text-[#D90429]" />
+                        Şəkil seç
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleProfileImage(e.target.files?.[0])}
+                        />
+                      </label>
+                      {formData.profileImage && (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, profileImage: "" })}
+                          className="ml-3 text-sm text-red-600 hover:underline"
+                        >
+                          Sil
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <Input
                     label="Ad və Soyad"
                     value={formData.fullName}
@@ -204,6 +295,42 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </Card>
+
+              <Card className="p-6 mt-6">
+                <h2 className="text-lg font-semibold text-[#1F2937] mb-6 flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-[#D90429]" />
+                  Şifrəni dəyiş
+                </h2>
+                <div className="space-y-5">
+                  <Input
+                    label="Cari şifrə"
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(value) => setPasswordForm({ ...passwordForm, currentPassword: value })}
+                  />
+                  <Input
+                    label="Yeni şifrə"
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(value) => setPasswordForm({ ...passwordForm, newPassword: value })}
+                  />
+                  <Input
+                    label="Yeni şifrə (təkrar)"
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(value) => setPasswordForm({ ...passwordForm, confirmPassword: value })}
+                  />
+                  <Button
+                    onClick={() => void handleChangePassword()}
+                    loading={passwordSaving}
+                    icon={<Lock className="w-5 h-5" />}
+                    className="w-full"
+                    variant="secondary"
+                  >
+                    Şifrəni yenilə
+                  </Button>
+                </div>
+              </Card>
             </motion.div>
 
             <motion.div
@@ -213,8 +340,12 @@ export default function ProfilePage() {
               className="space-y-4"
             >
               <Card className="p-6 text-center">
-                <div className="w-20 h-20 bg-[#D90429]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-10 h-10 text-[#D90429]" />
+                <div className="w-20 h-20 bg-[#D90429]/10 rounded-full flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                  {formData.profileImage ? (
+                    <img src={formData.profileImage} alt="Profil" className="w-full h-full object-cover" />
+                  ) : (
+                    <Award className="w-10 h-10 text-[#D90429]" />
+                  )}
                 </div>
                 <p className="text-3xl font-bold text-[#1F2937]">{level}</p>
                 <p className="text-[#6B7280]">Səviyyə (təxmini)</p>

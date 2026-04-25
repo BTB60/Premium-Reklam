@@ -25,7 +25,7 @@ public class UserService {
     }
 
     @Transactional
-    public User updateProfile(Long userId, String fullName, String phone, String email) {
+    public User updateProfile(Long userId, String fullName, String phone, String email, String profileImage) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("İstifadəçi tapılmadı"));
 
@@ -47,6 +47,17 @@ public class UserService {
                     }
                 });
                 user.setEmail(e);
+            }
+        }
+        if (profileImage != null) {
+            String image = profileImage.trim();
+            if (image.isEmpty()) {
+                user.setProfileImage(null);
+            } else {
+                if (image.length() > 1_200_000) {
+                    throw new RuntimeException("Profil şəkli çox böyükdür");
+                }
+                user.setProfileImage(image);
             }
         }
 

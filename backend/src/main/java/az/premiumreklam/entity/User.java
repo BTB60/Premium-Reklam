@@ -37,6 +37,9 @@ public class User {
     @Column(length = 30)
     private String phone;
 
+    @Column(name = "profile_image", columnDefinition = "TEXT")
+    private String profileImage;
+
     @JsonIgnore
     @Column(name = "password_hash", nullable = false, columnDefinition = "TEXT")
     private String passwordHash;
