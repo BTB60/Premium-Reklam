@@ -10,17 +10,12 @@ import {
   isOrderCancelled,
   orderCountsTowardLoyaltySpend,
   loyaltySpendAmountAzn,
-  type Order,
-  type Product,
   type OrderSummary,
 } from "@/lib/authApi";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { OrderTimeline } from "@/components/ui/OrderTimeline";
-import { InvoiceGenerator } from "@/components/ui/InvoiceGenerator";
 import { motion, AnimatePresence } from "framer-motion";
-import ElanWidget from "@/components/ElanWidget"; // 🔥 ДОБАВЛЕНО
 import {
   fetchMyClientPaymentRequests,
   submitClientPaymentRequest,
@@ -46,20 +41,17 @@ import {
   YAxis,
 } from "recharts";
 import {
-  LogOut, 
   Package, 
   Bell, 
   Settings, 
   Award,
   Plus,
   Eye,
-  DollarSign,
   Clock,
   CheckCircle,
   User,
   ShoppingBag,
   RefreshCw,
-  Store,
   AlertCircle,
   TrendingUp,
   Wallet,
@@ -67,7 +59,6 @@ import {
   Banknote,
   X,
   Repeat,
-  Receipt,
   MessageCircle,
   Route,
   Calculator,
@@ -171,18 +162,11 @@ export default function DashboardPage() {
   const [user, setUser] = useState<any>(null);
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [orderSummary, setOrderSummary] = useState<OrderSummary | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
   const [orderBlocked, setOrderBlocked] = useState(false);
   const [nextWeeklyDueDate, setNextWeeklyDueDate] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"home" | "products" | "orders" | "history">("home");
-
-  // Payment Modal State
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentOrderId, setPaymentOrderId] = useState<string | number | null>(null);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"home" | "history">("home");
   const [clientPayAmount, setClientPayAmount] = useState("");
   const [clientPayReceiptData, setClientPayReceiptData] = useState<string>("");
   const [clientPayReceiptName, setClientPayReceiptName] = useState<string>("");
@@ -198,77 +182,15 @@ export default function DashboardPage() {
   const [paymentOverviewMonthKey, setPaymentOverviewMonthKey] = useState(getCurrentYearMonth);
   const [paymentOverviewYear, setPaymentOverviewYear] = useState(() => new Date().getFullYear());
 
-  // New order form state
-  const [showNewOrder, setShowNewOrder] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [orderForm, setOrderForm] = useState({
-    width: "",
-    height: "",
-    quantity: "1",
-    customerName: "",
-    customerPhone: "",
-    customerAddress: "",
-    note: "",
-    couponCode: "",
-  });
-  const [orderLoading, setOrderLoading] = useState(false);
-  /** Seçilmiş məhsul üçün sessiyadakı istifadəçiyə uyğun vahid qiymət (admin təyinindən). */
-  const [orderPriceResolution, setOrderPriceResolution] = useState<{
-    productId: number;
-    price: number;
-  } | null>(null);
-  const [selectedTimelineOrder, setSelectedTimelineOrder] = useState<any | null>(null);
-  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any | null>(null);
   const [loyaltyProfileOverride, setLoyaltyProfileOverride] = useState<LoyaltyPercentOverride>(null);
   const [hasCustomUserPrices, setHasCustomUserPrices] = useState(false);
 
   useEffect(() => {
     const currentUser = authApi.getCurrentUser();
-
-    if (!currentUser) {
-      router.push("/login");
-      return;
-    }
-
+    if (!currentUser) return;
     setUser(currentUser);
     loadData();
   }, [router]);
-
-  const dashboardOrderUnitPrice = useMemo(() => {
-    if (!selectedProduct) return 0;
-    if (orderPriceResolution?.productId === selectedProduct.id) {
-      return orderPriceResolution.price;
-    }
-    return Number(selectedProduct.salePrice) || 0;
-  }, [selectedProduct, orderPriceResolution]);
-
-  useEffect(() => {
-    const cu = authApi.getCurrentUser();
-    if (!cu || !selectedProduct) {
-      setOrderPriceResolution(null);
-      return;
-    }
-    const uid = Number(cu.userId);
-    const pid = Number(selectedProduct.id);
-    if (!Number.isFinite(uid) || !Number.isFinite(pid)) {
-      setOrderPriceResolution(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const fromApi = await productApi.getUserPrice(uid, pid);
-        if (cancelled) return;
-        if (fromApi != null) setOrderPriceResolution({ productId: pid, price: fromApi });
-        else setOrderPriceResolution(null);
-      } catch {
-        if (!cancelled) setOrderPriceResolution(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedProduct?.id]);
 
   useEffect(() => {
     const onBalanceUpdated = () => {
@@ -288,9 +210,8 @@ export default function DashboardPage() {
           ? productApi.getUserPrices(uid).catch(() => [])
           : Promise.resolve([]);
 
-      const [ordersResponse, productsData, profile, myPayments, userPricesRows] = await Promise.all([
+      const [ordersResponse, profile, myPayments, userPricesRows] = await Promise.all([
         orderApi.getMyOrders(),
-        productApi.getActiveCatalog(),
         authApi.getMyProfile().catch(() => null),
         fetchMyClientPaymentRequests().catch(() => []),
         userPricesPromise,
@@ -336,7 +257,6 @@ export default function DashboardPage() {
       };
       
       setOrderSummary(summary);
-      setProducts(productsData);
       setLoyaltyProfileOverride(loyaltyOverrideFromProfile(profile as any));
       setOrderBlocked(Boolean((profile as any)?.orderBlocked));
       setNextWeeklyDueDate((profile as any)?.nextWeeklyDueDate ? String((profile as any).nextWeeklyDueDate) : null);
@@ -346,7 +266,6 @@ export default function DashboardPage() {
       setHasCustomUserPrices(false);
       setUserOrders([]);
       setOrderSummary(null);
-      setProducts([]);
       setOrderBlocked(false);
       setNextWeeklyDueDate(null);
       setPaymentHistory([]);
@@ -360,17 +279,6 @@ export default function DashboardPage() {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  };
-
-  const handleLogout = () => {
-    authApi.logout();
-    router.push("/login");
-  };
-
-  const handlePayDebt = (orderId: string | number) => {
-    setPaymentOrderId(orderId);
-    setPaymentAmount("");
-    setShowPaymentModal(true);
   };
 
   const submitClientPaymentNotification = async () => {
@@ -393,110 +301,6 @@ export default function DashboardPage() {
     } finally {
       setClientPayBusy(false);
     }
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (!paymentOrderId || !paymentAmount) return;
-    
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) {
-      alert("Düzgün məbləğ daxil edin");
-      return;
-    }
-
-    const order = userOrders.find((o: any) => o.id === paymentOrderId);
-    if (!order) return;
-
-    const remaining = Number(order.remaining_amount || order.remainingAmount || 0);
-    if (amount > remaining) {
-      alert(`Maksimum ${remaining.toFixed(2)} AZN ödəniş edilə bilər`);
-      return;
-    }
-
-    setPaymentProcessing(true);
-    try {
-      await orderApi.addPayment(paymentOrderId, amount, "CASH", "Müştəri ödənişi");
-      playPremiumNotificationSound();
-      alert("Ödəniş uğurla qeydə alındı!");
-      setShowPaymentModal(false);
-      loadData();
-    } catch (error: any) {
-      alert(error.message || "Ödəniş xətası");
-    } finally {
-      setPaymentProcessing(false);
-    }
-  };
-
-  const handleCreateOrder = async () => {
-    if (!selectedProduct || !orderForm.width || !orderForm.height || !orderForm.customerName) {
-      alert("Zəhmət olmasa bütün məlumatları doldurun");
-      return;
-    }
-    if (orderBlocked) {
-      alert("Həftəlik ödəniş gecikməsi səbəbi ilə sifariş bloklanıb. Admin bloku açmalıdır.");
-      return;
-    }
-
-    setOrderLoading(true);
-    try {
-      const width = parseFloat(orderForm.width);
-      const height = parseFloat(orderForm.height);
-      const quantity = parseInt(orderForm.quantity) || 1;
-      const area = width * height;
-      const unitPrice = dashboardOrderUnitPrice;
-      const lineTotal = area * quantity * unitPrice;
-
-      await orderApi.create({
-        customerName: orderForm.customerName,
-        customerPhone: orderForm.customerPhone,
-        customerAddress: orderForm.customerAddress,
-        note: orderForm.note,
-        couponCode: orderForm.couponCode,
-        discountPercent: 0,
-        items: [{
-          productId: selectedProduct.id,
-          productName: selectedProduct.name,
-          unit: selectedProduct.unit,
-          quantity: quantity,
-          width: width,
-          height: height,
-          unitPrice: unitPrice,
-          note: "",
-        }],
-      });
-
-      playPremiumNotificationSound();
-      alert("Sifariş uğurla yaradıldı!");
-      setShowNewOrder(false);
-      setSelectedProduct(null);
-      setOrderForm({
-        width: "",
-        height: "",
-        quantity: "1",
-        customerName: "",
-        customerPhone: "",
-        customerAddress: "",
-        note: "",
-        couponCode: "",
-      });
-      loadData();
-    } catch (error: any) {
-      alert(error.message || "Sifariş yaradılmadı");
-    } finally {
-      setOrderLoading(false);
-    }
-  };
-
-  const normalizeOrderStatus = (status: string) => {
-    const s = String(status || "").toLowerCase();
-    if (["pending", "approved", "design", "printing", "production", "ready", "delivering", "completed", "cancelled"].includes(s)) {
-      return s as "pending" | "approved" | "design" | "printing" | "production" | "ready" | "delivering" | "completed" | "cancelled";
-    }
-    if (s === "təsdiq") return "pending";
-    if (s === "ödəniş") return "approved";
-    if (s === "istehsal") return "production";
-    if (s === "bitdi") return "completed";
-    return "pending";
   };
 
   const historyMonthLabel = useMemo(() => {
@@ -720,32 +524,12 @@ export default function DashboardPage() {
 
   const handleReorder = (order: any) => {
     const firstItem = order?.items?.[0];
-    if (!firstItem) {
-      alert("Təkrar sifariş üçün məhsul məlumatı tapılmadı");
+    const pid = firstItem?.productId || firstItem?.product_id;
+    if (pid) {
+      router.push(`/orders/new?productId=${encodeURIComponent(String(pid))}`);
       return;
     }
-    const itemProductId = String(firstItem.productId || firstItem.product_id || "");
-    const byId = products.find((p) => String(p.id) === itemProductId);
-    const byName = products.find((p) => p.name === (firstItem.productName || firstItem.product_name));
-    const matched = byId || byName || null;
-    if (!matched) {
-      alert("Məhsul artıq katalogda yoxdur.");
-      return;
-    }
-
-    setSelectedProduct(matched);
-    setOrderForm({
-      width: String(firstItem.width || ""),
-      height: String(firstItem.height || ""),
-      quantity: String(firstItem.quantity || 1),
-      customerName: order.customerName || order.customer_name || "",
-      customerPhone: order.customerPhone || order.customer_phone || "",
-      customerAddress: order.customerAddress || order.customer_address || "",
-      note: `Təkrar sifariş: #${order.orderNumber || order.order_number || order.id}`,
-      couponCode: "",
-    });
-    setShowNewOrder(true);
-    setActiveTab("products");
+    alert("Təkrar sifariş üçün məhsul ID tapılmadı");
   };
 
   const handleExportMyReport = () => {
@@ -898,34 +682,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(217,4,41,0.08),transparent_32%),linear-gradient(180deg,#FFF7F7_0%,#F8F9FB_34%,#F8F9FB_100%)]">
-      {/* Header */}
-      <header className="bg-white/85 backdrop-blur-md border-b border-white/70 px-6 py-4 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-gradient-to-br from-[#D90429] to-[#EF476F] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D90429]/20">
-              <span className="text-white font-bold text-lg">P</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-[#1F2937]">Premium Reklam</h1>
-              <p className="text-xs text-[#6B7280]">İş paneliniz · xoş gəldin, {user.fullName}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* 🔥 ДОБАВЛЕНО: ElanWidget */}
-            <ElanWidget />
-            
-            <Button variant="ghost" size="sm" onClick={handleRefresh} icon={<RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />}>
-              <span className="sr-only">Yenile</span>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout} icon={<LogOut className="w-4 h-4" />}>
-              Çıxış
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto p-4 sm:p-6">
+      <div>
         
         {/* Home Tab */}
         {activeTab === "home" && (
@@ -951,10 +708,10 @@ export default function DashboardPage() {
 
                 <div className="rounded-2xl border border-white bg-white/80 p-2 shadow-sm backdrop-blur-xl">
                   {[
-                    { label: "Ana səhifə", icon: User, action: () => setActiveTab("home"), active: true },
-                    { label: "Məhsullar", icon: ShoppingBag, action: () => setActiveTab("products") },
-                    { label: "Sifarişlər", icon: Package, action: () => setActiveTab("orders") },
-                    { label: "Tarixçələr", icon: History, action: () => setActiveTab("history") },
+                    { label: "Ana səhifə", icon: User, action: () => setActiveTab("home"), active: activeTab === "home" },
+                    { label: "Məhsullar", icon: ShoppingBag, action: () => router.push("/dashboard/products") },
+                    { label: "Sifarişlər", icon: Package, action: () => router.push("/dashboard/orders") },
+                    { label: "Tarixçələr", icon: History, action: () => setActiveTab("history"), active: activeTab === "history" },
                     { label: "Tənzimləmələr", icon: Settings, action: () => router.push("/profile") },
                   ].map((item) => (
                     <button
@@ -962,7 +719,7 @@ export default function DashboardPage() {
                       type="button"
                       onClick={item.action}
                       className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                        item.active ? "bg-[#ff6600]/10 text-[#ff6600]" : "text-[#64748B] hover:bg-slate-50 hover:text-[#0F172A]"
+                        "active" in item && item.active ? "bg-[#ff6600]/10 text-[#ff6600]" : "text-[#64748B] hover:bg-slate-50 hover:text-[#0F172A]"
                       }`}
                     >
                       <item.icon className="w-4 h-4" />
@@ -992,7 +749,7 @@ export default function DashboardPage() {
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Button
                       variant="secondary"
-                      onClick={() => setActiveTab("orders")}
+                      onClick={() => router.push("/dashboard/orders")}
                       className="bg-white/10 text-white border-white/20 hover:bg-white/15"
                       icon={<Package className="w-4 h-4" />}
                     >
@@ -1101,81 +858,38 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="grid xl:grid-cols-[1fr_20rem] gap-4">
-              <div className="rounded-2xl border border-white bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div>
-                    <h3 className="font-black text-[#0F172A] flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5 text-[#ff6600]" />
-                      Sifariş statistikası
-                    </h3>
-                    <p className="text-xs text-[#64748B] mt-1">Son 7 gün üzrə sifariş sayı və məbləğ dinamikası</p>
-                  </div>
-                </div>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dashboardChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ff6600" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#ff6600" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{ borderRadius: 16, border: "1px solid #E2E8F0" }}
-                        formatter={(value: number, name: string) => [
-                          name === "amount" ? `${Number(value).toFixed(2)} AZN` : value,
-                          name === "amount" ? "Məbləğ" : "Sifariş",
-                        ]}
-                      />
-                      <Area type="monotone" dataKey="amount" stroke="#ff6600" fill="url(#ordersGradient)" strokeWidth={3} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+            <div className="rounded-2xl border border-white bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="font-black text-[#0F172A] flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-[#ff6600]" />
+                    Sifariş statistikası
+                  </h3>
+                  <p className="text-xs text-[#64748B] mt-1">Son 7 gün üzrə sifariş sayı və məbləğ dinamikası</p>
                 </div>
               </div>
-
-              <div className="rounded-2xl border border-white bg-white p-5 shadow-sm">
-                <h3 className="font-black text-[#0F172A] flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-[#ff6600]" />
-                  Quick Action
-                </h3>
-                <p className="text-xs text-[#64748B] mt-1">Ödəniş bildirişini sürətli göndərin.</p>
-                <div className="mt-4 space-y-3">
-                  <input
-                    type="number"
-                    min={0.01}
-                    step={0.01}
-                    className="w-full px-3 py-3 border border-[#E2E8F0] rounded-2xl text-sm"
-                    placeholder="Məbləğ (AZN)"
-                    value={clientPayAmount}
-                    onChange={(e) => setClientPayAmount(e.target.value)}
-                  />
-                  <label className="flex items-center justify-center gap-2 text-sm px-3 py-3 border border-dashed border-[#ff6600]/35 rounded-2xl cursor-pointer bg-[#ff6600]/5 text-[#0F172A]">
-                    <ImagePlus className="w-4 h-4 text-[#ff6600]" />
-                    {clientPayReceiptName ? "Qəbz seçildi" : "Qəbz əlavə et"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          setClientPayReceiptData(String(reader.result || ""));
-                          setClientPayReceiptName(file.name);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dashboardChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ff6600" stopOpacity={0.35} />
+                        <stop offset="95%" stopColor="#ff6600" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 16, border: "1px solid #E2E8F0" }}
+                      formatter={(value: number, name: string) => [
+                        name === "amount" ? `${Number(value).toFixed(2)} AZN` : value,
+                        name === "amount" ? "Məbləğ" : "Sifariş",
+                      ]}
                     />
-                  </label>
-                  <Button className="w-full" onClick={() => void submitClientPaymentNotification()} disabled={clientPayBusy}>
-                    {clientPayBusy ? "Göndərilir..." : "Ödənişi bildir"}
-                  </Button>
-                </div>
+                    <Area type="monotone" dataKey="amount" stroke="#ff6600" fill="url(#ordersGradient)" strokeWidth={3} />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
             </div>
 
@@ -1277,8 +991,8 @@ export default function DashboardPage() {
                   <h3 className="text-xl font-bold mb-1">Məhsul sifarişi</h3>
                   <p className="opacity-90 text-sm">Məhsul seçin və ölçüləri daxil edin</p>
                 </div>
-                <Button 
-                  onClick={() => setActiveTab("products")}
+                <Button
+                  onClick={() => router.push("/dashboard/products")}
                   className="bg-white text-[#D90429] hover:bg-gray-100"
                   icon={<Plus className="w-4 h-4" />}
                 >
@@ -1374,7 +1088,7 @@ export default function DashboardPage() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-[#1F2937]">Son Sifarişlər</h2>
-                <Button variant="ghost" size="sm" onClick={() => setActiveTab("orders")}>
+                <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/orders")}>
                   Hamısına Bax
                 </Button>
               </div>
@@ -1383,7 +1097,7 @@ export default function DashboardPage() {
                 <Card className="p-10 text-center">
                   <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-[#6B7280] mb-4">Hələ sifarişiniz yoxdur</p>
-                  <Button onClick={() => setActiveTab("products")} icon={<Plus className="w-4 h-4" />}>
+                  <Button onClick={() => router.push("/orders/new")} icon={<Plus className="w-4 h-4" />}>
                     Sifariş Et
                   </Button>
                 </Card>
@@ -1862,505 +1576,7 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Products Tab - New Order */}
-        {activeTab === "products" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-bold text-[#1F2937]">Məhsullar və Sifariş</h1>
-            </div>
-
-            {!showNewOrder ? (
-              <>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {products.map((product) => (
-                    <Card key={product.id} className="p-5 cursor-pointer" onClick={() => {
-                      setSelectedProduct(product);
-                      setShowNewOrder(true);
-                    }}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="w-12 h-12 bg-[#D90429]/10 rounded-xl flex items-center justify-center">
-                          <ShoppingBag className="w-6 h-6 text-[#D90429]" />
-                        </div>
-                        <span className="text-xs bg-gray-100 text-[#6B7280] px-2 py-1 rounded">
-                          {product.category}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-[#1F2937] mb-1">{product.name}</h3>
-                      <p className="text-sm text-[#6B7280] mb-3">{product.description}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xl font-bold text-[#D90429]">{product.salePrice} AZN</span>
-                        <span className="text-xs text-[#6B7280]">/{product.unit}</span>
-                      </div>
-                      {product.width && product.height && (
-                        <p className="text-xs text-[#6B7280] mt-2">
-                          Standart: {product.width}m × {product.height}m
-                        </p>
-                      )}
-                    </Card>
-                  ))}
-                </div>
-
-                {products.length === 0 && (
-                  <Card className="p-16 text-center">
-                    <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-[#1F2937] mb-2">Məhsul yoxdur</h3>
-                    <p className="text-[#6B7280]">Admin məhsul əlavə edəcək</p>
-                  </Card>
-                )}
-              </>
-            ) : (
-              <Card className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-[#1F2937]">
-                    Sifariş — {selectedProduct?.name}
-                  </h2>
-                  <Button variant="ghost" size="sm" onClick={() => {
-                    setShowNewOrder(false);
-                    setSelectedProduct(null);
-                  }}>
-                    Ləğv et
-                  </Button>
-                </div>
-
-                {/* Product Info */}
-                <div className="bg-[#F9FAFB] rounded-xl p-4 mb-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-[#6B7280]">Seçilmiş məhsul</p>
-                      <p className="font-bold text-[#1F2937]">{selectedProduct?.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-[#6B7280]">Qiymət</p>
-                      <p className="text-xl font-bold text-[#D90429]">
-                        {dashboardOrderUnitPrice.toFixed(2)} AZN/{selectedProduct?.unit}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Form */}
-                <div className="grid gap-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm text-[#6B7280] mb-2">En (m)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={orderForm.width}
-                        onChange={(e) => setOrderForm({...orderForm, width: e.target.value})}
-                        className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-[#6B7280] mb-2">Hündürlük (m)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={orderForm.height}
-                        onChange={(e) => setOrderForm({...orderForm, height: e.target.value})}
-                        className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm text-[#6B7280] mb-2">Ədəd</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={orderForm.quantity}
-                        onChange={(e) => setOrderForm({...orderForm, quantity: e.target.value})}
-                        className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Calculated Total */}
-                  {orderForm.width && orderForm.height && selectedProduct && (
-                    <div className="bg-[#D90429]/5 rounded-xl p-4 border border-[#D90429]/20">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-[#6B7280]">Ümumi sahə</p>
-                          <p className="text-2xl font-bold text-[#1F2937]">
-                            {(parseFloat(orderForm.width) * parseFloat(orderForm.height) * (parseInt(orderForm.quantity) || 1)).toFixed(2)} m²
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-[#6B7280]">Ümumi qiymət</p>
-                          <p className="text-2xl font-bold text-[#D90429]">
-                            {(
-                              parseFloat(orderForm.width) *
-                              parseFloat(orderForm.height) *
-                              (parseInt(orderForm.quantity) || 1) *
-                              dashboardOrderUnitPrice
-                            ).toFixed(2)} AZN
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm text-[#6B7280] mb-2">Müştəri Adı *</label>
-                    <input
-                      type="text"
-                      value={orderForm.customerName}
-                      onChange={(e) => setOrderForm({...orderForm, customerName: e.target.value})}
-                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                      placeholder="Ad Soyad"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-[#6B7280] mb-2">Telefon</label>
-                    <input
-                      type="tel"
-                      value={orderForm.customerPhone}
-                      onChange={(e) => setOrderForm({...orderForm, customerPhone: e.target.value})}
-                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                      placeholder="050 000 00 00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-[#6B7280] mb-2">Ünvan</label>
-                    <input
-                      type="text"
-                      value={orderForm.customerAddress}
-                      onChange={(e) => setOrderForm({...orderForm, customerAddress: e.target.value})}
-                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                      placeholder="Bakı, Nərimanov rayonu..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-[#6B7280] mb-2">Qeyd</label>
-                    <textarea
-                      value={orderForm.note}
-                      onChange={(e) => setOrderForm({...orderForm, note: e.target.value})}
-                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                      rows={3}
-                      placeholder="Əlavə qeydləriniz..."
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm text-[#6B7280] mb-2">Kupon kodu (opsional)</label>
-                    <input
-                      type="text"
-                      value={orderForm.couponCode}
-                      onChange={(e) => setOrderForm({...orderForm, couponCode: e.target.value.toUpperCase()})}
-                      className="w-full px-4 py-3 border border-[#E5E7EB] rounded-lg"
-                      placeholder="Məs: WELCOME10"
-                    />
-                  </div>
-
-                  <Button 
-                    onClick={handleCreateOrder} 
-                    className="w-full"
-                    disabled={orderLoading || !orderForm.width || !orderForm.height || !orderForm.customerName}
-                    icon={orderLoading ? <RefreshCw className="animate-spin w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                  >
-                    {orderLoading ? "Gözləyin..." : "Sifarişi Tamamla"}
-                  </Button>
-                </div>
-              </Card>
-            )}
-          </motion.div>
-        )}
-
-        {/* Orders Tab */}
-        {activeTab === "orders" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-[#1F2937]">Sifarişlərim</h1>
-            </div>
-
-            {userOrders.length === 0 ? (
-              <Card className="p-16 text-center">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-[#1F2937] mb-2">Sifariş yoxdur</h3>
-                <p className="text-[#6B7280] mb-6">İlk sifarişinizi verin</p>
-                <Button onClick={() => setActiveTab("products")} icon={<Plus className="w-4 h-4" />}>
-                  Sifariş Et
-                </Button>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {userOrders.map((order) => (
-                  <Card key={order.id} className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <p className="font-bold text-[#D90429] text-lg">#{order.order_number || order.orderNumber}</p>
-                        <p className="text-sm text-[#6B7280]">
-                          {new Date(order.createdAt).toLocaleString("az-AZ")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <StatusBadge status={order.status?.toLowerCase() || "pending"} />
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          order.payment_status === "PAID" ? "bg-green-100 text-green-700" :
-                          order.payment_status === "PARTIAL" ? "bg-orange-100 text-orange-700" :
-                          order.payment_status === "CANCELLED" ? "bg-red-100 text-red-700" :
-                          "bg-yellow-100 text-yellow-700"
-                        }`}>
-                          {order.payment_status === "PAID" ? "Ödənilib" :
-                           order.payment_status === "PARTIAL" ? "Qismən" :
-                           order.payment_status === "CANCELLED" ? "Ləğv" : "Gözləyir"}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      {order.items?.map((item: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
-                          <span className="text-[#1F2937]">{item.product_name || item.productName}</span>
-                          <span className="text-[#6B7280]">
-                            {item.width && item.height ? `${item.width}×${item.height}m` : ""} 
-                            {item.quantity > 1 ? ` × ${item.quantity}` : ""}
-                          </span>
-                          <span className="font-semibold text-[#1F2937]">{(item.line_total || item.lineTotal)?.toFixed(2)} AZN</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-4 border-t border-[#E5E7EB]">
-                      <div>
-                        <p className="text-sm text-[#6B7280]">Müştəri</p>
-                        <p className="font-semibold text-[#1F2937]">{order.customer_name || order.customerName}</p>
-                        {order.customer_phone && <p className="text-sm text-[#6B7280]">{order.customer_phone}</p>}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-[#6B7280]">Ümumi</p>
-                        <p className="text-xl font-bold text-[#D90429]">{(order.totalAmount || 0).toFixed(2)} AZN</p>
-                      </div>
-                    </div>
-
-                    {/* Payment Info */}
-                    <div className="mt-4 pt-4 border-t border-[#E5E7EB]">
-                      <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div className="text-center p-3 bg-green-50 rounded-lg">
-                          <p className="text-xs text-[#6B7280]">Ödənilib</p>
-                          <p className="text-lg font-bold text-green-600">{(order.paid_amount || order.paidAmount || 0).toFixed(2)} AZN</p>
-                        </div>
-                        <div className="text-center p-3 bg-red-50 rounded-lg">
-                          <p className="text-xs text-[#6B7280]">Qalan</p>
-                          <p className="text-lg font-bold text-red-600">{(order.remaining_amount || order.remainingAmount || 0).toFixed(2)} AZN</p>
-                        </div>
-                        {(order.payment_status !== "PAID" && order.payment_status !== "CANCELLED" && Number(order.remaining_amount || order.remainingAmount || 0) > 0) && (
-                          <button
-                            onClick={() => handlePayDebt(order.id)}
-                            className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-[#16A34A] to-[#15803D] text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-green-500/30 transition-all"
-                          >
-                            <DollarSign className="w-5 h-5" />
-                            <span>Ödə</span>
-                          </button>
-                        )}
-                        {order.payment_status === "PAID" && (
-                          <div className="flex items-center justify-center gap-2 p-3 bg-green-100 rounded-lg">
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                            <span className="text-sm font-semibold text-green-700">Tam Ödənilib</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => handleReorder(order)} icon={<Repeat className="w-4 h-4" />}>
-                          Təkrar sifariş
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedTimelineOrder(order)}
-                          icon={<Route className="w-4 h-4" />}
-                        >
-                          Timeline
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setSelectedInvoiceOrder(order)}
-                          icon={<Receipt className="w-4 h-4" />}
-                        >
-                          Qəbz/Faktura
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </main>
-
-      {/* Payment Modal */}
-      <AnimatePresence>
-        {showPaymentModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setShowPaymentModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-2xl w-full max-w-md p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-[#1F2937]">Ödəniş Et</h3>
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-
-              {(() => {
-                const order = userOrders.find((o: any) => o.id === paymentOrderId);
-                if (!order) return null;
-                return (
-                  <div className="space-y-4">
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <div className="flex justify-between mb-2">
-                        <span className="text-gray-600">Sifariş:</span>
-                        <span className="font-bold text-[#D90429]">#{(order as any).orderNumber}</span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-gray-600">Ümumi məbləğ:</span>
-                        <span className="font-bold">{(order.totalAmount || 0).toFixed(2)} AZN</span>
-                      </div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-gray-600">Ödənilib:</span>
-                        <span className="font-semibold text-green-600">{(order.paid_amount || order.paidAmount || 0).toFixed(2)} AZN</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Qalan borc:</span>
-                        <span className="font-bold text-red-600">{(order.remaining_amount || order.remainingAmount || 0).toFixed(2)} AZN</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Ödəniş məbləği (AZN)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value)}
-                        placeholder="0.00"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D90429]/20 focus:border-[#D90429]"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      {[10, 20, 50].map((amt) => {
-                        const order = userOrders.find((o: any) => o.id === paymentOrderId);
-                        const maxAmt = order ? Number(order.remaining_amount || order.remainingAmount || 0) : 0;
-                        if (amt > maxAmt) return null;
-                        return (
-                          <button
-                            key={amt}
-                            onClick={() => setPaymentAmount(amt.toString())}
-                            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
-                          >
-                            {amt} AZN
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => {
-                          const order = userOrders.find((o: any) => o.id === paymentOrderId);
-                          if (order) {
-                            setPaymentAmount((order.remaining_amount || order.remainingAmount || 0).toString());
-                          }
-                        }}
-                        className="px-4 py-2 bg-[#D90429]/10 hover:bg-[#D90429]/20 rounded-lg text-sm font-medium text-[#D90429] transition-colors"
-                      >
-                        Tam Borc
-                      </button>
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => setShowPaymentModal(false)}
-                        className="flex-1"
-                      >
-                        Ləğv
-                      </Button>
-                      <Button
-                        onClick={handlePaymentSubmit}
-                        disabled={paymentProcessing || !paymentAmount}
-                        className="flex-1 bg-gradient-to-r from-[#16A34A] to-[#15803D] hover:shadow-lg hover:shadow-green-500/30"
-                        icon={paymentProcessing ? <RefreshCw className="animate-spin w-4 h-4" /> : <DollarSign className="w-4 h-4" />}
-                      >
-                        {paymentProcessing ? "Gözləyin..." : "Ödəniş Et"}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedTimelineOrder && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            onClick={() => setSelectedTimelineOrder(null)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 16 }}
-              className="bg-white rounded-2xl w-full max-w-xl p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-[#1F2937]">Sifariş Timeline</h3>
-                <button onClick={() => setSelectedTimelineOrder(null)} className="p-2 hover:bg-gray-100 rounded-lg">
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-              <p className="text-sm text-[#6B7280] mb-4">
-                #{selectedTimelineOrder.orderNumber || selectedTimelineOrder.order_number || selectedTimelineOrder.id}
-              </p>
-              <OrderTimeline currentStatus={normalizeOrderStatus(selectedTimelineOrder.status)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {selectedInvoiceOrder && (
-        <InvoiceGenerator
-          order={{
-            id: String(selectedInvoiceOrder.id),
-            orderNumber: selectedInvoiceOrder.orderNumber || selectedInvoiceOrder.order_number,
-            customerName: selectedInvoiceOrder.customerName || selectedInvoiceOrder.customer_name,
-            customerPhone: selectedInvoiceOrder.customerPhone || selectedInvoiceOrder.customer_phone,
-            customerAddress: selectedInvoiceOrder.customerAddress || selectedInvoiceOrder.customer_address,
-            status: selectedInvoiceOrder.status,
-            totalAmount: Number(selectedInvoiceOrder.totalAmount || 0),
-            createdAt: selectedInvoiceOrder.createdAt,
-            items: (selectedInvoiceOrder.items || []).map((item: any) => ({
-              productName: item.productName || item.product_name,
-              quantity: Number(item.quantity || 1),
-              unitPrice: Number(item.unitPrice || item.unit_price || 0),
-              lineTotal: Number(item.lineTotal || item.line_total || 0),
-            })),
-          }}
-          onClose={() => setSelectedInvoiceOrder(null)}
-        />
-      )}
+      </div>
     </div>
   );
 }

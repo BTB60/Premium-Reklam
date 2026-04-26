@@ -6,6 +6,7 @@ import { authApi } from "@/lib/authApi";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
 import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNotificationsMarkAllButton";
+import ElanWidget from "@/components/ElanWidget";
 import { Button } from "@/components/ui/Button";
 import { LogOut, RefreshCw } from "lucide-react";
 
@@ -95,6 +96,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ElanWidget />
             <ServerNotificationsMarkAllButton className="hidden sm:inline" />
             <NotificationBell />
             <Button variant="ghost" size="sm" onClick={handleRefresh} icon={<RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />}>
