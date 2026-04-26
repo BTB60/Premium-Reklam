@@ -117,8 +117,8 @@ function MiniSparkline({ data, color = "#ff6600" }: { data: number[]; color?: st
     .join(" ");
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-8 w-24 overflow-visible" aria-hidden>
-      <polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-7 w-full max-w-[5.5rem] shrink-0 overflow-hidden" aria-hidden>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -139,20 +139,30 @@ function DashboardMetricCard({
   trend: number[];
 }) {
   return (
-    <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${color}18`, color }}>
-            <Icon className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-[#64748B]">{label}</p>
-            <p className="text-2xl font-black text-[#0F172A] mt-0.5">{value}</p>
-          </div>
+    <div className="rounded-2xl border border-[#E8ECF3] bg-gradient-to-b from-white to-[#F8FAFC] p-4 shadow-sm min-w-0 overflow-hidden">
+      <div className="flex items-start gap-3">
+        <div
+          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex shrink-0 items-center justify-center"
+          style={{ backgroundColor: `${color}18`, color }}
+        >
+          <Icon className="w-5 h-5" />
         </div>
-        <MiniSparkline data={trend} color={color} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-[#64748B] truncate">{label}</p>
+          <p className="mt-1 text-lg sm:text-xl lg:text-2xl font-black text-[#0F172A] tabular-nums leading-tight break-all">
+            {value}
+          </p>
+        </div>
+        <div className="shrink-0 pt-0.5 hidden sm:block">
+          <MiniSparkline data={trend} color={color} />
+        </div>
       </div>
-      <p className="text-xs text-[#94A3B8] mt-3">{hint}</p>
+      <div className="mt-3 flex items-end justify-between gap-2 border-t border-[#EEF2F7] pt-3">
+        <p className="text-[11px] sm:text-xs text-[#94A3B8] leading-snug min-w-0 flex-1 line-clamp-2">{hint}</p>
+        <div className="sm:hidden shrink-0">
+          <MiniSparkline data={trend} color={color} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -687,7 +697,7 @@ export default function DashboardPage() {
         {/* Home Tab */}
         {activeTab === "home" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-            <div className="grid lg:grid-cols-[17rem_1fr] gap-6 items-start">
+            <div className="grid lg:grid-cols-[17rem_minmax(0,1fr)] gap-6 items-start min-w-0">
               <aside className="hidden lg:block sticky top-28 space-y-4">
                 <div className="rounded-2xl border border-white bg-white/80 p-4 shadow-sm backdrop-blur-xl">
                   <div className="flex items-center gap-3">
@@ -729,7 +739,7 @@ export default function DashboardPage() {
                 </div>
               </aside>
 
-              <div className="space-y-6">
+              <div className="space-y-6 min-w-0">
             <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#111827] via-[#2B0A12] to-[#D90429] p-5 sm:p-7 lg:p-8 text-white shadow-2xl shadow-[#D90429]/15">
               <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
               <div className="absolute bottom-0 right-10 h-28 w-28 rounded-full bg-[#EF476F]/30 blur-xl" />
@@ -767,24 +777,32 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-                    <p className="text-xs text-white/65">Qalıq borc</p>
-                    <p className="mt-1 text-2xl font-black">{(orderSummary?.totalDebt || 0).toFixed(2)}</p>
-                    <p className="text-xs text-white/65">AZN</p>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
+                  <div className="min-w-0 rounded-2xl border border-white/15 bg-white/10 p-3 sm:p-4 backdrop-blur">
+                    <p className="text-[10px] sm:text-xs text-white/65 truncate">Qalıq borc</p>
+                    <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums truncate">
+                      {(orderSummary?.totalDebt || 0).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-white/65">AZN</p>
                   </div>
-                  <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-                    <p className="text-xs text-white/65">Bu ay bonus əsası</p>
-                    <p className="mt-1 text-2xl font-black">{(orderSummary?.monthOrderAmount || 0).toFixed(0)}</p>
-                    <p className="text-xs text-white/65">AZN</p>
+                  <div className="min-w-0 rounded-2xl border border-white/15 bg-white/10 p-3 sm:p-4 backdrop-blur">
+                    <p className="text-[10px] sm:text-xs text-white/65 truncate">Bu ay bonus əsası</p>
+                    <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums truncate">
+                      {(orderSummary?.monthOrderAmount || 0).toFixed(0)}
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-white/65">AZN</p>
                   </div>
-                  <div className="col-span-2 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-xs text-white/65">Bonus progress</p>
-                        <p className="mt-1 text-sm font-semibold text-white/90">{loyaltyBonus.hint}</p>
+                  <div className="col-span-2 min-w-0 rounded-2xl border border-white/15 bg-white/10 p-3 sm:p-4 backdrop-blur">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] sm:text-xs text-white/65">Bonus progress</p>
+                        <p className="mt-0.5 text-xs sm:text-sm font-semibold text-white/90 leading-snug break-words">
+                          {loyaltyBonus.hint}
+                        </p>
                       </div>
-                      <span className="text-xl font-black">{loyaltyBonus.progressPercent.toFixed(0)}%</span>
+                      <span className="text-lg sm:text-xl font-black tabular-nums shrink-0">
+                        {loyaltyBonus.progressPercent.toFixed(0)}%
+                      </span>
                     </div>
                     <div className="mt-3 h-2 rounded-full bg-white/15 overflow-hidden">
                       <div
@@ -823,7 +841,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
               <DashboardMetricCard
                 label="Ümumi sifariş"
                 value={String(userOrders.length)}
@@ -858,19 +876,19 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-white bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div>
-                  <h3 className="font-black text-[#0F172A] flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-[#ff6600]" />
-                    Sifariş statistikası
+            <div className="rounded-2xl border border-white bg-white p-4 sm:p-5 shadow-sm min-w-0 overflow-hidden">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-4 min-w-0">
+                <div className="min-w-0">
+                  <h3 className="font-black text-[#0F172A] flex items-center gap-2 text-base sm:text-lg">
+                    <BarChart3 className="w-5 h-5 shrink-0 text-[#ff6600]" />
+                    <span className="truncate">Sifariş statistikası</span>
                   </h3>
-                  <p className="text-xs text-[#64748B] mt-1">Son 7 gün üzrə sifariş sayı və məbləğ dinamikası</p>
+                  <p className="text-xs text-[#64748B] mt-1 leading-snug">Son 7 gün üzrə sifariş sayı və məbləğ dinamikası</p>
                 </div>
               </div>
-              <div className="h-72">
+              <div className="h-64 sm:h-72 w-full min-w-0 -mx-1 px-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dashboardChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <AreaChart data={dashboardChartData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
                     <defs>
                       <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#ff6600" stopOpacity={0.35} />
@@ -958,42 +976,52 @@ export default function DashboardPage() {
             )}
 
             {/* Monthly Summary */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
+            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 min-w-0">
+              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
                 <p className="text-xs text-blue-600 font-medium">Bu Gün Sifariş</p>
-                <p className="text-3xl font-bold text-blue-700">{orderSummary?.todayOrderCount || 0}</p>
-                <p className="text-xs text-blue-500 mt-1">{(orderSummary?.todayOrderAmount || 0).toFixed(2)} AZN</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-700 tabular-nums mt-1">
+                  {orderSummary?.todayOrderCount || 0}
+                </p>
+                <p className="text-xs text-blue-500 mt-1 tabular-nums break-all">
+                  {(orderSummary?.todayOrderAmount || 0).toFixed(2)} AZN
+                </p>
               </Card>
-              
-              <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                <p className="text-xs text-purple-600 font-medium">Bu ay — bonus əsası</p>
-                <p className="text-3xl font-bold text-purple-700">{(orderSummary?.monthOrderAmount || 0).toFixed(2)} AZN</p>
-                <p className="text-[10px] text-purple-600/80 mt-1 leading-snug">
+
+              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+                <p className="text-xs text-purple-600 font-medium leading-snug">Bu ay — bonus əsası</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-700 tabular-nums mt-1 break-all leading-tight">
+                  {(orderSummary?.monthOrderAmount || 0).toFixed(2)} AZN
+                </p>
+                <p className="text-[10px] text-purple-600/80 mt-2 leading-snug">
                   Təsdiqlənmiş sifarişlər, baza (endirimdən əvvəl)
                 </p>
               </Card>
 
-              <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
+              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
                 <p className="text-xs text-green-600 font-medium">Ümumi Ödəniş</p>
-                <p className="text-3xl font-bold text-green-700">{(orderSummary?.totalPaid || 0).toFixed(2)} AZN</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-700 tabular-nums mt-1 break-all leading-tight">
+                  {(orderSummary?.totalPaid || 0).toFixed(2)} AZN
+                </p>
               </Card>
 
-              <Card className="p-4 bg-gradient-to-br from-red-50 to-red-100 border border-red-200">
+              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-red-50 to-red-100 border border-red-200">
                 <p className="text-xs text-red-600 font-medium">Ümumi Borc</p>
-                <p className="text-3xl font-bold text-red-700">{(orderSummary?.totalDebt || 0).toFixed(2)} AZN</p>
+                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-700 tabular-nums mt-1 break-all leading-tight">
+                  {(orderSummary?.totalDebt || 0).toFixed(2)} AZN
+                </p>
               </Card>
             </div>
 
             {/* Quick Order Button */}
-            <Card className="p-6 mb-6 bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-bold mb-1">Məhsul sifarişi</h3>
-                  <p className="opacity-90 text-sm">Məhsul seçin və ölçüləri daxil edin</p>
+            <Card className="p-5 sm:p-6 mb-6 bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white overflow-hidden">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
+                <div className="min-w-0">
+                  <h3 className="text-lg sm:text-xl font-bold mb-1">Məhsul sifarişi</h3>
+                  <p className="opacity-90 text-sm leading-snug">Məhsul seçin və ölçüləri daxil edin</p>
                 </div>
                 <Button
                   onClick={() => router.push("/dashboard/products")}
-                  className="bg-white text-[#D90429] hover:bg-gray-100"
+                  className="bg-white text-[#D90429] hover:bg-gray-100 w-full sm:w-auto shrink-0"
                   icon={<Plus className="w-4 h-4" />}
                 >
                   Sifariş Et
@@ -1061,10 +1089,10 @@ export default function DashboardPage() {
               </Card>
             </div>
 
-            <Card className="p-5 mb-6">
+            <Card className="p-4 sm:p-5 mb-6 min-w-0 overflow-hidden">
               <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-3">
-                <Route className="w-4 h-4 text-[#D90429]" />
-                Borc Detalları
+                <Route className="w-4 h-4 shrink-0 text-[#D90429]" />
+                Borc detalları
               </h3>
               <div className="space-y-2">
                 {userOrders.slice(0, 4).map((order) => {
@@ -1072,11 +1100,27 @@ export default function DashboardPage() {
                   const paid = Number(order.paidAmount || order.paid_amount || 0);
                   const remaining = Number(order.remainingAmount || order.remaining_amount || 0);
                   return (
-                    <div key={order.id} className="flex items-center justify-between text-sm bg-[#F9FAFB] rounded-lg p-3">
-                      <span className="text-[#1F2937] font-medium">#{order.orderNumber || order.order_number || order.id}</span>
-                      <span className="text-[#6B7280]">Ümumi: {total.toFixed(2)} AZN</span>
-                      <span className="text-[#16A34A]">Ödənilib: {paid.toFixed(2)} AZN</span>
-                      <span className="text-[#DC2626]">Qalıq: {remaining.toFixed(2)} AZN</span>
+                    <div
+                      key={order.id}
+                      className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-xs sm:text-sm min-w-0"
+                    >
+                      <p className="font-semibold text-[#1F2937] truncate">
+                        #{order.orderNumber || order.order_number || order.id}
+                      </p>
+                      <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                        <div className="tabular-nums text-[#6B7280]">
+                          <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] block">Ümumi</span>
+                          {total.toFixed(2)} AZN
+                        </div>
+                        <div className="tabular-nums text-[#16A34A]">
+                          <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] block">Ödənilib</span>
+                          {paid.toFixed(2)} AZN
+                        </div>
+                        <div className="tabular-nums text-[#DC2626]">
+                          <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] block">Qalıq</span>
+                          {remaining.toFixed(2)} AZN
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1104,22 +1148,34 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid gap-3">
                   {userOrders.slice(0, 5).map((order) => (
-                    <Card key={order.id} className="p-4 flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-[#1F2937]">#{order.orderNumber}</p>
-                        <p className="text-xs text-[#6B7280]">
-                          {new Date(order.createdAt).toLocaleDateString("az-AZ")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-semibold text-[#1F2937]">{order.totalAmount?.toFixed(2)} AZN</p>
-                          <p className="text-xs text-[#6B7280]">{order.items?.length || 0} məhsul</p>
+                    <Card key={order.id} className="p-4 min-w-0 overflow-hidden">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-[#1F2937] truncate">
+                            #{order.orderNumber || order.order_number || order.id}
+                          </p>
+                          <p className="text-xs text-[#6B7280]">
+                            {new Date(order.createdAt).toLocaleDateString("az-AZ")}
+                          </p>
                         </div>
-                        <StatusBadge status={order.status?.toLowerCase() || "pending"} />
-                        <Button size="sm" variant="ghost" onClick={() => handleReorder(order)} icon={<Repeat className="w-4 h-4" />}>
-                          Təkrar
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
+                          <div className="text-left sm:text-right min-w-0">
+                            <p className="font-semibold text-[#1F2937] tabular-nums">
+                              {Number(order.totalAmount || 0).toFixed(2)} AZN
+                            </p>
+                            <p className="text-xs text-[#6B7280]">{order.items?.length || 0} məhsul</p>
+                          </div>
+                          <StatusBadge status={order.status?.toLowerCase() || "pending"} />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleReorder(order)}
+                            icon={<Repeat className="w-4 h-4" />}
+                            className="shrink-0"
+                          >
+                            Təkrar
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   ))}
