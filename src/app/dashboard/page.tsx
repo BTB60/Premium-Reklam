@@ -103,22 +103,27 @@ function dateInYearMonth(d: Date, ym: string): boolean {
 }
 
 function MiniSparkline({ data, color = "#ff6600" }: { data: number[]; color?: string }) {
-  const width = 92;
-  const height = 32;
+  const width = 64;
+  const height = 20;
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
   const range = Math.max(1, max - min);
   const points = data
     .map((v, i) => {
       const x = data.length === 1 ? 0 : (i / (data.length - 1)) * width;
-      const y = height - ((v - min) / range) * (height - 4) - 2;
+      const y = height - ((v - min) / range) * (height - 3) - 1.5;
       return `${x},${y}`;
     })
     .join(" ");
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-7 w-full max-w-[5.5rem] shrink-0 overflow-hidden" aria-hidden>
-      <polyline points={points} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-4 w-full max-w-[4rem] shrink-0 overflow-hidden"
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <polyline points={points} fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -139,30 +144,23 @@ function DashboardMetricCard({
   trend: number[];
 }) {
   return (
-    <div className="rounded-2xl border border-[#E8ECF3] bg-gradient-to-b from-white to-[#F8FAFC] p-4 shadow-sm min-w-0 overflow-hidden">
-      <div className="flex items-start gap-3">
+    <div className="rounded-xl border border-[#E5E9F0] bg-white p-2.5 sm:p-3 shadow-sm min-w-0 max-w-full overflow-hidden">
+      <div className="flex items-center gap-2 min-w-0">
         <div
-          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex shrink-0 items-center justify-center"
-          style={{ backgroundColor: `${color}18`, color }}
+          className="w-7 h-7 rounded-lg flex shrink-0 items-center justify-center"
+          style={{ backgroundColor: `${color}14`, color }}
         >
-          <Icon className="w-5 h-5" />
+          <Icon className="w-3.5 h-3.5" />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wide text-[#64748B] truncate">{label}</p>
-          <p className="mt-1 text-lg sm:text-xl lg:text-2xl font-black text-[#0F172A] tabular-nums leading-tight break-all">
-            {value}
-          </p>
-        </div>
-        <div className="shrink-0 pt-0.5 hidden sm:block">
-          <MiniSparkline data={trend} color={color} />
-        </div>
+        <p className="text-[10px] font-medium uppercase tracking-wide text-[#64748B] truncate min-w-0 flex-1 leading-tight">
+          {label}
+        </p>
+        <MiniSparkline data={trend} color={color} />
       </div>
-      <div className="mt-3 flex items-end justify-between gap-2 border-t border-[#EEF2F7] pt-3">
-        <p className="text-[11px] sm:text-xs text-[#94A3B8] leading-snug min-w-0 flex-1 line-clamp-2">{hint}</p>
-        <div className="sm:hidden shrink-0">
-          <MiniSparkline data={trend} color={color} />
-        </div>
-      </div>
+      <p className="mt-1.5 text-sm sm:text-base font-bold text-[#0F172A] tabular-nums leading-tight truncate" title={value}>
+        {value}
+      </p>
+      <p className="mt-1 text-[10px] text-[#94A3B8] leading-snug line-clamp-2">{hint}</p>
     </div>
   );
 }
@@ -739,24 +737,24 @@ export default function DashboardPage() {
                 </div>
               </aside>
 
-              <div className="space-y-6 min-w-0">
-            <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#111827] via-[#2B0A12] to-[#D90429] p-5 sm:p-7 lg:p-8 text-white shadow-2xl shadow-[#D90429]/15">
+              <div className="space-y-4 sm:space-y-5 min-w-0">
+            <section className="relative overflow-hidden rounded-2xl sm:rounded-[24px] bg-gradient-to-br from-[#111827] via-[#2B0A12] to-[#D90429] p-4 sm:p-6 lg:p-7 text-white shadow-xl shadow-[#D90429]/12">
               <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
               <div className="absolute bottom-0 right-10 h-28 w-28 rounded-full bg-[#EF476F]/30 blur-xl" />
-              <div className="relative grid lg:grid-cols-[1.25fr_.75fr] gap-6 items-end">
-                <div>
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs font-semibold backdrop-blur">
-                    <Award className="w-4 h-4" />
-                    Premium idarəetmə paneli
+              <div className="relative grid lg:grid-cols-[1.2fr_.8fr] gap-4 sm:gap-5 items-end min-w-0">
+                <div className="min-w-0">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-0.5 text-[10px] sm:text-xs font-semibold backdrop-blur">
+                    <Award className="w-3.5 h-3.5 shrink-0" />
+                    Premium panel
                   </span>
-                  <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">
+                  <h1 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight break-words">
                     Salam, {String(user.fullName || user.username || "istifadəçi").split(" ")[0]}.
                   </h1>
-                  <p className="mt-3 max-w-2xl text-sm sm:text-base text-white/78 leading-relaxed">
+                  <p className="mt-2 max-w-2xl text-xs sm:text-sm text-white/75 leading-relaxed">
                     Sifarişlərinizi, ödənişlərinizi, bonus progressinizi və dəstək yazışmalarını bir paneldən izləyin.
                   </p>
 
-                  <div className="mt-6 flex flex-wrap gap-3">
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <Button
                       variant="secondary"
                       onClick={() => router.push("/dashboard/orders")}
@@ -777,34 +775,34 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 sm:gap-3 min-w-0">
-                  <div className="min-w-0 rounded-2xl border border-white/15 bg-white/10 p-3 sm:p-4 backdrop-blur">
-                    <p className="text-[10px] sm:text-xs text-white/65 truncate">Qalıq borc</p>
-                    <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums truncate">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2 min-w-0">
+                  <div className="min-w-0 rounded-xl border border-white/15 bg-white/10 p-2 sm:p-2.5 backdrop-blur">
+                    <p className="text-[9px] sm:text-[10px] text-white/65 truncate">Qalıq borc</p>
+                    <p className="mt-0.5 text-sm sm:text-base font-black tabular-nums truncate">
                       {(orderSummary?.totalDebt || 0).toFixed(2)}
                     </p>
-                    <p className="text-[10px] sm:text-xs text-white/65">AZN</p>
+                    <p className="text-[9px] text-white/55">AZN</p>
                   </div>
-                  <div className="min-w-0 rounded-2xl border border-white/15 bg-white/10 p-3 sm:p-4 backdrop-blur">
-                    <p className="text-[10px] sm:text-xs text-white/65 truncate">Bu ay bonus əsası</p>
-                    <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums truncate">
+                  <div className="min-w-0 rounded-xl border border-white/15 bg-white/10 p-2 sm:p-2.5 backdrop-blur">
+                    <p className="text-[9px] sm:text-[10px] text-white/65 truncate">Bu ay bonus əsası</p>
+                    <p className="mt-0.5 text-sm sm:text-base font-black tabular-nums truncate">
                       {(orderSummary?.monthOrderAmount || 0).toFixed(0)}
                     </p>
-                    <p className="text-[10px] sm:text-xs text-white/65">AZN</p>
+                    <p className="text-[9px] text-white/55">AZN</p>
                   </div>
-                  <div className="col-span-2 min-w-0 rounded-2xl border border-white/15 bg-white/10 p-3 sm:p-4 backdrop-blur">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <div className="col-span-2 min-w-0 rounded-xl border border-white/15 bg-white/10 p-2 sm:p-2.5 backdrop-blur">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] sm:text-xs text-white/65">Bonus progress</p>
-                        <p className="mt-0.5 text-xs sm:text-sm font-semibold text-white/90 leading-snug break-words">
+                        <p className="text-[9px] sm:text-[10px] text-white/65">Bonus progress</p>
+                        <p className="mt-0.5 text-[10px] sm:text-xs font-medium text-white/85 leading-snug line-clamp-2">
                           {loyaltyBonus.hint}
                         </p>
                       </div>
-                      <span className="text-lg sm:text-xl font-black tabular-nums shrink-0">
+                      <span className="text-sm sm:text-base font-black tabular-nums shrink-0">
                         {loyaltyBonus.progressPercent.toFixed(0)}%
                       </span>
                     </div>
-                    <div className="mt-3 h-2 rounded-full bg-white/15 overflow-hidden">
+                    <div className="mt-2 h-1.5 rounded-full bg-white/15 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-white"
                         style={{ width: `${loyaltyBonus.progressPercent}%` }}
@@ -815,7 +813,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 min-w-0">
               {[
                 {
                   label: "Ödəniş bildir",
@@ -830,18 +828,22 @@ export default function DashboardPage() {
                   key={item.label}
                   type="button"
                   onClick={item.action}
-                  className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                  className="group rounded-xl border border-[#E5E7EB] bg-white p-2.5 sm:p-3 text-left shadow-sm transition hover:shadow-md min-w-0"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#D90429]/10 text-[#D90429] flex items-center justify-center mb-3 group-hover:bg-[#D90429] group-hover:text-white transition">
-                    <item.icon className="w-5 h-5" />
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-[#D90429]/10 text-[#D90429] flex shrink-0 items-center justify-center group-hover:bg-[#D90429] group-hover:text-white transition">
+                      <item.icon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[#1F2937] truncate">{item.label}</p>
+                      <p className="text-[11px] text-[#6B7280] mt-0.5 line-clamp-2 leading-snug">{item.hint}</p>
+                    </div>
                   </div>
-                  <p className="font-bold text-[#1F2937]">{item.label}</p>
-                  <p className="text-xs text-[#6B7280] mt-1">{item.hint}</p>
                 </button>
               ))}
             </div>
 
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+            <div className="grid grid-cols-1 min-[360px]:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5 min-w-0">
               <DashboardMetricCard
                 label="Ümumi sifariş"
                 value={String(userOrders.length)}
@@ -876,36 +878,34 @@ export default function DashboardPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-white bg-white p-4 sm:p-5 shadow-sm min-w-0 overflow-hidden">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-4 min-w-0">
-                <div className="min-w-0">
-                  <h3 className="font-black text-[#0F172A] flex items-center gap-2 text-base sm:text-lg">
-                    <BarChart3 className="w-5 h-5 shrink-0 text-[#ff6600]" />
-                    <span className="truncate">Sifariş statistikası</span>
-                  </h3>
-                  <p className="text-xs text-[#64748B] mt-1 leading-snug">Son 7 gün üzrə sifariş sayı və məbləğ dinamikası</p>
-                </div>
+            <div className="rounded-xl border border-[#E8ECF3] bg-white p-3 sm:p-4 shadow-sm min-w-0 overflow-hidden">
+              <div className="mb-2 sm:mb-3 min-w-0">
+                <h3 className="font-bold text-[#0F172A] flex items-center gap-1.5 text-sm sm:text-base">
+                  <BarChart3 className="w-4 h-4 shrink-0 text-[#ff6600]" />
+                  <span className="truncate">Sifariş statistikası</span>
+                </h3>
+                <p className="text-[10px] sm:text-xs text-[#64748B] mt-0.5 leading-snug">Son 7 gün — say və məbləğ</p>
               </div>
-              <div className="h-64 sm:h-72 w-full min-w-0 -mx-1 px-1">
+              <div className="h-44 sm:h-52 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dashboardChartData} margin={{ top: 8, right: 8, left: 4, bottom: 4 }}>
+                  <AreaChart data={dashboardChartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#ff6600" stopOpacity={0.35} />
+                        <stop offset="5%" stopColor="#ff6600" stopOpacity={0.3} />
                         <stop offset="95%" stopColor="#ff6600" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E8ECF0" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#64748B" }} axisLine={false} tickLine={false} interval={0} />
+                    <YAxis width={32} tick={{ fontSize: 10, fill: "#94A3B8" }} axisLine={false} tickLine={false} tickFormatter={(v) => String(v)} />
                     <Tooltip
-                      contentStyle={{ borderRadius: 16, border: "1px solid #E2E8F0" }}
+                      contentStyle={{ borderRadius: 10, border: "1px solid #E2E8F0", fontSize: 12 }}
                       formatter={(value: number, name: string) => [
                         name === "amount" ? `${Number(value).toFixed(2)} AZN` : value,
                         name === "amount" ? "Məbləğ" : "Sifariş",
                       ]}
                     />
-                    <Area type="monotone" dataKey="amount" stroke="#ff6600" fill="url(#ordersGradient)" strokeWidth={3} />
+                    <Area type="monotone" dataKey="amount" stroke="#ff6600" fill="url(#ordersGradient)" strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -976,52 +976,50 @@ export default function DashboardPage() {
             )}
 
             {/* Monthly Summary */}
-            <div className="grid grid-cols-1 min-[380px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 min-w-0">
-              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
-                <p className="text-xs text-blue-600 font-medium">Bu Gün Sifariş</p>
-                <p className="text-2xl sm:text-3xl font-bold text-blue-700 tabular-nums mt-1">
+            <div className="grid grid-cols-1 min-[340px]:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 min-w-0">
+              <Card className="min-w-0 overflow-hidden p-2.5 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl">
+                <p className="text-[10px] sm:text-xs text-blue-600 font-medium leading-tight">Bu gün sifariş</p>
+                <p className="text-lg sm:text-xl font-bold text-blue-700 tabular-nums mt-0.5 truncate">
                   {orderSummary?.todayOrderCount || 0}
                 </p>
-                <p className="text-xs text-blue-500 mt-1 tabular-nums break-all">
+                <p className="text-[10px] sm:text-xs text-blue-500 mt-0.5 tabular-nums truncate">
                   {(orderSummary?.todayOrderAmount || 0).toFixed(2)} AZN
                 </p>
               </Card>
 
-              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                <p className="text-xs text-purple-600 font-medium leading-snug">Bu ay — bonus əsası</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-700 tabular-nums mt-1 break-all leading-tight">
+              <Card className="min-w-0 overflow-hidden p-2.5 sm:p-3 bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-xl">
+                <p className="text-[10px] sm:text-xs text-purple-600 font-medium leading-tight line-clamp-2">Bu ay bonus əsası</p>
+                <p className="text-base sm:text-lg font-bold text-purple-700 tabular-nums mt-0.5 truncate leading-tight">
                   {(orderSummary?.monthOrderAmount || 0).toFixed(2)} AZN
                 </p>
-                <p className="text-[10px] text-purple-600/80 mt-2 leading-snug">
-                  Təsdiqlənmiş sifarişlər, baza (endirimdən əvvəl)
-                </p>
+                <p className="text-[9px] text-purple-600/80 mt-1 leading-snug line-clamp-2">Baza (endirimdən əvvəl)</p>
               </Card>
 
-              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
-                <p className="text-xs text-green-600 font-medium">Ümumi Ödəniş</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-700 tabular-nums mt-1 break-all leading-tight">
+              <Card className="min-w-0 overflow-hidden p-2.5 sm:p-3 bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl">
+                <p className="text-[10px] sm:text-xs text-green-600 font-medium">Ümumi ödəniş</p>
+                <p className="text-base sm:text-lg font-bold text-green-700 tabular-nums mt-0.5 truncate leading-tight">
                   {(orderSummary?.totalPaid || 0).toFixed(2)} AZN
                 </p>
               </Card>
 
-              <Card className="min-w-0 overflow-hidden p-4 bg-gradient-to-br from-red-50 to-red-100 border border-red-200">
-                <p className="text-xs text-red-600 font-medium">Ümumi Borc</p>
-                <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-700 tabular-nums mt-1 break-all leading-tight">
+              <Card className="min-w-0 overflow-hidden p-2.5 sm:p-3 bg-gradient-to-br from-red-50 to-red-100 border border-red-200 rounded-xl">
+                <p className="text-[10px] sm:text-xs text-red-600 font-medium">Ümumi borc</p>
+                <p className="text-base sm:text-lg font-bold text-red-700 tabular-nums mt-0.5 truncate leading-tight">
                   {(orderSummary?.totalDebt || 0).toFixed(2)} AZN
                 </p>
               </Card>
             </div>
 
             {/* Quick Order Button */}
-            <Card className="p-5 sm:p-6 mb-6 bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white overflow-hidden">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
+            <Card className="p-3 sm:p-4 mb-4 bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white overflow-hidden rounded-xl">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
                 <div className="min-w-0">
-                  <h3 className="text-lg sm:text-xl font-bold mb-1">Məhsul sifarişi</h3>
-                  <p className="opacity-90 text-sm leading-snug">Məhsul seçin və ölçüləri daxil edin</p>
+                  <h3 className="text-base sm:text-lg font-bold">Məhsul sifarişi</h3>
+                  <p className="opacity-90 text-xs sm:text-sm leading-snug mt-0.5">Məhsul seçin və ölçüləri daxil edin</p>
                 </div>
                 <Button
                   onClick={() => router.push("/dashboard/products")}
-                  className="bg-white text-[#D90429] hover:bg-gray-100 w-full sm:w-auto shrink-0"
+                  className="bg-white text-[#D90429] hover:bg-gray-100 w-full sm:w-auto shrink-0 text-sm py-2"
                   icon={<Plus className="w-4 h-4" />}
                 >
                   Sifariş Et
@@ -1029,42 +1027,41 @@ export default function DashboardPage() {
               </div>
             </Card>
 
-            <div className="grid md:grid-cols-3 gap-4 mb-6">
-              <Card className="p-4">
-                <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
-                  <Calculator className="w-4 h-4 text-[#D90429]" />
-                  Ödəniş Planı
+            <div className="grid md:grid-cols-3 gap-2 sm:gap-3 mb-4">
+              <Card className="p-3 rounded-xl min-w-0 overflow-hidden">
+                <h3 className="text-sm font-semibold text-[#1F2937] flex items-center gap-1.5 mb-1.5">
+                  <Calculator className="w-3.5 h-3.5 shrink-0 text-[#D90429]" />
+                  Ödəniş planı
                 </h3>
-                <p className="text-xs text-[#6B7280] mb-3">Borc 1 aya planlanır və həftəlik ödəniş göstərilir.</p>
-                <p className="text-xs text-[#6B7280] mt-2">1 ay (4 həftə)</p>
-                <p className="text-lg font-bold text-[#D90429] mt-1">
+                <p className="text-[11px] text-[#6B7280] mb-2 leading-snug">Borc 1 aya; həftəlik ödəniş.</p>
+                <p className="text-[10px] text-[#6B7280]">1 ay (4 həftə)</p>
+                <p className="text-sm font-bold text-[#D90429] mt-0.5 tabular-nums truncate">
                   {((orderSummary?.totalDebt || 0) / 4).toFixed(2)} AZN/həftə
                 </p>
               </Card>
 
-              <Card className="p-4">
-                <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
-                  <Award className="w-4 h-4 text-[#16A34A]" />
-                  Bonus endirim proqramı
+              <Card className="p-3 rounded-xl min-w-0 overflow-hidden">
+                <h3 className="text-sm font-semibold text-[#1F2937] flex items-center gap-1.5 mb-1.5">
+                  <Award className="w-3.5 h-3.5 shrink-0 text-[#16A34A]" />
+                  Bonus proqramı
                 </h3>
-                <p className="text-xs text-[#6B7280] mb-2">
-                  Bu ay sifariş məbləği (bonus üçün):{" "}
-                  <span className="font-medium text-[#1F2937]">{loyaltyBonus.spent.toFixed(0)} AZN</span>
+                <p className="text-[11px] text-[#6B7280] mb-1.5 leading-snug line-clamp-3">
+                  Bu ay (bonus):{" "}
+                  <span className="font-medium text-[#1F2937] tabular-nums">{loyaltyBonus.spent.toFixed(0)} AZN</span>
                   {loyaltyBonus.activePercent > 0 && (
                     <>
                       {" "}
-                      · aktiv:{" "}
-                      <span className="font-medium text-[#16A34A]">{loyaltyBonus.activePercent}%</span>
+                      · <span className="font-medium text-[#16A34A]">{loyaltyBonus.activePercent}%</span>
                     </>
                   )}
                 </p>
-                <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-[#16A34A] to-[#22C55E] transition-all"
                     style={{ width: `${loyaltyBonus.progressPercent}%` }}
                   />
                 </div>
-                <p className="text-xs text-[#6B7280] mt-2">{loyaltyBonus.hint}</p>
+                <p className="text-[10px] text-[#6B7280] mt-1.5 line-clamp-2">{loyaltyBonus.hint}</p>
                 <p className="text-[10px] text-[#9CA3AF] mt-1 leading-snug">
                   Yalnız admin təsdiqləyən sifarişlərin baza məbləği sayılır; &quot;gözləyir&quot; statusu bonusa
                   düşmür.
@@ -1077,24 +1074,26 @@ export default function DashboardPage() {
                 )}
               </Card>
 
-              <Card className="p-4">
-                <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-2">
-                  <MessageCircle className="w-4 h-4 text-[#3B82F6]" />
-                  Sürətli Dəstək
+              <Card className="p-3 rounded-xl min-w-0 overflow-hidden">
+                <h3 className="text-sm font-semibold text-[#1F2937] flex items-center gap-1.5 mb-1.5">
+                  <MessageCircle className="w-3.5 h-3.5 shrink-0 text-[#3B82F6]" />
+                  Dəstək
                 </h3>
-                <p className="text-xs text-[#6B7280] mb-3">Sifarişə aid sualınız varsa dərhal yazın.</p>
+                <p className="text-[11px] text-[#6B7280] mb-2 leading-snug">Sifariş sualı üçün yazın.</p>
                 <Link href="/dashboard/support">
-                  <Button size="sm" className="w-full">Dəstəyə Yaz</Button>
+                  <Button size="sm" className="w-full text-xs py-1.5">
+                    Dəstəyə yaz
+                  </Button>
                 </Link>
               </Card>
             </div>
 
-            <Card className="p-4 sm:p-5 mb-6 min-w-0 overflow-hidden">
-              <h3 className="font-semibold text-[#1F2937] flex items-center gap-2 mb-3">
-                <Route className="w-4 h-4 shrink-0 text-[#D90429]" />
+            <Card className="p-3 sm:p-4 mb-4 min-w-0 overflow-hidden rounded-xl">
+              <h3 className="text-sm font-semibold text-[#1F2937] flex items-center gap-1.5 mb-2">
+                <Route className="w-3.5 h-3.5 shrink-0 text-[#D90429]" />
                 Borc detalları
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {userOrders.slice(0, 4).map((order) => {
                   const total = Number(order.totalAmount || 0);
                   const paid = Number(order.paidAmount || order.paid_amount || 0);
@@ -1102,23 +1101,23 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={order.id}
-                      className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-xs sm:text-sm min-w-0"
+                      className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-2 text-[10px] sm:text-[11px] min-w-0 overflow-hidden"
                     >
-                      <p className="font-semibold text-[#1F2937] truncate">
+                      <p className="font-semibold text-[#1F2937] truncate text-xs">
                         #{order.orderNumber || order.order_number || order.id}
                       </p>
-                      <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-                        <div className="tabular-nums text-[#6B7280]">
-                          <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] block">Ümumi</span>
-                          {total.toFixed(2)} AZN
+                      <div className="mt-1.5 grid grid-cols-3 gap-1 min-w-0">
+                        <div className="tabular-nums text-[#6B7280] min-w-0 truncate">
+                          <span className="text-[9px] text-[#9CA3AF] block truncate">Ümumi</span>
+                          {total.toFixed(2)}
                         </div>
-                        <div className="tabular-nums text-[#16A34A]">
-                          <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] block">Ödənilib</span>
-                          {paid.toFixed(2)} AZN
+                        <div className="tabular-nums text-[#16A34A] min-w-0 truncate">
+                          <span className="text-[9px] text-[#9CA3AF] block truncate">Ödənilib</span>
+                          {paid.toFixed(2)}
                         </div>
-                        <div className="tabular-nums text-[#DC2626]">
-                          <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] block">Qalıq</span>
-                          {remaining.toFixed(2)} AZN
+                        <div className="tabular-nums text-[#DC2626] min-w-0 truncate">
+                          <span className="text-[9px] text-[#9CA3AF] block truncate">Qalıq</span>
+                          {remaining.toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -1130,25 +1129,25 @@ export default function DashboardPage() {
 
             {/* Recent Orders */}
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-[#1F2937]">Son Sifarişlər</h2>
-                <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard/orders")}>
-                  Hamısına Bax
+              <div className="flex items-center justify-between mb-2 gap-2 min-w-0">
+                <h2 className="text-base font-bold text-[#1F2937] truncate">Son sifarişlər</h2>
+                <Button variant="ghost" size="sm" className="text-xs shrink-0 py-1" onClick={() => router.push("/dashboard/orders")}>
+                  Hamısı
                 </Button>
               </div>
-              
+
               {userOrders.length === 0 ? (
-                <Card className="p-10 text-center">
-                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-[#6B7280] mb-4">Hələ sifarişiniz yoxdur</p>
-                  <Button onClick={() => router.push("/orders/new")} icon={<Plus className="w-4 h-4" />}>
+                <Card className="p-6 text-center rounded-xl">
+                  <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-[#6B7280] mb-3">Hələ sifarişiniz yoxdur</p>
+                  <Button size="sm" onClick={() => router.push("/orders/new")} icon={<Plus className="w-4 h-4" />}>
                     Sifariş Et
                   </Button>
                 </Card>
               ) : (
-                <div className="grid gap-3">
+                <div className="grid gap-2">
                   {userOrders.slice(0, 5).map((order) => (
-                    <Card key={order.id} className="p-4 min-w-0 overflow-hidden">
+                    <Card key={order.id} className="p-2.5 sm:p-3 min-w-0 overflow-hidden rounded-xl">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <p className="font-semibold text-[#1F2937] truncate">

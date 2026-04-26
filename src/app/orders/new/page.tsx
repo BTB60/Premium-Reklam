@@ -89,7 +89,6 @@ export default function NewOrderPage() {
       return;
     }
     setUser(currentUser);
-    setDecorName(currentUser.fullName || "");
     setCustomerPhone(currentUser.phone || "");
 
     void (async () => {
@@ -438,8 +437,8 @@ export default function NewOrderPage() {
                   type="text"
                   value={decorName}
                   onChange={(e) => setDecorName(e.target.value)}
-                  placeholder="Məsələn: Aysel Dekor"
                   required
+                  aria-required="true"
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D90429]"
                 />
                 <p className="text-xs text-[#9CA3AF] mt-2">
