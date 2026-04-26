@@ -802,17 +802,17 @@ export default function DashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(217,4,41,0.08),transparent_32%),linear-gradient(180deg,#FFF7F7_0%,#F8F9FB_34%,#F8F9FB_100%)]">
       {/* Header */}
-      <header className="bg-white border-b border-[#E5E7EB] px-6 py-4 sticky top-0 z-50">
+      <header className="bg-white/85 backdrop-blur-md border-b border-white/70 px-6 py-4 sticky top-0 z-50 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#D90429] to-[#EF476F] rounded-xl flex items-center justify-center">
+            <div className="w-11 h-11 bg-gradient-to-br from-[#D90429] to-[#EF476F] rounded-2xl flex items-center justify-center shadow-lg shadow-[#D90429]/20">
               <span className="text-white font-bold text-lg">P</span>
             </div>
             <div>
               <h1 className="text-lg font-bold text-[#1F2937]">Premium Reklam</h1>
-              <p className="text-xs text-[#6B7280]">Xoş gəldin, {user.fullName}</p>
+              <p className="text-xs text-[#6B7280]">İş paneliniz · xoş gəldin, {user.fullName}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -830,8 +830,8 @@ export default function DashboardPage() {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="bg-white border-b border-[#E5E7EB] px-6">
-        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto">
+      <nav className="px-4 sm:px-6 pt-4">
+        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto rounded-2xl border border-white bg-white/80 p-2 shadow-sm">
           {[
             { id: "home", label: "Ana Səhifə", icon: User },
             { id: "products", label: "Məhsullar", icon: ShoppingBag },
@@ -844,10 +844,10 @@ export default function DashboardPage() {
               onClick={() =>
                 tab.href ? router.push(tab.href) : setActiveTab(tab.id as "home" | "products" | "orders" | "history")
               }
-              className={`flex items-center gap-2 px-5 py-4 border-b-2 whitespace-nowrap text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl whitespace-nowrap text-sm font-semibold transition-all ${
                 activeTab === tab.id
-                  ? "border-[#D90429] text-[#D90429]"
-                  : "border-transparent text-[#6B7280] hover:text-[#1F2937]"
+                  ? "bg-[#D90429] text-white shadow-lg shadow-[#D90429]/20"
+                  : "text-[#6B7280] hover:text-[#1F2937] hover:bg-gray-50"
               }`}
             >
               <tab.icon className="w-4 h-4" />
@@ -858,13 +858,114 @@ export default function DashboardPage() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-6xl mx-auto p-6">
+      <main className="max-w-6xl mx-auto p-4 sm:p-6">
         
         {/* Home Tab */}
         {activeTab === "home" && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#111827] via-[#2B0A12] to-[#D90429] p-5 sm:p-7 lg:p-8 text-white shadow-2xl shadow-[#D90429]/15">
+              <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+              <div className="absolute bottom-0 right-10 h-28 w-28 rounded-full bg-[#EF476F]/30 blur-xl" />
+              <div className="relative grid lg:grid-cols-[1.25fr_.75fr] gap-6 items-end">
+                <div>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/12 px-3 py-1 text-xs font-semibold backdrop-blur">
+                    <Award className="w-4 h-4" />
+                    Premium idarəetmə paneli
+                  </span>
+                  <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight">
+                    Salam, {String(user.fullName || user.username || "istifadəçi").split(" ")[0]}.
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm sm:text-base text-white/78 leading-relaxed">
+                    Sifarişlərinizi, ödənişlərinizi, bonus progressinizi və dəstək yazışmalarını bir paneldən izləyin.
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button
+                      onClick={() => setActiveTab("products")}
+                      className="bg-white text-[#D90429] hover:bg-white/90"
+                      icon={<Plus className="w-4 h-4" />}
+                    >
+                      Yeni sifariş
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => setActiveTab("orders")}
+                      className="bg-white/10 text-white border-white/20 hover:bg-white/15"
+                      icon={<Package className="w-4 h-4" />}
+                    >
+                      Sifarişlərim
+                    </Button>
+                    <Link href="/profile">
+                      <Button
+                        variant="secondary"
+                        className="bg-white/10 text-white border-white/20 hover:bg-white/15"
+                        icon={<Settings className="w-4 h-4" />}
+                      >
+                        Tənzimləmələr
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                    <p className="text-xs text-white/65">Qalıq borc</p>
+                    <p className="mt-1 text-2xl font-black">{(orderSummary?.totalDebt || 0).toFixed(2)}</p>
+                    <p className="text-xs text-white/65">AZN</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                    <p className="text-xs text-white/65">Bu ay bonus əsası</p>
+                    <p className="mt-1 text-2xl font-black">{(orderSummary?.monthOrderAmount || 0).toFixed(0)}</p>
+                    <p className="text-xs text-white/65">AZN</p>
+                  </div>
+                  <div className="col-span-2 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-white/65">Bonus progress</p>
+                        <p className="mt-1 text-sm font-semibold text-white/90">{loyaltyBonus.hint}</p>
+                      </div>
+                      <span className="text-xl font-black">{loyaltyBonus.progressPercent.toFixed(0)}%</span>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-white/15 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-white"
+                        style={{ width: `${loyaltyBonus.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                { label: "Yeni sifariş", hint: "Məhsul seç və ölçü daxil et", icon: Plus, action: () => setActiveTab("products") },
+                {
+                  label: "Ödəniş bildir",
+                  hint: "Qəbz və məbləğ göndər",
+                  icon: CreditCard,
+                  action: () => document.getElementById("payment-notice-card")?.scrollIntoView({ behavior: "smooth", block: "center" }),
+                },
+                { label: "Tarixçə", hint: "PDF qaimə və hesabat", icon: FileDown, action: () => setActiveTab("history") },
+                { label: "Dəstək", hint: "Adminlə yazış", icon: MessageCircle, action: () => router.push("/dashboard/support") },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={item.action}
+                  className="group rounded-2xl border border-[#E5E7EB] bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#D90429]/10 text-[#D90429] flex items-center justify-center mb-3 group-hover:bg-[#D90429] group-hover:text-white transition">
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <p className="font-bold text-[#1F2937]">{item.label}</p>
+                  <p className="text-xs text-[#6B7280] mt-1">{item.hint}</p>
+                </button>
+              ))}
+            </div>
+
             {/* User Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Card className="p-5">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#D90429]/10 rounded-xl flex items-center justify-center">
@@ -914,55 +1015,57 @@ export default function DashboardPage() {
               </Card>
             </div>
 
-            <Card className="p-5 mb-6 border border-dashed border-[#D90429]/40 bg-[#FFF5F5]">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-[#1F2937] flex items-center gap-2">
-                    <Banknote className="w-5 h-5 text-[#D90429]" />
-                    Ödəniş bildirişi
-                  </h3>
-                  <p className="text-xs text-[#6B7280] mt-1">
-                    Ödədiyiniz məbləği qeyd edin. Borc yalnız admin təsdiqlədikdən sonra azalır.
-                  </p>
-                </div>
-                <div className="flex gap-2 items-center flex-wrap">
-                  <input
-                    type="number"
-                    min={0.01}
-                    step={0.01}
-                    className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-sm"
-                    placeholder="Məbləğ (AZN)"
-                    value={clientPayAmount}
-                    onChange={(e) => setClientPayAmount(e.target.value)}
-                  />
-                  <label className="inline-flex items-center gap-2 text-xs px-3 py-2 border border-gray-200 rounded-lg cursor-pointer bg-white">
-                    <ImagePlus className="w-4 h-4" />
-                    {clientPayReceiptName ? "Qəbz seçildi" : "Qəbz əlavə et"}
+            <div id="payment-notice-card">
+              <Card className="p-5 mb-6 border border-dashed border-[#D90429]/40 bg-[#FFF5F5]">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-[#1F2937] flex items-center gap-2">
+                      <Banknote className="w-5 h-5 text-[#D90429]" />
+                      Ödəniş bildirişi
+                    </h3>
+                    <p className="text-xs text-[#6B7280] mt-1">
+                      Ödədiyiniz məbləği qeyd edin. Borc yalnız admin təsdiqlədikdən sonra azalır.
+                    </p>
+                  </div>
+                  <div className="flex gap-2 items-center flex-wrap">
                     <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          setClientPayReceiptData(String(reader.result || ""));
-                          setClientPayReceiptName(file.name);
-                        };
-                        reader.readAsDataURL(file);
-                      }}
+                      type="number"
+                      min={0.01}
+                      step={0.01}
+                      className="w-36 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      placeholder="Məbləğ (AZN)"
+                      value={clientPayAmount}
+                      onChange={(e) => setClientPayAmount(e.target.value)}
                     />
-                  </label>
-                  <Button size="sm" onClick={() => void submitClientPaymentNotification()} disabled={clientPayBusy}>
-                    {clientPayBusy ? "…" : "Göndər"}
-                  </Button>
+                    <label className="inline-flex items-center gap-2 text-xs px-3 py-2 border border-gray-200 rounded-lg cursor-pointer bg-white">
+                      <ImagePlus className="w-4 h-4" />
+                      {clientPayReceiptName ? "Qəbz seçildi" : "Qəbz əlavə et"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            setClientPayReceiptData(String(reader.result || ""));
+                            setClientPayReceiptName(file.name);
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                    <Button size="sm" onClick={() => void submitClientPaymentNotification()} disabled={clientPayBusy}>
+                      {clientPayBusy ? "…" : "Göndər"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              {clientPayReceiptName && (
-                <p className="text-xs text-[#6B7280] mt-2">Qəbz: {clientPayReceiptName}</p>
-              )}
-            </Card>
+                {clientPayReceiptName && (
+                  <p className="text-xs text-[#6B7280] mt-2">Qəbz: {clientPayReceiptName}</p>
+                )}
+              </Card>
+            </div>
 
             {orderBlocked && (
               <Card className="p-4 mb-6 border border-red-200 bg-red-50">
