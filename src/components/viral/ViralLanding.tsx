@@ -122,19 +122,37 @@ function ImageCarousel() {
     };
   }, []);
 
+  // Slayd sayı azalanda cari indeks keçərli aralıqda qalsın
+  useEffect(() => {
+    if (slides.length <= 0) return;
+    setCurrentSlide((c) => (c >= slides.length ? 0 : c));
+  }, [slides.length]);
+
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
+    setCurrentSlide((prev) => {
+      const len = slides.length;
+      if (len <= 0) return 0;
+      return (prev + 1) % len;
+    });
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+    setCurrentSlide((prev) => {
+      const len = slides.length;
+      if (len <= 0) return 0;
+      return (prev - 1 + len) % len;
+    });
   };
 
-  // Auto-play
+  // Avtomatik: slides.length dəyişəndə interval yenilənsin (köhnə closure ilə modulo səhv olurdu)
   useEffect(() => {
-    const interval = setInterval(nextSlide, 4000);
+    if (slides.length <= 0) return;
+    const len = slides.length;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % len);
+    }, 4000);
     return () => clearInterval(interval);
-  }, []);
+  }, [slides.length]);
 
   return (
     <div className="relative max-w-6xl mx-auto">
@@ -145,7 +163,7 @@ function ImageCarousel() {
         >
           {slides.map((slide, index) => (
             <div
-              key={index}
+              key={slide.id}
               className="w-full flex-shrink-0 h-[320px] sm:h-[430px] lg:h-[560px] relative"
             >
               <img
