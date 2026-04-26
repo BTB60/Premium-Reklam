@@ -103,11 +103,8 @@ export default function OrdersListPage() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-[#1F2937]">Sifarişlərim</h1>
-        <Button onClick={() => router.push("/orders/new")} icon={<Plus className="w-4 h-4" />}>
-          Yeni Sifariş
-        </Button>
       </div>
 
       {loading ? (

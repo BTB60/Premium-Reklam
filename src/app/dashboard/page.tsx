@@ -924,34 +924,6 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Navigation Tabs */}
-      <nav className="px-4 sm:px-6 pt-4">
-        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto rounded-2xl border border-white bg-white/80 p-2 shadow-sm">
-          {[
-            { id: "home", label: "Ana Səhifə", icon: User },
-            { id: "products", label: "Məhsullar", icon: ShoppingBag },
-            { id: "orders", label: "Sifarişlərim", icon: Package },
-            { id: "history", label: "Tarixçələr", icon: History },
-            { id: "store", label: "Mağazam", icon: Store, href: "/dashboard/store" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() =>
-                tab.href ? router.push(tab.href) : setActiveTab(tab.id as "home" | "products" | "orders" | "history")
-              }
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl whitespace-nowrap text-sm font-semibold transition-all ${
-                activeTab === tab.id
-                  ? "bg-[#D90429] text-white shadow-lg shadow-[#D90429]/20"
-                  : "text-[#6B7280] hover:text-[#1F2937] hover:bg-gray-50"
-              }`}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </nav>
-
       {/* Main Content */}
       <main className="max-w-6xl mx-auto p-4 sm:p-6">
         
@@ -1019,13 +991,6 @@ export default function DashboardPage() {
 
                   <div className="mt-6 flex flex-wrap gap-3">
                     <Button
-                      onClick={() => setActiveTab("products")}
-                      className="bg-white text-[#D90429] hover:bg-white/90"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      Yeni sifariş
-                    </Button>
-                    <Button
                       variant="secondary"
                       onClick={() => setActiveTab("orders")}
                       className="bg-white/10 text-white border-white/20 hover:bg-white/15"
@@ -1075,9 +1040,8 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[
-                { label: "Yeni sifariş", hint: "Məhsul seç və ölçü daxil et", icon: Plus, action: () => setActiveTab("products") },
                 {
                   label: "Ödəniş bildir",
                   hint: "Qəbz və məbləğ göndər",
@@ -1310,8 +1274,8 @@ export default function DashboardPage() {
             <Card className="p-6 mb-6 bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-xl font-bold mb-1">Yeni Sifariş Ver</h3>
-                  <p className="opacity-90 text-sm">Asan və sürətli sifariş</p>
+                  <h3 className="text-xl font-bold mb-1">Məhsul sifarişi</h3>
+                  <p className="opacity-90 text-sm">Məhsul seçin və ölçüləri daxil edin</p>
                 </div>
                 <Button 
                   onClick={() => setActiveTab("products")}
@@ -1948,7 +1912,7 @@ export default function DashboardPage() {
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#1F2937]">
-                    Yeni Sifariş - {selectedProduct?.name}
+                    Sifariş — {selectedProduct?.name}
                   </h2>
                   <Button variant="ghost" size="sm" onClick={() => {
                     setShowNewOrder(false);
@@ -2108,11 +2072,8 @@ export default function DashboardPage() {
         {/* Orders Tab */}
         {activeTab === "orders" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6">
               <h1 className="text-2xl font-bold text-[#1F2937]">Sifarişlərim</h1>
-              <Button onClick={() => setActiveTab("products")} icon={<Plus className="w-4 h-4" />}>
-                Yeni Sifariş
-              </Button>
             </div>
 
             {userOrders.length === 0 ? (

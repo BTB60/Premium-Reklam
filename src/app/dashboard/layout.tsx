@@ -1,28 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { authApi } from "@/lib/authApi";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
 import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNotificationsMarkAllButton";
 import { Button } from "@/components/ui/Button";
-import { 
-  LogOut, RefreshCw, User, ShoppingBag, Package, Store, Headphones, Settings
-} from "lucide-react";
-
-const TABS = [
-  { id: "home", label: "Ana Səhifə", icon: User, href: "/dashboard" },
-  { id: "products", label: "Məhsullar", icon: ShoppingBag, href: "/dashboard/products" },
-  { id: "orders", label: "Sifarişlərim", icon: Package, href: "/dashboard/orders" },
-  { id: "store", label: "Mağazam", icon: Store, href: "/dashboard/store" },
-  { id: "support", label: "Onlayn müraciət", icon: Headphones, href: "/dashboard/support" },
-  { id: "settings", label: "Tənzimləmələr", icon: Settings, href: "/profile" },
-];
+import { LogOut, RefreshCw } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -118,29 +106,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-
-      {/* Navigation Tabs */}
-      <nav className="bg-[var(--card-glass)] border-b border-[var(--border)] px-6">
-        <div className="max-w-6xl mx-auto flex gap-2 overflow-x-auto">
-          {TABS.map((tab) => {
-            const isActive = pathname === tab.href || (tab.href === "/dashboard" && pathname === "/dashboard");
-            return (
-              <button
-                key={tab.id}
-                onClick={() => router.push(tab.href)}
-                className={`flex items-center gap-2 px-5 py-4 border-b-2 whitespace-nowrap text-sm font-medium transition-colors ${
-                  isActive
-                    ? "border-[#ff6600] text-[#ff6600]"
-                    : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto p-6">
