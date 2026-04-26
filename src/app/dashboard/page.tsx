@@ -37,6 +37,15 @@ import {
   type LoyaltyPercentOverride,
 } from "@/lib/db";
 import { 
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
   LogOut, 
   Package, 
   Bell, 
@@ -100,6 +109,61 @@ function escapeHtml(value: unknown): string {
 function dateInYearMonth(d: Date, ym: string): boolean {
   const [y, m] = ym.split("-").map(Number);
   return d.getFullYear() === y && d.getMonth() + 1 === m;
+}
+
+function MiniSparkline({ data, color = "#ff6600" }: { data: number[]; color?: string }) {
+  const width = 92;
+  const height = 32;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = Math.max(1, max - min);
+  const points = data
+    .map((v, i) => {
+      const x = data.length === 1 ? 0 : (i / (data.length - 1)) * width;
+      const y = height - ((v - min) / range) * (height - 4) - 2;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-8 w-24 overflow-visible" aria-hidden>
+      <polyline points={points} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function DashboardMetricCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  color,
+  trend,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  icon: any;
+  color: string;
+  trend: number[];
+}) {
+  return (
+    <div className="rounded-2xl border border-white bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${color}18`, color }}>
+            <Icon className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-[#64748B]">{label}</p>
+            <p className="text-2xl font-black text-[#0F172A] mt-0.5">{value}</p>
+          </div>
+        </div>
+        <MiniSparkline data={trend} color={color} />
+      </div>
+      <p className="text-xs text-[#94A3B8] mt-3">{hint}</p>
+    </div>
+  );
 }
 
 export default function DashboardPage() {
@@ -623,6 +687,37 @@ export default function DashboardPage() {
     [loyaltyProfileOverride]
   );
 
+  const dashboardChartData = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - index));
+      const key = d.toISOString().slice(0, 10);
+      return {
+        key,
+        label: d.toLocaleDateString("az-AZ", { weekday: "short" }),
+        orders: 0,
+        amount: 0,
+      };
+    });
+
+    for (const order of userOrders) {
+      const d = parseOrderCreatedAt(order);
+      if (!d || isOrderCancelled(order)) continue;
+      const row = days.find((x) => x.key === d.toISOString().slice(0, 10));
+      if (row) {
+        row.orders += 1;
+        row.amount += Number(order.totalAmount || 0);
+      }
+    }
+
+    return days;
+  }, [userOrders]);
+
+  const trendOrders = dashboardChartData.map((d) => d.orders);
+  const trendAmounts = dashboardChartData.map((d) => d.amount);
+  const trendPaid = dashboardChartData.map((_, i) => Math.max(0, Number(orderSummary?.totalPaid || 0) / 7 + i * 4));
+  const trendDebt = dashboardChartData.map((_, i) => Math.max(0, Number(orderSummary?.totalDebt || 0) / 7 - i * 3));
+
   const handleReorder = (order: any) => {
     const firstItem = order?.items?.[0];
     if (!firstItem) {
@@ -863,6 +958,49 @@ export default function DashboardPage() {
         {/* Home Tab */}
         {activeTab === "home" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+            <div className="grid lg:grid-cols-[17rem_1fr] gap-6 items-start">
+              <aside className="hidden lg:block sticky top-28 space-y-4">
+                <div className="rounded-2xl border border-white bg-white/80 p-4 shadow-sm backdrop-blur-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff6600] to-[#D90429] text-white flex items-center justify-center font-black">
+                      {String(user.fullName || user.username || "P").slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-[#0F172A] truncate">{user.fullName}</p>
+                      <p className="text-xs text-[#64748B] truncate">@{user.username}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#ff6600] to-[#D90429] p-4 text-white">
+                    <p className="text-xs text-white/75">Premium Plan</p>
+                    <p className="mt-1 font-black">Aktiv kabinet</p>
+                    <p className="mt-2 text-xs text-white/80">Bonuslar, qaimə və sifariş izləmə hamısı bir yerdə.</p>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white bg-white/80 p-2 shadow-sm backdrop-blur-xl">
+                  {[
+                    { label: "Ana səhifə", icon: User, action: () => setActiveTab("home"), active: true },
+                    { label: "Məhsullar", icon: ShoppingBag, action: () => setActiveTab("products") },
+                    { label: "Sifarişlər", icon: Package, action: () => setActiveTab("orders") },
+                    { label: "Tarixçələr", icon: History, action: () => setActiveTab("history") },
+                    { label: "Tənzimləmələr", icon: Settings, action: () => router.push("/profile") },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={item.action}
+                      className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                        item.active ? "bg-[#ff6600]/10 text-[#ff6600]" : "text-[#64748B] hover:bg-slate-50 hover:text-[#0F172A]"
+                      }`}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </aside>
+
+              <div className="space-y-6">
             <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#111827] via-[#2B0A12] to-[#D90429] p-5 sm:p-7 lg:p-8 text-white shadow-2xl shadow-[#D90429]/15">
               <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
               <div className="absolute bottom-0 right-10 h-28 w-28 rounded-full bg-[#EF476F]/30 blur-xl" />
@@ -964,55 +1102,117 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* User Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#D90429]/10 rounded-xl flex items-center justify-center">
-                    <Package className="w-6 h-6 text-[#D90429]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#6B7280]">Ümumi Sifariş</p>
-                    <p className="text-2xl font-bold text-[#1F2937]">{userOrders.length}</p>
-                  </div>
-                </div>
-              </Card>
+            <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+              <DashboardMetricCard
+                label="Ümumi sifariş"
+                value={String(userOrders.length)}
+                hint="Son 7 gün aktivliyi"
+                icon={Package}
+                color="#ff6600"
+                trend={trendOrders}
+              />
+              <DashboardMetricCard
+                label="Bu ay sifariş"
+                value={String(orderSummary?.monthOrderCount || 0)}
+                hint="Aylıq sifariş sayı"
+                icon={TrendingUp}
+                color="#3B82F6"
+                trend={trendAmounts}
+              />
+              <DashboardMetricCard
+                label="Ödənilib"
+                value={`${(orderSummary?.totalPaid || 0).toFixed(2)} AZN`}
+                hint="Təsdiqlənmiş ödənişlər"
+                icon={CheckCircle}
+                color="#16A34A"
+                trend={trendPaid}
+              />
+              <DashboardMetricCard
+                label="Qalan borc"
+                value={`${(orderSummary?.totalDebt || 0).toFixed(2)} AZN`}
+                hint="Planlı ödəniş üçün əsas"
+                icon={AlertCircle}
+                color="#EF4444"
+                trend={trendDebt}
+              />
+            </div>
 
-              <Card className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#3B82F6]/10 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-[#3B82F6]" />
-                  </div>
+            <div className="grid xl:grid-cols-[1fr_20rem] gap-4">
+              <div className="rounded-2xl border border-white bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3 mb-4">
                   <div>
-                    <p className="text-xs text-[#6B7280]">Bu Ay Sifariş</p>
-                    <p className="text-2xl font-bold text-[#3B82F6]">{orderSummary?.monthOrderCount || 0}</p>
+                    <h3 className="font-black text-[#0F172A] flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5 text-[#ff6600]" />
+                      Sifariş statistikası
+                    </h3>
+                    <p className="text-xs text-[#64748B] mt-1">Son 7 gün üzrə sifariş sayı və məbləğ dinamikası</p>
                   </div>
                 </div>
-              </Card>
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dashboardChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ff6600" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#ff6600" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#64748B" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ borderRadius: 16, border: "1px solid #E2E8F0" }}
+                        formatter={(value: number, name: string) => [
+                          name === "amount" ? `${Number(value).toFixed(2)} AZN` : value,
+                          name === "amount" ? "Məbləğ" : "Sifariş",
+                        ]}
+                      />
+                      <Area type="monotone" dataKey="amount" stroke="#ff6600" fill="url(#ordersGradient)" strokeWidth={3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
 
-              <Card className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#16A34A]/10 rounded-xl flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-[#16A34A]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#6B7280]">Ödənilib</p>
-                    <p className="text-2xl font-bold text-[#16A34A]">{(orderSummary?.totalPaid || 0).toFixed(2)} AZN</p>
-                  </div>
+              <div className="rounded-2xl border border-white bg-white p-5 shadow-sm">
+                <h3 className="font-black text-[#0F172A] flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-[#ff6600]" />
+                  Quick Action
+                </h3>
+                <p className="text-xs text-[#64748B] mt-1">Ödəniş bildirişini sürətli göndərin.</p>
+                <div className="mt-4 space-y-3">
+                  <input
+                    type="number"
+                    min={0.01}
+                    step={0.01}
+                    className="w-full px-3 py-3 border border-[#E2E8F0] rounded-2xl text-sm"
+                    placeholder="Məbləğ (AZN)"
+                    value={clientPayAmount}
+                    onChange={(e) => setClientPayAmount(e.target.value)}
+                  />
+                  <label className="flex items-center justify-center gap-2 text-sm px-3 py-3 border border-dashed border-[#ff6600]/35 rounded-2xl cursor-pointer bg-[#ff6600]/5 text-[#0F172A]">
+                    <ImagePlus className="w-4 h-4 text-[#ff6600]" />
+                    {clientPayReceiptName ? "Qəbz seçildi" : "Qəbz əlavə et"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setClientPayReceiptData(String(reader.result || ""));
+                          setClientPayReceiptName(file.name);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                  <Button className="w-full" onClick={() => void submitClientPaymentNotification()} disabled={clientPayBusy}>
+                    {clientPayBusy ? "Göndərilir..." : "Ödənişi bildir"}
+                  </Button>
                 </div>
-              </Card>
-
-              <Card className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#EF4444]/10 rounded-xl flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-[#EF4444]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-[#6B7280]">Qalan Borc</p>
-                    <p className="text-2xl font-bold text-[#EF4444]">{(orderSummary?.totalDebt || 0).toFixed(2)} AZN</p>
-                  </div>
-                </div>
-              </Card>
+              </div>
             </div>
 
             <div id="payment-notice-card">
@@ -1247,6 +1447,8 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+            </div>
+              </div>
             </div>
           </motion.div>
         )}
