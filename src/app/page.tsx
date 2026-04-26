@@ -25,46 +25,47 @@ import { useState, useEffect } from "react";
 // Hero Section
 function HeroSection() {
   return (
-    <section className="relative py-20 lg:py-32 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+    <section className="relative py-12 sm:py-16 lg:py-32 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
+            className="min-w-0"
           >
-            <span className="inline-block px-4 py-2 bg-[#D90429]/10 text-[#D90429] rounded-full text-sm font-medium mb-6">
+            <span className="inline-block px-3 py-1.5 sm:px-4 sm:py-2 bg-[#D90429]/10 text-[#D90429] rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
               Premium Dekor Xidməti
             </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-[#1F2937] leading-tight mb-6 font-[Manrope]">
+            <h1 className="text-[1.65rem] leading-snug sm:text-3xl md:text-4xl lg:text-6xl font-bold text-[#1F2937] sm:leading-tight mb-4 sm:mb-6 font-[Manrope]">
               Evinizi <span className="text-[#D90429]">Premium</span> Üslubda Bəzəyin
             </h1>
-            <p className="text-lg text-[#6B7280] mb-8 leading-relaxed">
+            <p className="text-base sm:text-lg text-[#6B7280] mb-6 sm:mb-8 leading-relaxed max-w-xl">
               Professional dekorçularımızla evinizi və ofisinizi ən yüksək standartlarda bəzəyin. 
               Sürətli, keyfiyyətli və sərfəli xidmət.
             </p>
-            <div className="flex flex-wrap gap-4">
-              <Button size="lg" icon={<ArrowRight className="w-5 h-5" />}>
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
+              <Button size="lg" className="w-full sm:w-auto min-h-[48px] justify-center" icon={<ArrowRight className="w-5 h-5" />}>
                 Sifariş Et
               </Button>
-              <Button variant="secondary" size="lg">
+              <Button variant="secondary" size="lg" className="w-full sm:w-auto min-h-[48px] justify-center">
                 Ətraflı Məlumat
               </Button>
             </div>
-            <div className="flex flex-wrap items-center gap-6 sm:gap-8 mt-12">
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-[#1F2937] font-[Manrope]">500+</p>
-                <p className="text-[#6B7280] text-xs sm:text-sm">Tamamlanmış Layihə</p>
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-6 sm:gap-8 mt-8 sm:mt-12 text-center sm:text-left">
+              <div className="min-w-0 px-1">
+                <p className="text-xl sm:text-3xl font-bold text-[#1F2937] font-[Manrope] tabular-nums">500+</p>
+                <p className="text-[#6B7280] text-[11px] sm:text-xs md:text-sm leading-tight mt-0.5">Tamamlanmış Layihə</p>
               </div>
-              <div className="hidden sm:block w-px h-12 bg-[#E5E7EB]" />
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-[#1F2937] font-[Manrope]">50+</p>
-                <p className="text-[#6B7280] text-xs sm:text-sm">Professional Dekorçu</p>
+              <div className="hidden sm:block w-px h-12 bg-[#E5E7EB] shrink-0" />
+              <div className="min-w-0 px-1">
+                <p className="text-xl sm:text-3xl font-bold text-[#1F2937] font-[Manrope] tabular-nums">50+</p>
+                <p className="text-[#6B7280] text-[11px] sm:text-xs md:text-sm leading-tight mt-0.5">Professional Dekorçu</p>
               </div>
-              <div className="hidden sm:block w-px h-12 bg-[#E5E7EB]" />
-              <div>
-                <p className="text-2xl sm:text-3xl font-bold text-[#1F2937] font-[Manrope]">98%</p>
-                <p className="text-[#6B7280] text-xs sm:text-sm">Məmnun Müştəri</p>
+              <div className="hidden sm:block w-px h-12 bg-[#E5E7EB] shrink-0" />
+              <div className="min-w-0 px-1">
+                <p className="text-xl sm:text-3xl font-bold text-[#1F2937] font-[Manrope] tabular-nums">98%</p>
+                <p className="text-[#6B7280] text-[11px] sm:text-xs md:text-sm leading-tight mt-0.5">Məmnun Müştəri</p>
               </div>
             </div>
           </motion.div>
@@ -72,39 +73,49 @@ function HeroSection() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative"
+            className="relative min-w-0"
           >
-            <div className="relative rounded-[24px] overflow-hidden bg-gradient-to-br from-[#D90429]/20 to-[#EF476F]/20 p-8">
-              <div className="aspect-[4/3] rounded-[18px] bg-white/50 backdrop-blur-sm flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-[#D90429]/10 flex items-center justify-center">
-                    <Star className="w-12 h-12 text-[#D90429]" />
+            <div className="relative rounded-2xl sm:rounded-[24px] overflow-hidden bg-gradient-to-br from-[#D90429]/20 to-[#EF476F]/20 p-4 sm:p-8">
+              <div className="aspect-[4/3] rounded-xl sm:rounded-[18px] bg-white/50 backdrop-blur-sm flex items-center justify-center">
+                <div className="text-center px-2">
+                  <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-3 sm:mb-4 rounded-full bg-[#D90429]/10 flex items-center justify-center">
+                    <Star className="w-8 h-8 sm:w-12 sm:h-12 text-[#D90429]" />
                   </div>
-                  <p className="text-[#1F2937] font-semibold">Premium Keyfiyyət</p>
+                  <p className="text-[#1F2937] font-semibold text-sm sm:text-base">Premium Keyfiyyət</p>
                 </div>
               </div>
             </div>
-            {/* Floating elements */}
-            <div className="absolute -top-4 -right-4 bg-white rounded-2xl p-4 shadow-xl">
+            {/* Mobil: üst-ətraf kartları gizlət; böyük ekranda göstər */}
+            <div className="hidden lg:block absolute -top-4 -right-4 bg-white rounded-2xl p-4 shadow-xl max-w-[220px]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#16A34A]/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-[#16A34A]/10 flex items-center justify-center shrink-0">
                   <CheckCircle className="w-5 h-5 text-[#16A34A]" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#1F2937]">Sürətli Çatdırılma</p>
                   <p className="text-xs text-[#6B7280]">24 saat ərzində</p>
                 </div>
               </div>
             </div>
-            <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl p-4 shadow-xl">
+            <div className="hidden lg:block absolute -bottom-4 -left-4 bg-white rounded-2xl p-4 shadow-xl max-w-[220px]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#D90429]/10 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-[#D90429]/10 flex items-center justify-center shrink-0">
                   <Shield className="w-5 h-5 text-[#D90429]" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#1F2937]">Keyfiyyət Zəmanəti</p>
                   <p className="text-xs text-[#6B7280]">100% təminat</p>
                 </div>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 lg:hidden">
+              <div className="rounded-xl bg-white p-3 shadow-md border border-gray-100 flex items-center gap-2 min-h-[44px]">
+                <CheckCircle className="w-5 h-5 text-[#16A34A] shrink-0" />
+                <p className="text-xs font-medium text-[#1F2937] leading-tight">24 saat çatdırılma</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 shadow-md border border-gray-100 flex items-center gap-2 min-h-[44px]">
+                <Shield className="w-5 h-5 text-[#D90429] shrink-0" />
+                <p className="text-xs font-medium text-[#1F2937] leading-tight">100% zəmanət</p>
               </div>
             </div>
           </motion.div>
@@ -140,17 +151,17 @@ function ServicesSection() {
   ];
 
   return (
-    <section id="services" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
+    <section id="services" className="py-12 sm:py-16 lg:py-20 bg-white">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1F2937] mb-3 sm:mb-4 font-[Manrope] px-1">
             Niyə Bizi Seçməlisiniz?
           </h2>
-          <p className="text-[#6B7280] max-w-2xl mx-auto">
+          <p className="text-[#6B7280] max-w-2xl mx-auto text-sm sm:text-base px-2">
             Professional komandamız və premium xidmətlərimizlə fərq yaradırıq
           </p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {services.map((service, index) => (
             <Card key={index} className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#D90429]/10 flex items-center justify-center text-[#D90429]">
@@ -194,20 +205,20 @@ function HowItWorksSection() {
   ];
 
   return (
-    <section id="how-it-works" className="py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
+    <section id="how-it-works" className="py-12 sm:py-16 lg:py-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1F2937] mb-3 sm:mb-4 font-[Manrope] px-1">
             Necə İşləyir?
           </h2>
-          <p className="text-[#6B7280] max-w-2xl mx-auto">
+          <p className="text-[#6B7280] max-w-2xl mx-auto text-sm sm:text-base px-2">
             4 sadə addımla xəyalınızdakı dekorasiyaya sahib olun
           </p>
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {steps.map((step, index) => (
             <div key={index} className="relative">
-              <div className="text-6xl font-bold text-[#D90429]/10 font-[Manrope] mb-4">
+              <div className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#D90429]/10 font-[Manrope] mb-3 sm:mb-4">
                 {step.number}
               </div>
               <h3 className="text-xl font-bold text-[#1F2937] mb-3 font-[Manrope]">
@@ -249,17 +260,17 @@ function TestimonialsSection() {
   ];
 
   return (
-    <section className="py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
+    <section className="py-12 sm:py-16 lg:py-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1F2937] mb-3 sm:mb-4 font-[Manrope] px-1">
             Müştəri Rəyləri
           </h2>
           <p className="text-[#6B7280] max-w-2xl mx-auto">
             Müştərilərimizin bizim haqqımızda dedikləri
           </p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {testimonials.map((testimonial, index) => (
             <Card key={index}>
               <div className="flex gap-1 mb-4">
@@ -307,10 +318,10 @@ function FAQSection() {
   ];
 
   return (
-    <section className="py-20 bg-white">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
+    <section className="py-12 sm:py-16 lg:py-20 bg-white">
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="text-center mb-10 sm:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1F2937] mb-3 sm:mb-4 font-[Manrope] px-1">
             Tez-tez Verilən Suallar
           </h2>
           <p className="text-[#6B7280]">
@@ -321,11 +332,11 @@ function FAQSection() {
           {faqs.map((faq, index) => (
             <Card key={index} className="group">
               <details className="group">
-                <summary className="flex items-center justify-between cursor-pointer list-none">
-                  <span className="font-semibold text-[#1F2937]">{faq.question}</span>
-                  <ChevronDown className="w-5 h-5 text-[#6B7280] transition-transform group-open:rotate-180" />
+                <summary className="flex items-start justify-between gap-3 cursor-pointer list-none min-h-[48px] p-3 -mx-1 rounded-xl active:bg-gray-50">
+                  <span className="font-semibold text-[#1F2937] text-left text-sm sm:text-base leading-snug">{faq.question}</span>
+                  <ChevronDown className="w-5 h-5 shrink-0 mt-0.5 text-[#6B7280] transition-transform group-open:rotate-180" />
                 </summary>
-                <p className="mt-4 text-[#6B7280] leading-relaxed">{faq.answer}</p>
+                <p className="mt-2 pb-2 px-1 text-[#6B7280] text-sm sm:text-base leading-relaxed">{faq.answer}</p>
               </details>
             </Card>
           ))}
@@ -354,14 +365,14 @@ function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12">
-          <div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-[#1F2937] mb-4 font-[Manrope]">
+    <section id="contact" className="py-12 sm:py-16 lg:py-20">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+          <div className="min-w-0">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-[#1F2937] mb-3 sm:mb-4 font-[Manrope]">
               Bizimlə Əlaqə
             </h2>
-            <p className="text-[#6B7280] mb-8">
+            <p className="text-[#6B7280] mb-6 sm:mb-8 text-sm sm:text-base">
               Suallarınız var? Bizimlə əlaqə saxlayın, ən qısa zamanda cavablandıraq.
             </p>
             <div className="space-y-6">
@@ -454,7 +465,7 @@ function ContactSection() {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">Göndər</Button>
+              <Button type="submit" className="w-full min-h-[48px]">Göndər</Button>
             </form>
           </Card>
         </div>
@@ -466,9 +477,9 @@ function ContactSection() {
 // Footer
 function Footer() {
   return (
-    <footer className="bg-[#1F2937] text-white py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-12">
+    <footer className="bg-[#1F2937] text-white py-12 sm:py-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-4 sm:gap-8 mb-10 sm:mb-12">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <img
@@ -540,8 +551,8 @@ export default function Home() {
       <Header variant="public" />
       
       {/* Viral Landing - TikTok/Instagram Optimized */}
-      <section className="py-12 lg:py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section className="py-8 sm:py-12 lg:py-20 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8">
           <ViralLanding />
         </div>
       </section>

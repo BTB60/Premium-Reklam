@@ -88,50 +88,49 @@ export function PromoBanner() {
           />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* Content */}
-            <div className="flex items-center gap-4 flex-1">
-              {/* Badge */}
+        <div className="relative max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            {/* Məzmun sətri */}
+            <div className="flex flex-wrap items-start gap-2 sm:gap-3 flex-1 min-w-0">
               {currentCampaign.badge && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-white/20 rounded text-xs font-bold">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:py-1 bg-white/20 rounded text-[10px] sm:text-xs font-bold shrink-0">
                   <Star className="w-3 h-3" />
                   {currentCampaign.badge}
                 </span>
               )}
-
-              {/* Text */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <Gift className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium text-sm sm:text-base">{currentCampaign.title}</span>
-                <span className="hidden md:inline text-white/80 text-sm">{currentCampaign.description}</span>
+              <div className="flex items-start gap-2 min-w-0 flex-1 basis-[min(100%,14rem)] sm:basis-auto">
+                <Gift className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <span className="font-semibold text-xs sm:text-base leading-snug block">{currentCampaign.title}</span>
+                  <span className="text-white/80 text-[11px] sm:text-sm mt-0.5 line-clamp-2 sm:line-clamp-none block md:hidden">
+                    {currentCampaign.description}
+                  </span>
+                  <span className="hidden md:inline text-white/80 text-sm mt-1">{currentCampaign.description}</span>
+                </div>
               </div>
-
-              {/* Countdown */}
               {currentCampaign.expiresAt && (
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-white/20 rounded-lg">
+                <div className="flex items-center gap-2 px-2 py-1 sm:px-3 bg-white/20 rounded-lg shrink-0 w-full justify-center sm:w-auto sm:justify-start">
                   <CountdownTimer expiresAt={currentCampaign.expiresAt} />
                 </div>
               )}
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Düymələr */}
+            <div className="flex items-center justify-end gap-2 flex-shrink-0 w-full sm:w-auto pt-0.5 sm:pt-0 border-t border-white/10 sm:border-0">
               <Button
                 size="sm"
                 variant="secondary"
-                className="bg-white text-gray-900 hover:bg-gray-100 border-none text-xs"
+                className="bg-white text-gray-900 hover:bg-gray-100 border-none text-xs min-h-[40px] sm:min-h-0 flex-1 sm:flex-initial max-w-[200px] sm:max-w-none"
               >
                 {currentCampaign.cta}
               </Button>
-
               <button
                 type="button"
                 onClick={() => setIsDismissed(true)}
-                className="p-1 hover:bg-white/20 rounded transition-colors"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center hover:bg-white/20 rounded-lg transition-colors shrink-0"
                 aria-label="Banneri bağla"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>

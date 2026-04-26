@@ -92,7 +92,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="az" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className={`${inter.variable} ${montserrat.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300`}>
+      <body className={`${inter.variable} ${montserrat.variable} antialiased font-sans bg-[var(--background)] text-[var(--foreground)] transition-colors duration-300 overflow-x-clip`}>
         <GoogleAnalytics />
         <FacebookPixel />
         <PageTransition>{children}</PageTransition>
