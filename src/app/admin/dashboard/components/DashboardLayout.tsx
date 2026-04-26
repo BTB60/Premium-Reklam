@@ -18,6 +18,7 @@ import ElanManager from "./ElanManager";
 import SettingsManager from "./SettingsManager";
 import AccessSettingsManager from "./AccessSettingsManager";
 import HomeCarouselManager from "./HomeCarouselManager";
+import HomePromoBannerManager from "./HomePromoBannerManager";
 import AuditLogsPanel from "./AuditLogsPanel";
 import UserPricesManager from "./UserPricesManager";
 import { RealtimeNotificationsHost } from "@/components/realtime/RealtimeNotificationsHost";
@@ -25,7 +26,7 @@ import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNo
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
-  TrendingUp, Award, Megaphone, History, Tag, Lock, Image as ImageIcon
+  TrendingUp, Award, Megaphone, History, Tag, Lock, Image as ImageIcon, PanelTop
 } from "lucide-react";
 import { authApi, orderApi } from "@/lib/authApi";
 import { fetchMyInAppNotifications } from "@/lib/clientPaymentNotificationsApi";
@@ -37,7 +38,7 @@ import AdminNotificationBell from "./AdminNotificationBell";
 // 🔥 ТИПЫ
 type PermissionLevel = "none" | "view" | "edit";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "homeCarousel" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "homeCarousel" | "homePromo" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface SubadminSession {
   subadminId: string;
@@ -67,6 +68,7 @@ const ALL_NAV_ITEMS: { id: ActiveTab; labelAz: string; labelEn: string; icon: an
   { id: "shops", labelAz: "Mağazalar", labelEn: "Shops", icon: Store, permission: "products" },
   { id: "elan", labelAz: "Elanlar", labelEn: "Announcements", icon: Megaphone, adminOnly: true },
   { id: "homeCarousel", labelAz: "Ana səhifə karuseli", labelEn: "Home carousel", icon: ImageIcon, adminOnly: true },
+  { id: "homePromo", labelAz: "Ana səhifə promo zolağı", labelEn: "Home promo strip", icon: PanelTop, adminOnly: true },
   { id: "notifications", labelAz: "Bildirişlər", labelEn: "Notifications", icon: Bell, permission: "support" },
   { id: "analytics", labelAz: "Analitika", labelEn: "Analytics", icon: BarChart3, permission: "analytics" },
   { id: "products", labelAz: "Məhsullar", labelEn: "Products", icon: Store, permission: "products" },
@@ -340,6 +342,11 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             {activeTab === "homeCarousel" && (
               <motion.div key="homeCarousel" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <HomeCarouselManager />
+              </motion.div>
+            )}
+            {activeTab === "homePromo" && (
+              <motion.div key="homePromo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <HomePromoBannerManager />
               </motion.div>
             )}
             {activeTab === "notifications" && (

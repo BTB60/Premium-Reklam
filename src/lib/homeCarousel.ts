@@ -79,6 +79,10 @@ export const defaultHomeCarouselSlides: HomeCarouselSlide[] = [
   },
 ];
 
+/**
+ * Yalnız brauzer keşi (serverdən uğurlu yükləmə / saxlamadan sonra doldurulur).
+ * Qlobal mənbə API-dir — köhnə lokal məzmunu “həqiqət” saymayın.
+ */
 export function getHomeCarouselSlides(): HomeCarouselSlide[] {
   if (typeof window === "undefined") return defaultHomeCarouselSlides;
   try {
@@ -92,6 +96,11 @@ export function getHomeCarouselSlides(): HomeCarouselSlide[] {
   } catch {
     return defaultHomeCarouselSlides;
   }
+}
+
+/** SSR və ilk paint üçün sabit default (lokal keşdən asılı deyil). */
+export function getHydrationHomeCarouselSlides(): HomeCarouselSlide[] {
+  return defaultHomeCarouselSlides.map((s) => ({ ...s }));
 }
 
 export function saveHomeCarouselSlides(slides: HomeCarouselSlide[]): void {
@@ -118,7 +127,15 @@ export async function loadHomeCarouselSlides(admin = false): Promise<HomeCarouse
     saveHomeCarouselSlides(slides);
     return slides;
   } catch {
-    return getHomeCarouselSlides();
+    // API əlçatan deyilsə köhnə keşi sil — növbəti uğurlu yükləmədə yalnız DB göstərilsin
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(HOME_CAROUSEL_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+    return defaultHomeCarouselSlides.map((s) => ({ ...s }));
   }
 }
 

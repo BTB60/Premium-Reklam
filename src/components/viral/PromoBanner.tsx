@@ -4,48 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Gift, Clock, Users, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-
-interface PromoCampaign {
-  id: string;
-  type: "first_order" | "referral" | "limited_time" | "seasonal";
-  title: string;
-  description: string;
-  cta: string;
-  badge?: string;
-  expiresAt?: Date;
-  color: string;
-}
-
-const campaigns: PromoCampaign[] = [
-  {
-    id: "1",
-    type: "first_order",
-    title: "İlk Sifarişinə 10% Endirim",
-    description: "İndi qeydiyyatdan keç, ilk sifarişində 10% endirim qazan",
-    cta: "İstifadə Et",
-    badge: "YENİ",
-    color: "from-[#D90429] to-[#EF476F]",
-  },
-  {
-    id: "2",
-    type: "referral",
-    title: "Dostunu Gətir, 25 AZN Bonus Qazan",
-    description: "Hər dəvət etdiyin dost üçün 25 AZN bonus",
-    cta: "Dəvət Et",
-    badge: "POPULYAR",
-    color: "from-[#16A34A] to-[#22C55E]",
-  },
-  {
-    id: "3",
-    type: "limited_time",
-    title: "Pro Paket 1 Ay Pulsuz",
-    description: "İlk 100 dekorçuya xüsusi təklif. Vaxt tükənir!",
-    cta: "İndi Al",
-    badge: "MƏHDUD",
-    expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 hours
-    color: "from-[#F59E0B] to-[#FBBF24]",
-  },
-];
+import { useHomePromoCampaigns } from "@/lib/useHomePromoCampaigns";
 
 function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
   const [timeLeft, setTimeLeft] = useState({
@@ -57,13 +16,15 @@ function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const difference = expiresAt.getTime() - Date.now();
-      
+
       if (difference > 0) {
         setTimeLeft({
           hours: Math.floor(difference / (1000 * 60 * 60)),
           minutes: Math.floor((difference / 1000 / 60) % 60),
           seconds: Math.floor((difference / 1000) % 60),
         });
+      } else {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
       }
     };
 
@@ -76,7 +37,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
   return (
     <div className="flex items-center gap-2 text-sm">
       <Clock className="w-4 h-4" />
-      <span className="font-mono">
+      <span className="font-mono" suppressHydrationWarning>
         {String(timeLeft.hours).padStart(2, "0")}:
         {String(timeLeft.minutes).padStart(2, "0")}:
         {String(timeLeft.seconds).padStart(2, "0")}
@@ -86,23 +47,27 @@ function CountdownTimer({ expiresAt }: { expiresAt: Date }) {
 }
 
 export function PromoBanner() {
+  const campaigns = useHomePromoCampaigns();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  const currentCampaign = campaigns[currentIndex];
+  const currentCampaign = campaigns[currentIndex] ?? campaigns[0];
 
   useEffect(() => {
     if (campaigns.length <= 1) return;
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % campaigns.length);
-    }, 8000); // Rotate every 8 seconds
+    }, 8000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [campaigns.length]);
 
-  if (isDismissed || !isVisible) return null;
+  useEffect(() => {
+    setCurrentIndex((i) => (campaigns.length ? Math.min(i, campaigns.length - 1) : 0));
+  }, [campaigns.length]);
+
+  if (isDismissed || !currentCampaign) return null;
 
   return (
     <AnimatePresence mode="wait">
@@ -115,9 +80,12 @@ export function PromoBanner() {
       >
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            }}
+          />
         </div>
 
         <div className="relative max-w-7xl mx-auto px-4 py-3">
@@ -135,12 +103,8 @@ export function PromoBanner() {
               {/* Text */}
               <div className="flex items-center gap-3 flex-wrap">
                 <Gift className="w-5 h-5 flex-shrink-0" />
-                <span className="font-medium text-sm sm:text-base">
-                  {currentCampaign.title}
-                </span>
-                <span className="hidden md:inline text-white/80 text-sm">
-                  {currentCampaign.description}
-                </span>
+                <span className="font-medium text-sm sm:text-base">{currentCampaign.title}</span>
+                <span className="hidden md:inline text-white/80 text-sm">{currentCampaign.description}</span>
               </div>
 
               {/* Countdown */}
@@ -160,10 +124,12 @@ export function PromoBanner() {
               >
                 {currentCampaign.cta}
               </Button>
-              
+
               <button
+                type="button"
                 onClick={() => setIsDismissed(true)}
                 className="p-1 hover:bg-white/20 rounded transition-colors"
+                aria-label="Banneri bağla"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -189,6 +155,7 @@ export function PromoBanner() {
 // Floating Action Button for Mobile
 export function FloatingPromoButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const campaigns = useHomePromoCampaigns();
 
   return (
     <div className="fixed bottom-24 right-4 z-40 md:hidden">
@@ -216,9 +183,11 @@ export function FloatingPromoButton() {
       </AnimatePresence>
 
       <motion.button
+        type="button"
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         className="w-14 h-14 rounded-full bg-gradient-to-r from-[#D90429] to-[#EF476F] text-white shadow-lg flex items-center justify-center"
+        aria-expanded={isOpen}
       >
         <Gift className={`w-6 h-6 transition-transform ${isOpen ? "rotate-45" : ""}`} />
       </motion.button>
@@ -227,11 +196,11 @@ export function FloatingPromoButton() {
 }
 
 // Achievement Badge for Viral Growth
-export function AchievementBadge({ 
-  type, 
-  title, 
-  description 
-}: { 
+export function AchievementBadge({
+  type,
+  title,
+  description,
+}: {
   type: "new" | "popular" | "limited" | "exclusive";
   title: string;
   description: string;

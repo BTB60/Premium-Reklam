@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
-  getHomeCarouselSlides,
+  getHydrationHomeCarouselSlides,
   loadHomeCarouselSlides,
   type HomeCarouselSlide,
 } from "@/lib/homeCarousel";
@@ -101,7 +101,7 @@ function BeforeAfterCard() {
 // Image Carousel Section
 function ImageCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [slides, setSlides] = useState<HomeCarouselSlide[]>(() => getHomeCarouselSlides());
+  const [slides, setSlides] = useState<HomeCarouselSlide[]>(() => getHydrationHomeCarouselSlides());
 
   useEffect(() => {
     void loadHomeCarouselSlides().then((loaded) => {
@@ -109,8 +109,10 @@ function ImageCarousel() {
       setCurrentSlide(0);
     });
     const reload = () => {
-      setSlides(getHomeCarouselSlides());
-      setCurrentSlide(0);
+      void loadHomeCarouselSlides().then((loaded) => {
+        setSlides(loaded);
+        setCurrentSlide(0);
+      });
     };
     window.addEventListener("premium:home-carousel-changed", reload);
     window.addEventListener("storage", reload);

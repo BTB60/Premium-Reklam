@@ -5,10 +5,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
   fileToDataUrl,
-  getHomeCarouselSlides,
   loadHomeCarouselSlides,
   resetHomeCarouselSlides,
-  saveHomeCarouselSlides,
   saveHomeCarouselSlidesRemote,
   type HomeCarouselSlide,
 } from "@/lib/homeCarousel";
@@ -20,7 +18,6 @@ export default function HomeCarouselManager() {
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    setSlides(getHomeCarouselSlides());
     void loadHomeCarouselSlides(true).then(setSlides);
   }, []);
 
@@ -72,7 +69,6 @@ export default function HomeCarouselManager() {
     }
     setSaving(true);
     try {
-      saveHomeCarouselSlides(cleaned);
       const saved = await saveHomeCarouselSlidesRemote(cleaned);
       setSlides(saved);
     } catch (error) {
@@ -102,7 +98,8 @@ export default function HomeCarouselManager() {
         <div>
           <h1 className="text-2xl font-bold text-[#1F2937]">Ana Səhifə Karuseli</h1>
           <p className="text-sm text-[#6B7280] mt-1">
-            Ana səhifədə görünən karusel şəkillərini və mətnlərini buradan dəyişin.
+            Karusel məzmunu serverdə (verilənlər bazası) saxlanır — bütün ziyarətçilər eyni slaydları görür.
+            &quot;Yadda saxla&quot; uğurlu olduqda brauzer keşi də yenilənir.
           </p>
         </div>
         <div className="flex gap-2">

@@ -7,7 +7,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "homeCarousel" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "homeCarousel" | "homePromo" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface SubadminSession {
   subadminId: string;
