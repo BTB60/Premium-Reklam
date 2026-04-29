@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Premium Reklam
 
-## Getting Started
+Reklam və dekor layihəsi: **Next.js** frontend + **Spring Boot** backend.
 
-First, run the development server:
+## Hostinger VPS-də ilk quruluş (Ubuntu)
+
+Bu layihədə backend **Gradle** ilə qurulur (`backend/gradlew`). Maven `mvnw` yoxdur.
+
+### 1. Asılılıqlar
+
+Serverdə: **Git**, **OpenJDK 17**, **PostgreSQL**, istəyə bağlı **Node.js** (frontend üçün).
+
+### 2. Kodu yüklə
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+sudo mkdir -p /opt/premiumreklam
+sudo chown "$USER":"$USER" /opt/premiumreklam
+cd /opt/premiumreklam
+git clone https://github.com/BTB60/Premium-Reklam.git app
+cd app
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. PostgreSQL + backend mühiti
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Production profili **`application.yml`** içində `SPRING_DATASOURCE_*` dəyişənləri ilə işləyir. Ən rahat yolu əlavə etmək:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+sudo mkdir -p /etc/premiumreklam
+sudo nano /etc/premiumreklam/backend.env
+```
 
-## Learn More
+Nümunə məzmun (`deploy/backend.env.example` ilə uyğun):
 
-To learn more about Next.js, take a look at the following resources:
+```env
+SPRING_PROFILES_ACTIVE=production
+PORT=8080
+SPRING_DATASOURCE_URL=jdbc:postgresql://127.0.0.1:5432/premium_reklam
+SPRING_DATASOURCE_USERNAME=premium_user
+SPRING_DATASOURCE_PASSWORD=GÜCLÜ_PAROL
+JWT_SECRET=UZUN_Təsadüfi_STRING
+JWT_EXPIRATION=86400000
+LOG_LEVEL=INFO
+DDL_AUTO=update
+SERVER_FORWARD_HEADERS_STRATEGY=framework
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Fayl icazələri məhdud saxlanılmalıdır (`chmod 640` və s.).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Tam VPS paketi (nginx + systemd + ilk build)
 
-## Deploy on Vercel
+Layihədə hazır skript var:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+chmod +x deploy/install-vps.sh
+sudo bash deploy/install-vps.sh
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+SSH üçün Hostinger firewall-da **22 / 80 / 443** portları açıq olmalıdır.
+
+### 5. Yalnız backend yeniləməsi — `deploy.sh`
+
+**Vacib:** `deploy/install-vps.sh` artıq **systemd** xidməti (`premiumreklam-backend`) qurursa, **`deploy.sh`** ilə eyni anda iki backend işləməsin — ya systemd-i dayandır (`sudo systemctl stop premiumreklam-backend`), ya da təkrar deploy üçün **`deploy/rebuild-app.sh`** istifadə et.
+
+Repo kökündən:
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Bu skript:
+
+1. `git pull origin main` edir  
+2. `backend`-də `./gradlew bootJar -x test` ilə JAR qurur  
+3. Köhnə **premium-reklam-backend** JAR prosesini dayandırır (`logs/deploy.pid` + uyğun `pkill`)  
+4. Yeni JAR-ı **`nohup`** ilə arxa fonda işə salır; çıxış **`backend/logs/app.log`** faylına yazılır  
+
+Əvvəlcədən `/etc/premiumreklam/backend.env` varsa, skript onu **source** edir.
+
+---
+
+## Əlavə qeydlər
+
+- Frontend üçün tam prod quruluş: `deploy/README-AZ.txt` və `deploy/rebuild-app.sh`.  
+- Yerli inkişaf üçün backend default **`local`** profilində H2 istifadə edir; prod üçün **`SPRING_PROFILES_ACTIVE=production`** mütləqdir.

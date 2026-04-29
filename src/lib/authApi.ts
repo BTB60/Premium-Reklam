@@ -62,11 +62,17 @@ function parseJsonObjectResponse(raw: string): Record<string, unknown> | null {
 // Map backend role to frontend role
 function mapRole(role: string): string {
   const roleMap: Record<string, string> = {
-    'ADMIN': 'ADMIN',
-    'DECORCU': 'DECORATOR',
-    'DECORATOR': 'DECORATOR',
-    'VENDOR': 'VENDOR',
-    'SUBADMIN': 'SUBADMIN',
+    ADMIN: "ADMIN",
+    DECORCU: "DECORATOR",
+    DECORATOR: "DECORATOR",
+    REKLAMCI: "REKLAMCI",
+    VENDOR: "VENDOR",
+    SUBADMIN: "SUBADMIN",
+    DIZAYNER: "DIZAYNER",
+    USTA: "USTA",
+    CHAPCI: "CHAPCI",
+    KASSIR: "KASSIR",
+    MUHASIB: "MUHASIB",
   };
   return roleMap[role] || role;
 }

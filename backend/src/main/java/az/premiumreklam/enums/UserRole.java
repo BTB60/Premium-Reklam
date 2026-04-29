@@ -6,9 +6,16 @@ public enum UserRole {
     ADMIN("ADMIN"),
     KASSIR("KASSIR"),
     MUHASIB("MUHASIB"),
+    /** Dekorçu portal istifadəçisi (köhnə cavabda DECORATOR kimi görünür). */
     DECORCU("DECORATOR"),
     DECORATOR("DECORATOR"),
-    VENDOR("VENDOR");
+    /** Reklamçı hesabı — qeydiyyatda ayrıca seçilir. */
+    REKLAMCI("REKLAMCI"),
+    VENDOR("VENDOR"),
+    /** Daxili işçi rolları — yalnız admin/subadmin yaradır. */
+    DIZAYNER("DIZAYNER"),
+    USTA("USTA"),
+    CHAPCI("CHAPCI");
 
     private final String value;
 

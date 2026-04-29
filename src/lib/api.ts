@@ -56,6 +56,8 @@ export const api = {
     username: string;
     phone?: string;
     password: string;
+    accountType?: string;
+    email?: string;
   }) {
     const response = await fetch(`${apiBase()}/auth/register`, {
       method: "POST",

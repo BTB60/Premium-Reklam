@@ -4,7 +4,7 @@
 // USER & AUTH
 // ========================================
 
-export type UserRole = "ADMIN" | "DECORATOR" | "VENDOR";
+export type UserRole = "ADMIN" | "DECORATOR" | "REKLAMCI" | "VENDOR";
 
 export interface MonthlyStats {
   month: string;

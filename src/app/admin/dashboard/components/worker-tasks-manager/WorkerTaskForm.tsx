@@ -94,14 +94,19 @@ export function WorkerTaskForm({
               <option value="urgent">Təcili</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-[#6B7280] mb-1">Son tarix</label>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-[#6B7280] mb-1">
+              Təxmini bitmə vaxtı (tarix və saat)
+            </label>
             <input
-              type="date"
+              type="datetime-local"
               value={formData.dueDate || ""}
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#D90429]"
             />
+            <p className="mt-1 text-xs text-[#9CA3AF]">
+              Statusu “İcra olunur” etməzdən əvvəl doldurun — sonra geri sayım işləyir.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-[#6B7280] mb-1">Sifariş (əgər varsa)</label>

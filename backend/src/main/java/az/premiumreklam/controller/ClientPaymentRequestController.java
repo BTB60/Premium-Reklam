@@ -47,7 +47,7 @@ public class ClientPaymentRequestController {
     }
 
     private static final Set<String> CLIENT_ROLES_FOR_PAYMENT_REQUEST = Set.of(
-            "ROLE_DECORCU", "ROLE_DECORATOR", "ROLE_VENDOR");
+            "ROLE_DECORCU", "ROLE_DECORATOR", "ROLE_REKLAMCI", "ROLE_VENDOR");
 
     private static void assertCustomerRole(Authentication authentication) {
         boolean allowed = authentication.getAuthorities().stream()

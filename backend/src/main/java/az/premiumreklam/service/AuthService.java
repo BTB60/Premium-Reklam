@@ -45,13 +45,15 @@ public class AuthService {
             throw new RuntimeException("Bu email artıq mövcuddur");
         }
 
+        UserRole registrationRole = resolveRegistrationRole(request.getAccountType());
+
         User user = User.builder()
                 .fullName(request.getFullName())
                 .username(request.getUsername())
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .role(UserRole.DECORCU)
+                .role(registrationRole)
                 .status(UserStatus.ACTIVE)
                 .build();
 
@@ -60,6 +62,21 @@ public class AuthService {
         String token = jwtService.generateToken(user.getUsername());
 
         return AuthResponse.fromUser(user, token);
+    }
+
+    /** Qeydiyyat formundan: REKLAMCI və ya DECORCU; boş köhnə uyğunluq üçün dekorçu. */
+    private static UserRole resolveRegistrationRole(String accountType) {
+        if (accountType == null || accountType.isBlank()) {
+            return UserRole.DECORCU;
+        }
+        String t = accountType.trim();
+        if ("REKLAMCI".equalsIgnoreCase(t)) {
+            return UserRole.REKLAMCI;
+        }
+        if ("DECORCU".equalsIgnoreCase(t) || "DECORATOR".equalsIgnoreCase(t)) {
+            return UserRole.DECORCU;
+        }
+        throw new RuntimeException("Yanlış hesab növü: Reklamçı və ya Dekorçu seçin");
     }
 
     @Transactional

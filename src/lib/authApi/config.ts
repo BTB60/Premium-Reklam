@@ -21,10 +21,12 @@ const getBaseUrl = (): string => {
 export const BASE_URL = getBaseUrl();
 
 // ✅ Маппинг ролей (бэкенд → фронтенд)
-export function mapRole(role: string): "ADMIN" | "DECORATOR" | "VENDOR" {
+export function mapRole(role: string): "ADMIN" | "DECORATOR" | "VENDOR" | "REKLAMCI" | "SUBADMIN" {
   const r = role?.toUpperCase();
   if (r === "ADMIN" || r === "SUPERADMIN") return "ADMIN";
   if (r === "VENDOR" || r === "SELLER") return "VENDOR";
+  if (r === "REKLAMCI") return "REKLAMCI";
+  if (r === "SUBADMIN") return "SUBADMIN";
   return "DECORATOR";
 }
 

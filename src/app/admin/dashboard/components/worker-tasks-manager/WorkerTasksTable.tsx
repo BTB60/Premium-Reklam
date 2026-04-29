@@ -4,6 +4,7 @@ import { User, Calendar, Edit, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import type { WorkerDashboardTask } from "./types";
 import { getPriorityColor, getPriorityLabel } from "./labels";
+import { WorkerTaskCountdown } from "./WorkerTaskCountdown";
 
 export function WorkerTasksTable({
   tasks,
@@ -25,7 +26,7 @@ export function WorkerTasksTable({
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Tapşırıq</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">İşçi</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Prioritet</th>
-            <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Son tarix</th>
+            <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Bitmə / sayğac</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Status</th>
             <th className="text-left py-3 px-4 text-sm font-semibold text-[#6B7280]">Əməliyyat</th>
           </tr>
@@ -74,11 +75,24 @@ export function WorkerTasksTable({
                   </td>
                   <td className="py-3 px-4">
                     {task.dueDate ? (
-                      <div className="flex items-center gap-1">
-                        <Calendar className={`w-4 h-4 ${isOverdue ? "text-red-500" : "text-gray-400"}`} />
-                        <span className={`text-sm ${isOverdue ? "text-red-600 font-medium" : "text-[#6B7280]"}`}>
-                          {new Date(task.dueDate).toLocaleDateString("az-AZ")}
-                        </span>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1">
+                          <Calendar className={`w-4 h-4 shrink-0 ${isOverdue ? "text-red-500" : "text-gray-400"}`} />
+                          <span className={`text-sm ${isOverdue ? "text-red-600 font-medium" : "text-[#6B7280]"}`}>
+                            {new Date(task.dueDate).toLocaleString("az-AZ", {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        {task.status === "in_progress" && task.workStartedAt && (
+                          <WorkerTaskCountdown deadlineIso={task.dueDate} />
+                        )}
+                        {task.status === "in_progress" && !task.workStartedAt && (
+                          <span className="text-xs text-amber-600">Statusu yenidən seçin — sayğac işə düşsün</span>
+                        )}
                       </div>
                     ) : (
                       <span className="text-sm text-[#6B7280]">-</span>

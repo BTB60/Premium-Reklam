@@ -6,7 +6,7 @@ set -euo pipefail
 [[ "${EUID:-0}" -eq 0 ]] || { echo "sudo ilə işlədin"; exit 1; }
 
 APP_ROOT="${APP_ROOT:-/opt/premiumreklam}"
-SRC="${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}"
+SRC="${DEPLOY_SRC:-${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}}"
 
 cd "$SRC/backend"
 chmod +x ./gradlew 2>/dev/null || true

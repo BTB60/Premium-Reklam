@@ -44,14 +44,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://premiumreklambaku.shop"),
+  metadataBase: new URL("https://premiumreklam.shop"),
   alternates: {
-    canonical: "https://premiumreklambaku.shop",
+    canonical: "https://premiumreklam.shop",
   },
   openGraph: {
     title: "Premium Reklam - Reklam və Dekor Xidmətləri",
     description: "Professional reklam və dekor xidmətləri. Vinil, orakal, banner çapı, dekorasiya və dizayn.",
-    url: "https://premiumreklambaku.shop",
+    url: "https://premiumreklam.shop",
     siteName: "Premium Reklam",
     locale: "az_AZ",
     type: "website",

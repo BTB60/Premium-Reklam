@@ -94,12 +94,22 @@ if (typeof window !== "undefined") {
 }
 
 export const auth = {
-  async register(data: { fullName: string; username: string; phone?: string; email?: string; password: string }) {
+  async register(data: {
+    fullName: string;
+    username: string;
+    phone?: string;
+    email?: string;
+    password: string;
+    accountType?: string;
+  }) {
     const users = getStorage<any[]>(USERS_KEY, []);
     
     if (users.some((u: any) => u.username === data.username)) {
       return { success: false, error: "Bu istifadəçi adı artıq mövcuddur" };
     }
+
+    const role =
+      (data.accountType || "").trim().toUpperCase() === "REKLAMCI" ? "REKLAMCI" : "DECORATOR";
     
     const newUser = {
       id: Date.now().toString(),
@@ -108,7 +118,7 @@ export const auth = {
       phone: data.phone || "",
       email: data.email || "",
       password: data.password,
-      role: "DECORATOR",
+      role,
       level: 1,
       totalOrders: 0,
       totalSales: 0,

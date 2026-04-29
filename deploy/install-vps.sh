@@ -11,7 +11,7 @@ if [[ "${EUID:-0}" -ne 0 ]]; then
 fi
 
 APP_ROOT="${APP_ROOT:-/opt/premiumreklam}"
-SRC="${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}"
+SRC="${DEPLOY_SRC:-${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}}"
 DOMAIN="${DEPLOY_DOMAIN:-premiumreklam.shop}"
 
 echo "=== Premium Reklam VPS ==="

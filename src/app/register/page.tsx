@@ -13,6 +13,8 @@ import {
   EyeOff,
   ArrowRight,
   Loader2,
+  Megaphone,
+  Palette,
 } from "lucide-react";
 import authApi from "@/lib/authApi";
 import { cn } from "@/lib/utils";
@@ -31,6 +33,7 @@ export default function RegisterPage() {
   const reduceMotion = useReducedMotion();
 
   const [showPassword, setShowPassword] = useState(false);
+  const [accountType, setAccountType] = useState<"REKLAMCI" | "DECORCU">("DECORCU");
   const [form, setForm] = useState({
     fullName: "",
     username: "",
@@ -54,7 +57,7 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const result = await authApi.register(form);
+      const result = await authApi.register({ ...form, accountType });
       authApi.saveCurrentUser(result);
       if (result.role === "ADMIN") {
         router.push("/admin");
@@ -136,6 +139,60 @@ export default function RegisterPage() {
             </motion.div>
 
             <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-xs font-medium uppercase tracking-wider text-zinc-500">
+                  Hesab növü
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setAccountType("REKLAMCI")}
+                    className={cn(
+                      "relative flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-center transition-colors",
+                      accountType === "REKLAMCI"
+                        ? "border-[#C41E3A]/70 bg-[#C41E3A]/20 shadow-[0_0_0_3px_rgba(196,30,58,0.2)]"
+                        : "border-white/10 bg-white/[0.04] hover:border-white/18 hover:bg-white/[0.06]"
+                    )}
+                  >
+                    <Megaphone
+                      className={cn(
+                        "h-6 w-6",
+                        accountType === "REKLAMCI" ? "text-rose-200" : "text-zinc-500"
+                      )}
+                      aria-hidden
+                    />
+                    <span className={cn("text-sm font-semibold", accountType === "REKLAMCI" ? "text-white" : "text-zinc-300")}>
+                      Reklamçı
+                    </span>
+                    <span className="text-[11px] leading-tight text-zinc-500">Reklam və çap sifarişləri</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => setAccountType("DECORCU")}
+                    className={cn(
+                      "relative flex flex-col items-center gap-2 rounded-xl border px-3 py-3 text-center transition-colors",
+                      accountType === "DECORCU"
+                        ? "border-[#C41E3A]/70 bg-[#C41E3A]/20 shadow-[0_0_0_3px_rgba(196,30,58,0.2)]"
+                        : "border-white/10 bg-white/[0.04] hover:border-white/18 hover:bg-white/[0.06]"
+                    )}
+                  >
+                    <Palette
+                      className={cn(
+                        "h-6 w-6",
+                        accountType === "DECORCU" ? "text-rose-200" : "text-zinc-500"
+                      )}
+                      aria-hidden
+                    />
+                    <span className={cn("text-sm font-semibold", accountType === "DECORCU" ? "text-white" : "text-zinc-300")}>
+                      Dekorçu
+                    </span>
+                    <span className="text-[11px] leading-tight text-zinc-500">Dekor və montaj tərəfdaşı</span>
+                  </button>
+                </div>
+              </div>
+
               <AnimatePresence mode="wait">
                 {error ? (
                   <motion.div

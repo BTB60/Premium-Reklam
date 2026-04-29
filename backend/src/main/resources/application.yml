@@ -95,7 +95,11 @@ logging:
     org.springframework.security: WARN
 
 ---
-# Production / Render (SPRING_PROFILES_ACTIVE=production or prod)
+# Production / Render / VPS PostgreSQL
+# Aktiv profil: SPRING_PROFILES_ACTIVE=production (və ya prod)
+# Vacib mühit dəyişənləri: SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD, JWT_SECRET
+# Nümunə fayl: repo kökündə deploy/backend.env.example və README.md (Hostinger VPS bölməsi)
+#
 # Note: comma-separated on-profile means ALL listed profiles must be active (AND).
 # Use | for OR so a single active profile (e.g. production) loads this block.
 spring:
@@ -103,7 +107,7 @@ spring:
     activate:
       on-profile: "production | prod"
 
-  # Render: SPRING_DATASOURCE_* (Spring), DATABASE_URL / Neon, or PGHOST+PGDATABASE+PGUSER+PGPASSWORD — see PostgresDatasourceUrlSupport.
+  # Render/VPS: SPRING_DATASOURCE_* — PostgresDatasourceUrlSupport DATABASE_URL dəstəkləyə bilər.
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}

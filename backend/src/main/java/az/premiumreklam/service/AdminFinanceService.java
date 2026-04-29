@@ -127,7 +127,7 @@ public class AdminFinanceService {
 
     private boolean isClientRole(User user) {
         UserRole role = user.getRole();
-        return role == UserRole.DECORCU || role == UserRole.DECORATOR || role == UserRole.VENDOR;
+        return role == UserRole.DECORCU || role == UserRole.DECORATOR || role == UserRole.REKLAMCI || role == UserRole.VENDOR;
     }
 
     @Transactional

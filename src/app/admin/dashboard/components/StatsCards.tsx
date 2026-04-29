@@ -23,7 +23,7 @@ type RecentOrder = {
   createdAt?: string;
 };
 
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "workers" | "orders" | "shops" | "elan" | "notifications" | "analytics" | "products" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface StatsCardsProps {
   onNavigate?: (tab: ActiveTab) => void;

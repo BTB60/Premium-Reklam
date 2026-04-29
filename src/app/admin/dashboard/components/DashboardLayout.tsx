@@ -12,6 +12,7 @@ import ProductsManager from "./ProductsManager";
 import FinanceDashboard from "./FinanceDashboard";
 import InventoryManager from "./InventoryManager";
 import WorkerTasksManager from "./WorkerTasksManager";
+import WorkersManager from "./WorkersManager";
 import ShopsManager from "./ShopsManager";
 import SupportManager from "./SupportManager";
 import ElanManager from "./ElanManager";
@@ -26,7 +27,7 @@ import { ServerNotificationsMarkAllButton } from "@/components/realtime/ServerNo
 import { 
   Shield, Users, Package, Bell, BarChart3, Store, Wallet, Boxes, 
   ClipboardList, Headphones, Settings, LogOut, Menu, ChevronLeft, Key,
-  TrendingUp, Award, Megaphone, History, Tag, Lock, Image as ImageIcon, PanelTop
+  TrendingUp, Award, Megaphone, History, Tag, Lock, Image as ImageIcon, PanelTop, UserCog,
 } from "lucide-react";
 import { authApi, orderApi } from "@/lib/authApi";
 import { fetchMyInAppNotifications } from "@/lib/clientPaymentNotificationsApi";
@@ -38,7 +39,7 @@ import AdminNotificationBell from "./AdminNotificationBell";
 // 🔥 ТИПЫ
 type PermissionLevel = "none" | "view" | "edit";
 
-type ActiveTab = "dashboard" | "users" | "orders" | "shops" | "elan" | "homeCarousel" | "homePromo" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
+type ActiveTab = "dashboard" | "users" | "workers" | "orders" | "shops" | "elan" | "homeCarousel" | "homePromo" | "notifications" | "analytics" | "products" | "userPrices" | "finance" | "inventory" | "workerTasks" | "support" | "settings" | "tasks" | "accessSettings" | "auditLogs";
 
 interface SubadminSession {
   subadminId: string;
@@ -64,6 +65,7 @@ function normalizeRole(raw?: string): string {
 const ALL_NAV_ITEMS: { id: ActiveTab; labelAz: string; labelEn: string; icon: any; permission?: keyof SubadminSession["permissions"]; adminOnly?: boolean }[] = [
   { id: "dashboard", labelAz: "Dashboard", labelEn: "Dashboard", icon: TrendingUp },
   { id: "users", labelAz: "İstifadəçilər", labelEn: "Users", icon: Users, permission: "users" },
+  { id: "workers", labelAz: "İşçilər", labelEn: "Staff", icon: UserCog, permission: "users" },
   { id: "orders", labelAz: "Sifarişlər", labelEn: "Orders", icon: Package, permission: "orders" },
   { id: "shops", labelAz: "Mağazalar", labelEn: "Shops", icon: Store, permission: "products" },
   { id: "elan", labelAz: "Elanlar", labelEn: "Announcements", icon: Megaphone, adminOnly: true },
@@ -317,6 +319,14 @@ export default function DashboardLayout({ user, subadminSession, activeTab, onTa
             {activeTab === "dashboard" && (
               <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <StatsCards onNavigate={onTabChange} />
+              </motion.div>
+            )}
+            {activeTab === "workers" && (
+              <motion.div key="workers" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <WorkersManager
+                  lang={lang}
+                  canManageStaff={isAdmin || hasPermission(permissions, "users", "edit")}
+                />
               </motion.div>
             )}
             {activeTab === "users" && (

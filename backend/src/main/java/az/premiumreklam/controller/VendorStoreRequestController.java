@@ -24,7 +24,7 @@ public class VendorStoreRequestController {
     private final VendorStoreRequestService vendorStoreRequestService;
 
     private static final Set<String> CLIENT_ROLES = Set.of(
-            "ROLE_DECORCU", "ROLE_DECORATOR", "ROLE_VENDOR");
+            "ROLE_DECORCU", "ROLE_DECORATOR", "ROLE_REKLAMCI", "ROLE_VENDOR");
 
     private static void assertCustomerRole(Authentication authentication) {
         boolean allowed = authentication.getAuthorities().stream()

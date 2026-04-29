@@ -6,7 +6,14 @@ import { UserData } from "./types";
 import { auth as mockAuth } from "@/lib/db/auth";
 
 export const authApi = {
-  async register(userData: { fullName: string; username: string; email?: string; phone?: string; password: string }) {
+  async register(userData: {
+    fullName: string;
+    username: string;
+    email?: string;
+    phone?: string;
+    password: string;
+    accountType?: string;
+  }) {
     try {
       const res = await fetch(`${BASE_URL}/auth/register`, {
         method: "POST",
@@ -17,15 +24,15 @@ export const authApi = {
       if (text.startsWith("<")) throw new Error("HTML");
       const data = JSON.parse(text);
       if (!res.ok) throw new Error(data.message || "Error");
-      return data;
+      return { ...data, role: mapRole(data.role) };
     } catch (e) {
       console.log("[authApi] register → Mock DB (backend offline)");
     }
-    
-    // Фоллбэк
+
     const result = await mockAuth.register(userData);
     if (!result.success) throw new Error(result.error || "Failed");
-    return result.user;
+    const u = result.user as { role?: string; token?: string };
+    return { ...u, role: mapRole(u.role ?? "DECORATOR") };
   },
 
   async login(username: string, password: string): Promise<UserData> {

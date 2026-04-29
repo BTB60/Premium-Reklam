@@ -6,9 +6,12 @@ import az.premiumreklam.entity.User;
 import az.premiumreklam.enums.UserRole;
 import az.premiumreklam.repository.OrderRepository;
 import az.premiumreklam.repository.UserRepository;
+import az.premiumreklam.repository.WorkerTaskRepository;
+import az.premiumreklam.service.AdminPanelAccessService;
 import az.premiumreklam.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -28,6 +31,8 @@ public class AdminController {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final OrderService orderService;
+    private final AdminPanelAccessService adminPanelAccessService;
+    private final WorkerTaskRepository workerTaskRepository;
 
     @GetMapping("/dashboard")
     public Map<String, Object> getDashboardStats() {
@@ -42,14 +47,21 @@ public class AdminController {
         long decorcuCount = users.stream()
                 .filter(u -> u.getRole() == UserRole.DECORCU || u.getRole() == UserRole.DECORATOR)
                 .count();
+        long reklamciCount = users.stream()
+                .filter(u -> u.getRole() == UserRole.REKLAMCI)
+                .count();
 
         stats.put("totalUsers", totalUsers);
         stats.put("adminCount", adminCount);
         stats.put("kassirCount", kassirCount);
         stats.put("muhasibCount", muhasibCount);
         stats.put("decorcuCount", decorcuCount);
-
-        // Sifariş statistikası
+        stats.put("reklamciCount", reklamciCount);
+        stats.put("workerTasksActive", workerTaskRepository.findAll().stream()
+                .filter(t -> t.getStatus() != null
+                        && !"completed".equalsIgnoreCase(t.getStatus())
+                        && !"cancelled".equalsIgnoreCase(t.getStatus()))
+                .count());
         List<Order> orders = orderRepository.findAll();
         int totalOrders = orders.size();
         long pendingOrders = orders.stream()
@@ -89,12 +101,14 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public List<User> getAllUsers() {
+    public List<User> getAllUsers(Authentication authentication) {
+        adminPanelAccessService.requireAdminOrFeature(authentication, "users", false);
         return userRepository.findAll();
     }
 
     @GetMapping("/orders")
-    public List<OrderResponse> getAllOrders() {
+    public List<OrderResponse> getAllOrders(Authentication authentication) {
+        adminPanelAccessService.requireAdminOrFeature(authentication, "orders", false);
         return orderService.getAllOrders().stream()
                 .map(OrderResponse::fromEntity)
                 .collect(Collectors.toList());
