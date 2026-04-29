@@ -1,0 +1,21 @@
+[Unit]
+Description=Premium Reklam Spring Boot API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=premiumreklam
+Group=premiumreklam
+WorkingDirectory=/opt/premiumreklam/backend
+
+# EnvironmentFile yaradın: sudo cp deploy/backend.env.example /etc/premiumreklam/backend.env && sudo chmod 600 ...
+EnvironmentFile=-/etc/premiumreklam/backend.env
+
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/premiumreklam/backend/premium-reklam-backend.jar
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+[Unit]
+Description=Premium Reklam Next.js (standalone)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=premiumreklam
+Group=premiumreklam
+WorkingDirectory=/opt/premiumreklam/web/.next/standalone
+
+EnvironmentFile=-/etc/premiumreklam/frontend.env
+
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
