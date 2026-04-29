@@ -57,6 +57,12 @@ sudo bash deploy/install-vps.sh
 
 SSH üçün Hostinger firewall-da **22 / 80 / 443** portları açıq olmalıdır.
 
+### İki ayrı GitHub reposu (backend + frontend)
+
+Backend **backandpremiumreklam**, frontend **Premium-Reklam** eyni VPS-də olanda addım-addım təlimat:
+
+**[deploy/VPS-DUAL-REPO.md](deploy/VPS-DUAL-REPO.md)**
+
 ### 5. Yalnız backend yeniləməsi — `deploy.sh`
 
 **Vacib:** `deploy/install-vps.sh` artıq **systemd** xidməti (`premiumreklam-backend`) qurursa, **`deploy.sh`** ilə eyni anda iki backend işləməsin — ya systemd-i dayandır (`sudo systemctl stop premiumreklam-backend`), ya da təkrar deploy üçün **`deploy/rebuild-app.sh`** istifadə et.

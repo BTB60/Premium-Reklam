@@ -1,20 +1,33 @@
 #!/usr/bin/env bash
 # Kod yeniləndikdən təkrar build + restart (root)
-# PREMIUM_REKLAM_SRC=/opt/premiumreklam/source ilə işlədin
+#
+# Tək repo: DEPLOY_SRC və ya PREMIUM_REKLAM_SRC (default: $APP_ROOT/source)
+# İki repo: BACKEND_SRC + FRONTEND_SRC
 
 set -euo pipefail
 [[ "${EUID:-0}" -eq 0 ]] || { echo "sudo ilə işlədin"; exit 1; }
 
 APP_ROOT="${APP_ROOT:-/opt/premiumreklam}"
-SRC="${DEPLOY_SRC:-${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}}"
+DEPLOY_ROOT="${DEPLOY_SRC:-${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}}"
 
-cd "$SRC/backend"
+if [[ -n "${BACKEND_SRC:-}" ]] && [[ -n "${FRONTEND_SRC:-}" ]]; then
+  BE_SRC="$BACKEND_SRC"
+  FE_SRC="$FRONTEND_SRC"
+elif [[ -n "${BACKEND_SRC:-}" ]] || [[ -n "${FRONTEND_SRC:-}" ]]; then
+  echo "Xəta: BACKEND_SRC və FRONTEND_SRC hər ikisi lazımdır."
+  exit 1
+else
+  BE_SRC="$DEPLOY_ROOT"
+  FE_SRC="$DEPLOY_ROOT"
+fi
+
+cd "$BE_SRC/backend"
 chmod +x ./gradlew 2>/dev/null || true
 sudo -u premiumreklam ./gradlew bootJar --no-daemon -q
-JAR="$(ls -1 "$SRC/backend/build/libs"/premium-reklam-backend-*.jar | grep -v plain | head -1)"
+JAR="$(ls -1 "$BE_SRC/backend/build/libs"/premium-reklam-backend-*.jar | grep -v plain | head -1)"
 install -o premiumreklam -g premiumreklam -m 644 "$JAR" "$APP_ROOT/backend/premium-reklam-backend.jar"
 
-cd "$SRC"
+cd "$FE_SRC"
 sudo -u premiumreklam npm ci
 sudo -u premiumreklam npm run build
 sudo -u premiumreklam mkdir -p .next/standalone/.next

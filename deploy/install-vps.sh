@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Premium Reklam — Ubuntu VPS quraşdırması (root ilə işə salın)
+# Tək repo: DEPLOY_SRC və ya PREMIUM_REKLAM_SRC (default: $APP_ROOT/source)
+# İki repo: BACKEND_SRC + FRONTEND_SRC (məs. backandpremiumreklam + Premium-Reklam)
+#
 # İstifadə: sudo bash deploy/install-vps.sh
-# Əvvəl: kod /opt/premiumreklam/source-da olmalıdır (və ya PREMIUM_REKLAM_SRC dəyişənində).
+# və ya: sudo env BACKEND_SRC=... FRONTEND_SRC=... bash deploy/install-vps.sh
 
 set -euo pipefail
 
@@ -11,20 +14,52 @@ if [[ "${EUID:-0}" -ne 0 ]]; then
 fi
 
 APP_ROOT="${APP_ROOT:-/opt/premiumreklam}"
-SRC="${DEPLOY_SRC:-${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}}"
 DOMAIN="${DEPLOY_DOMAIN:-premiumreklam.shop}"
+DEPLOY_ROOT="${DEPLOY_SRC:-${PREMIUM_REKLAM_SRC:-$APP_ROOT/source}}"
 
-echo "=== Premium Reklam VPS ==="
-echo "APP_ROOT=$APP_ROOT"
-echo "SRC=$SRC"
-echo "DOMAIN=$DOMAIN"
+if [[ -n "${BACKEND_SRC:-}" ]] && [[ -n "${FRONTEND_SRC:-}" ]]; then
+  BE_SRC="$BACKEND_SRC"
+  FE_SRC="$FRONTEND_SRC"
+  echo "=== Premium Reklam VPS (iki repo) ==="
+  echo "BACKEND_SRC=$BE_SRC"
+  echo "FRONTEND_SRC=$FE_SRC"
+  if [[ ! -f "$BE_SRC/backend/build.gradle" ]]; then
+    echo "Xəta: backend layihəsi tapılmadı: $BE_SRC/backend/build.gradle"
+    exit 1
+  fi
+  if [[ ! -f "$FE_SRC/package.json" ]]; then
+    echo "Xəta: frontend (Next) kökü tapılmadı: $FE_SRC/package.json"
+    exit 1
+  fi
+elif [[ -n "${BACKEND_SRC:-}" ]] || [[ -n "${FRONTEND_SRC:-}" ]]; then
+  echo "Xəta: BACKEND_SRC və FRONTEND_SRC hər ikisi birlikdə verilməlidir."
+  echo "        Və ya tək-repo üçün yalnız DEPLOY_SRC / PREMIUM_REKLAM_SRC istifadə edin."
+  exit 1
+else
+  BE_SRC="$DEPLOY_ROOT"
+  FE_SRC="$DEPLOY_ROOT"
+  echo "=== Premium Reklam VPS (tək repo) ==="
+  echo "SRC=$DEPLOY_ROOT"
+  if [[ ! -f "$FE_SRC/package.json" ]] || [[ ! -f "$BE_SRC/backend/build.gradle" ]]; then
+    echo "Xəta: layihə kökü tapılmadı: $DEPLOY_ROOT"
+    echo "Git clone edin, məsələn:"
+    echo "  mkdir -p $APP_ROOT && git clone <repo-url> $DEPLOY_ROOT"
+    exit 1
+  fi
+fi
 
-if [[ ! -f "$SRC/package.json" ]] || [[ ! -f "$SRC/backend/build.gradle" ]]; then
-  echo "Xəta: layihə kökü tapılmadı: $SRC"
-  echo "Git clone edin, məsələn:"
-  echo "  mkdir -p $APP_ROOT && git clone <repo-url> $SRC"
+DEPLOY_CFG="$FE_SRC/deploy"
+if [[ ! -d "$DEPLOY_CFG" ]] || [[ ! -f "$DEPLOY_CFG/systemd/premiumreklam-backend.service" ]]; then
+  DEPLOY_CFG="$BE_SRC/deploy"
+fi
+if [[ ! -f "$DEPLOY_CFG/systemd/premiumreklam-backend.service" ]]; then
+  echo "Xəta: deploy/systemd faylları tapılmadı. Gözlənilən: \$FRONTEND_SRC/deploy və ya \$BACKEND_SRC/deploy"
   exit 1
 fi
+
+echo "APP_ROOT=$APP_ROOT"
+echo "DOMAIN=$DOMAIN"
+echo "deploy konfiqlər: $DEPLOY_CFG"
 
 groupadd -f premiumreklam
 if ! id premiumreklam &>/dev/null; then
@@ -33,7 +68,8 @@ fi
 
 mkdir -p "$APP_ROOT/backend" "$APP_ROOT/web" /etc/premiumreklam /var/www/html
 chown -R premiumreklam:premiumreklam "$APP_ROOT"
-chown -R premiumreklam:premiumreklam "$SRC"
+chown -R premiumreklam:premiumreklam "$BE_SRC"
+chown -R premiumreklam:premiumreklam "$FE_SRC"
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
@@ -100,20 +136,20 @@ PORT=3000
 FRONTENV
 fi
 
-echo "=== Backend build (Gradle) ==="
-cd "$SRC/backend"
+echo "=== Backend build (Gradle) — $BE_SRC ==="
+cd "$BE_SRC/backend"
 chmod +x ./gradlew 2>/dev/null || true
 sudo -u premiumreklam ./gradlew bootJar --no-daemon -q
 
-JAR="$(ls -1 "$SRC/backend/build/libs"/premium-reklam-backend-*.jar | grep -v plain | head -1)"
-if [[ ! -f "$JAR" ]]; then
-  echo "JAR tapılmadı."
+JAR="$(ls -1 "$BE_SRC/backend/build/libs"/premium-reklam-backend-*.jar 2>/dev/null | grep -v plain | head -1 || true)"
+if [[ ! -f "${JAR:-}" ]]; then
+  echo "Xəta: JAR tapılmadı ($BE_SRC/backend/build/libs/)."
   exit 1
 fi
 install -o premiumreklam -g premiumreklam -m 644 "$JAR" "$APP_ROOT/backend/premium-reklam-backend.jar"
 
-echo "=== Frontend build (Next standalone) ==="
-cd "$SRC"
+echo "=== Frontend build (Next standalone) — $FE_SRC ==="
+cd "$FE_SRC"
 sudo -u premiumreklam npm ci
 sudo -u premiumreklam npm run build
 sudo -u premiumreklam mkdir -p .next/standalone/.next
@@ -125,8 +161,8 @@ sudo -u premiumreklam mkdir -p "$APP_ROOT/web"
 sudo -u premiumreklam cp -a .next "$APP_ROOT/web/"
 
 echo "=== systemd ==="
-install -m 644 "$SRC/deploy/systemd/premiumreklam-backend.service" /etc/systemd/system/
-install -m 644 "$SRC/deploy/systemd/premiumreklam-frontend.service" /etc/systemd/system/
+install -m 644 "$DEPLOY_CFG/systemd/premiumreklam-backend.service" /etc/systemd/system/
+install -m 644 "$DEPLOY_CFG/systemd/premiumreklam-frontend.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable premiumreklam-backend premiumreklam-frontend
 systemctl restart premiumreklam-backend
@@ -134,7 +170,7 @@ sleep 3
 systemctl restart premiumreklam-frontend
 
 echo "=== Nginx ==="
-install -m 644 "$SRC/deploy/nginx/premiumreklam.shop.conf" /etc/nginx/sites-available/premiumreklam.shop
+install -m 644 "$DEPLOY_CFG/nginx/premiumreklam.shop.conf" /etc/nginx/sites-available/premiumreklam.shop
 ln -sf /etc/nginx/sites-available/premiumreklam.shop /etc/nginx/sites-enabled/
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 nginx -t
@@ -147,4 +183,5 @@ echo "• Frontend: systemctl status premiumreklam-frontend"
 echo "• DNS $DOMAIN -> bu serverin public IP olmalıdır."
 echo "• SSL:      certbot --nginx -d $DOMAIN -d www.$DOMAIN"
 echo "• Əgər backend.env ilk dəfə yaradıldısa, DB parolu yuxarıda faylda — backup saxlayın."
+echo "• İki repo: yeniləmə üçün deploy/rebuild-app.sh — BACKEND_SRC və FRONTEND_SRC ilə."
 echo ""

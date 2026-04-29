@@ -32,3 +32,15 @@ deploy/backend.env.example              — əl ilə env üçün nümunə
 deploy/frontend.env.example
 
 Frontend build .env.production oxuyur — NEXT_PUBLIC_SITE_URL və NEXT_PUBLIC_API_URL domenə uyğun olmalıdır.
+
+İki repo (backandpremiumreklam + Premium-Reklam) eyni VPS
+-----------------------------------------------------------
+Tam təlimat: deploy/VPS-DUAL-REPO.md
+
+   install:
+   sudo env BACKEND_SRC=/opt/premiumreklam/backend-src \
+            FRONTEND_SRC=/opt/premiumreklam/frontend-src \
+            bash /opt/premiumreklam/frontend-src/deploy/install-vps.sh
+
+   yeniləmə:
+   sudo env BACKEND_SRC=... FRONTEND_SRC=... bash .../deploy/rebuild-app.sh
