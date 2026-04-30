@@ -9,8 +9,9 @@ services:
       POSTGRES_DB: decorapp
       POSTGRES_USER: decorapp
       POSTGRES_PASSWORD: decorapp123
+    # Host port changed from 5432 to 5433 to avoid conflicts on VPS
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
